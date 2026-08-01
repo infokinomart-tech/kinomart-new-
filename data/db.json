@@ -1,0 +1,969 @@
+{
+  "categories": [
+    {
+      "id": "cat-3",
+      "name": "চার্জার ও পাওয়ার ব্যাংক",
+      "slug": "chargers-powerbank",
+      "icon_name": "Zap",
+      "icon_url": "https://images.unsplash.com/photo-1609592424109-dd9892f1b177?auto=format&fit=crop&w=300&q=80",
+      "display_order": 3,
+      "is_visible": true,
+      "created_at": "2026-07-30T07:03:54.051309+00:00",
+      "status": "active",
+      "subcategories": [
+        {
+          "id": "sub-3-1",
+          "name": "ফাস্ট চার্জার ও এডাপ্টার",
+          "slug": "fast-charger"
+        },
+        {
+          "id": "sub-3-2",
+          "name": "পাওয়ার ব্যাংক (১০K-২০K mAh)",
+          "slug": "power-bank"
+        },
+        {
+          "id": "sub-3-3",
+          "name": "টাইপ-সি ও লাইটনিং ক্যাবল",
+          "slug": "charging-cables"
+        },
+        {
+          "id": "sub-3-4",
+          "name": "ওয়্যারলেস চার্জার",
+          "slug": "wireless-charger"
+        }
+      ]
+    },
+    {
+      "id": "cat-4",
+      "name": "স্পিকার ও সাউন্ড",
+      "slug": "speakers-sound",
+      "icon_name": "Speaker",
+      "icon_url": "https://images.unsplash.com/photo-1545454675-3531b543be5d?auto=format&fit=crop&w=300&q=80",
+      "display_order": 4,
+      "is_visible": true,
+      "created_at": "2026-07-30T07:03:54.051309+00:00",
+      "status": "active",
+      "subcategories": [
+        {
+          "id": "sub-4-1",
+          "name": "পোর্টেবল ব্লুটুথ স্পিকার",
+          "slug": "portable-speaker"
+        },
+        {
+          "id": "sub-4-2",
+          "name": "সাউন্ডবার ও হোম থিয়েটার",
+          "slug": "soundbar"
+        },
+        {
+          "id": "sub-4-3",
+          "name": "পার্টি স্পিকার",
+          "slug": "party-speaker"
+        }
+      ]
+    },
+    {
+      "id": "cat-5",
+      "name": "ফিটনেস ও হেলথ গ্যাজেট",
+      "slug": "fitness-health",
+      "icon_name": "Activity",
+      "icon_url": "https://images.unsplash.com/photo-1576243345690-4e4b79b63288?auto=format&fit=crop&w=300&q=80",
+      "display_order": 5,
+      "is_visible": true,
+      "created_at": "2026-07-30T07:03:54.051309+00:00",
+      "status": "active",
+      "subcategories": [
+        {
+          "id": "sub-5-1",
+          "name": "স্মার্ট ওয়েট স্কেল",
+          "slug": "smart-scale"
+        },
+        {
+          "id": "sub-5-2",
+          "name": "ম্যাসাজ গান ও গিয়ার",
+          "slug": "massage-gun"
+        },
+        {
+          "id": "sub-5-3",
+          "name": "প্রেসার ও হেলথ মনিটর",
+          "slug": "health-monitor"
+        }
+      ]
+    },
+    {
+      "id": "cat-6",
+      "name": "মোবাইল এক্সেসরিজ",
+      "slug": "mobile-accessories",
+      "icon_name": "Smartphone",
+      "icon_url": "https://images.unsplash.com/photo-1580910051074-3eb694886505?auto=format&fit=crop&w=300&q=80",
+      "display_order": 6,
+      "is_visible": true,
+      "created_at": "2026-07-30T07:03:54.051309+00:00",
+      "status": "active",
+      "subcategories": [
+        {
+          "id": "sub-6-1",
+          "name": "মোবাইল ব্যাক কাভার",
+          "slug": "phone-covers"
+        },
+        {
+          "id": "sub-6-2",
+          "name": "স্ক্রিন প্রটেক্টর",
+          "slug": "screen-protector"
+        },
+        {
+          "id": "sub-6-3",
+          "name": "কার মোবাইল হোল্ডার",
+          "slug": "car-holder"
+        },
+        {
+          "id": "sub-6-4",
+          "name": "গিম্বল ও ট্রাইপড",
+          "slug": "gimbal-tripod"
+        }
+      ]
+    },
+    {
+      "id": "cat-7",
+      "name": "স্মার্ট হোম ও লাইফস্টাইল",
+      "slug": "smart-home",
+      "icon_name": "Home",
+      "icon_url": "https://images.unsplash.com/photo-1558002038-1055907df827?auto=format&fit=crop&w=300&q=80",
+      "display_order": 7,
+      "is_visible": true,
+      "created_at": "2026-07-30T07:03:54.051309+00:00",
+      "status": "active",
+      "subcategories": [
+        {
+          "id": "sub-7-1",
+          "name": "স্মার্ট এলইডি লাইট",
+          "slug": "smart-light"
+        },
+        {
+          "id": "sub-7-2",
+          "name": "সিকিউরিটি আইপি ক্যামেরা",
+          "slug": "ip-camera"
+        },
+        {
+          "id": "sub-7-3",
+          "name": "স্মার্ট সকেট ও সুইচ",
+          "slug": "smart-plug"
+        }
+      ]
+    },
+    {
+      "id": "cat-1785404022137",
+      "name": "টেস্ট ক্যাটাগরি 1785404021502",
+      "slug": "টেস্ট-ক্যাটাগরি-1785404021502",
+      "icon_name": "Watch",
+      "icon_url": "",
+      "display_order": 15,
+      "is_visible": true,
+      "created_at": "2026-07-30T09:33:42.709229+00:00",
+      "status": "active",
+      "subcategories": []
+    },
+    {
+      "id": "cat-1",
+      "name": "স্মার্টওয়াচ",
+      "slug": "smartwatch",
+      "icon_name": "Watch",
+      "icon_url": "https://images.unsplash.com/photo-1508685096489-7aacd43bd3b1?auto=format&fit=crop&w=300&q=80",
+      "display_order": 1,
+      "is_visible": true,
+      "created_at": "2026-07-30T07:03:54.051309+00:00",
+      "status": "active",
+      "subcategories": [
+        {
+          "id": "sub-1-1",
+          "name": "আল্ট্রা সিরিজ ওয়াচ",
+          "slug": "ultra-series"
+        },
+        {
+          "id": "sub-1-2",
+          "name": "সিরিজ ৯ / ১০",
+          "slug": "series-9-10"
+        },
+        {
+          "id": "sub-1-3",
+          "name": "ফিটনেস ও স্পোর্টস ব্যান্ড",
+          "slug": "fitness-band"
+        },
+        {
+          "id": "sub-1-4",
+          "name": "লেডিজ স্মার্টওয়াচ",
+          "slug": "ladies-smartwatch"
+        }
+      ]
+    },
+    {
+      "id": "cat-2",
+      "name": "এয়ারবাডস ও হেডফোন",
+      "slug": "earbuds-headphones",
+      "icon_name": "Headphones",
+      "icon_url": "https://images.unsplash.com/photo-1590658268037-6bf12165a8df?auto=format&fit=crop&w=300&q=80",
+      "display_order": 2,
+      "is_visible": true,
+      "created_at": "2026-07-30T07:03:54.051309+00:00",
+      "status": "active",
+      "subcategories": [
+        {
+          "id": "sub-2-1",
+          "name": "TWS এয়ারবাডস",
+          "slug": "tws-earbuds"
+        },
+        {
+          "id": "sub-2-2",
+          "name": "নেকব্যান্ড হেডফোন",
+          "slug": "neckband"
+        },
+        {
+          "id": "sub-2-3",
+          "name": "গেমিং হেডসেট",
+          "slug": "gaming-headset"
+        },
+        {
+          "id": "sub-2-4",
+          "name": "ওভার-ইয়ার হেডফোন",
+          "slug": "over-ear-headphones"
+        }
+      ]
+    }
+  ],
+  "products": [
+    {
+      "id": "prod-6",
+      "name": "Kino Stream RGB Gaming Desk Headset Stand",
+      "slug": "kino-stream-rgb-gaming-headset-stand",
+      "description": "আরজিবি লাইটিং লাইট বার, ৩টি ইউএসবি হাব পোর্ট এবং ৭.১ সারাউন্ড সাউন্ড প্যাস থ্রু অডিও জ্যাক সহ ডেস্ক স্ট্যান্ড।",
+      "short_description": "",
+      "price": 1800,
+      "discount_price": 990,
+      "category_id": "cat-6",
+      "category_name": "মোবাইল এক্সেসরিজ",
+      "images": [
+        "https://images.unsplash.com/photo-1580910051074-3eb694886505?auto=format&fit=crop&w=800&q=80"
+      ],
+      "video_url": "",
+      "variants": [
+        {
+          "name": "কালার",
+          "options": [
+            "RGB BLACK",
+            "RGB WHITE"
+          ]
+        }
+      ],
+      "specifications": [],
+      "stock": 20,
+      "low_stock_threshold": 10,
+      "status": "active",
+      "is_featured": false,
+      "is_best_seller": false,
+      "timer_enabled": false,
+      "timer_title": "",
+      "rating": 4.7,
+      "reviews_count": 29,
+      "seo_title": "RGB Gaming Headset Stand BD",
+      "seo_description": "RGB Stand with USB hub.",
+      "created_at": "2026-07-30T09:00:14.709Z"
+    },
+    {
+      "id": "prod-5",
+      "name": "KinoBand Sleek Fitness & Sleep Tracker",
+      "slug": "kinoband-sleek-fitness-sleep-tracker",
+      "description": "২৪ ঘন্টা হার্টরেট, স্লিপ ট্র্যাকিং, ব্লাড প্রেশার মনিটরিং এবং কমপ্লিট স্টেপ কাউন্টার। ওয়াটারপ্রুফ IP68 সুবিধা।",
+      "short_description": "",
+      "price": 2200,
+      "discount_price": 1290,
+      "category_id": "cat-4",
+      "category_name": "ফিটনেস ট্র্যাকার",
+      "images": [
+        "https://images.unsplash.com/photo-1575311373937-040b8e1fd5b6?auto=format&fit=crop&w=800&q=80"
+      ],
+      "video_url": "",
+      "variants": [
+        {
+          "name": "কালার",
+          "options": [
+            "BLACK",
+            "NAVY BLUE",
+            "ROSE GOLD"
+          ]
+        }
+      ],
+      "specifications": [],
+      "stock": 40,
+      "low_stock_threshold": 10,
+      "status": "active",
+      "is_featured": false,
+      "is_best_seller": false,
+      "timer_enabled": false,
+      "timer_title": "",
+      "rating": 4.6,
+      "reviews_count": 41,
+      "seo_title": "KinoBand Fitness Tracker BD",
+      "seo_description": "Accurate fitness and health tracker in BD.",
+      "created_at": "2026-07-29T09:00:14.709Z"
+    },
+    {
+      "id": "prod-1785492719949",
+      "name": "Supabase Verified Product 1785492719365",
+      "slug": "supabase-verified-product-1785492719365",
+      "description": "",
+      "short_description": "",
+      "price": 2500,
+      "images": [
+        "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=800&q=80"
+      ],
+      "video_url": "",
+      "variants": [],
+      "specifications": [],
+      "stock": 15,
+      "low_stock_threshold": 10,
+      "status": "active",
+      "is_featured": false,
+      "is_best_seller": false,
+      "timer_enabled": false,
+      "timer_title": "অফারটি শেষ হতে বাকি:",
+      "rating": 5,
+      "reviews_count": 1,
+      "seo_title": "Supabase Verified Product 1785492719365",
+      "seo_description": "",
+      "created_at": "2026-07-31T10:11:59.949Z",
+      "timer_end_time": ""
+    },
+    {
+      "id": "prod-test-direct-123",
+      "name": "Direct Test Product",
+      "slug": "direct-test-product",
+      "description": "test",
+      "short_description": "",
+      "price": 1000,
+      "images": [],
+      "video_url": "",
+      "variants": [],
+      "specifications": [],
+      "stock": 10,
+      "low_stock_threshold": 10,
+      "status": "active",
+      "is_featured": false,
+      "is_best_seller": false,
+      "timer_enabled": false,
+      "timer_title": "",
+      "rating": 5,
+      "reviews_count": 0,
+      "seo_title": "Direct Test Product",
+      "seo_description": "test",
+      "created_at": "2026-07-30T09:34:12.113465+00:00"
+    },
+    {
+      "id": "prod-1785404045630",
+      "name": "Supabase Test Product 1785404045111",
+      "slug": "supabase-test-product-1785404045111",
+      "description": "",
+      "short_description": "",
+      "price": 1990,
+      "images": [
+        "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=800&q=80"
+      ],
+      "video_url": "",
+      "variants": [],
+      "specifications": [],
+      "stock": 20,
+      "low_stock_threshold": 10,
+      "status": "active",
+      "is_featured": false,
+      "is_best_seller": false,
+      "timer_enabled": false,
+      "timer_title": "অফারটি শেষ হতে বাকি:",
+      "rating": 5,
+      "reviews_count": 1,
+      "seo_title": "Supabase Test Product 1785404045111",
+      "seo_description": "",
+      "created_at": "2026-07-30T09:34:05.630Z",
+      "timer_end_time": ""
+    },
+    {
+      "id": "prod-1785395199301",
+      "name": "Test Product 1785395199165",
+      "slug": "test-product-1785395199165",
+      "description": "Test product desc",
+      "short_description": "",
+      "price": 1500,
+      "discount_price": 1200,
+      "category_id": "cat-1",
+      "category_name": "স্মার্টওয়াচ",
+      "images": [
+        "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=800&q=80"
+      ],
+      "video_url": "",
+      "variants": [],
+      "specifications": [],
+      "stock": 50,
+      "low_stock_threshold": 10,
+      "status": "active",
+      "is_featured": false,
+      "is_best_seller": false,
+      "timer_enabled": false,
+      "timer_title": "",
+      "rating": 5,
+      "reviews_count": 0,
+      "seo_title": "Test Product 1785395199165",
+      "seo_description": "Test product desc",
+      "created_at": "2026-07-30T07:06:39.301+00:00"
+    },
+    {
+      "id": "prod-1785395033688",
+      "name": "টেস্ট গ্যাজেট ঘড়ি",
+      "slug": "product-prod-1785395033688",
+      "description": "",
+      "short_description": "",
+      "price": 1500,
+      "category_id": "cat-1",
+      "images": [
+        "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=800&q=80"
+      ],
+      "video_url": "",
+      "variants": [],
+      "specifications": [],
+      "stock": 20,
+      "low_stock_threshold": 10,
+      "status": "active",
+      "is_featured": false,
+      "is_best_seller": false,
+      "timer_enabled": false,
+      "timer_title": "",
+      "rating": 5,
+      "reviews_count": 0,
+      "seo_title": "টেস্ট গ্যাজেট ঘড়ি",
+      "seo_description": "",
+      "created_at": "2026-07-30T07:03:53.69+00:00"
+    },
+    {
+      "id": "prod-1785318947954",
+      "name": "টেস্ট নতুন গ্যাজেট প্রোডাক্ট",
+      "slug": "product-prod-1785318947954",
+      "description": "",
+      "short_description": "",
+      "price": 1200,
+      "discount_price": 990,
+      "category_id": "cat-1",
+      "category_name": "স্মার্টওয়াচ",
+      "images": [
+        "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=800&q=80"
+      ],
+      "video_url": "",
+      "variants": [],
+      "specifications": [],
+      "stock": 25,
+      "low_stock_threshold": 10,
+      "status": "active",
+      "is_featured": false,
+      "is_best_seller": false,
+      "timer_enabled": false,
+      "timer_title": "",
+      "rating": 5,
+      "reviews_count": 0,
+      "seo_title": "টেস্ট নতুন গ্যাজেট প্রোডাক্ট",
+      "seo_description": "",
+      "created_at": "2026-07-29T09:55:47.954+00:00"
+    },
+    {
+      "id": "prod-4",
+      "name": "Kino Charge Fast Magnetic Power Bank 10,000mAh",
+      "slug": "kino-charge-fast-magnetic-power-bank",
+      "description": "১৫W ম্যাগনেটিক ওয়ারলেস চার্জিং + ২২.৫W সুপার ফাস্ট ক্যাবল চার্জিং। স্লিম মেটাল বডি ও ডিজিটাল ব্যাটারি ডিসপ্লে।",
+      "short_description": "",
+      "price": 3200,
+      "discount_price": 1890,
+      "category_id": "cat-5",
+      "category_name": "চার্জার ও পাওয়ার ব্যাংক",
+      "images": [
+        "https://images.unsplash.com/photo-1609592424083-d92e5a407335?auto=format&fit=crop&w=800&q=80",
+        "https://images.unsplash.com/photo-1583863788434-e58a36330cf0?auto=format&fit=crop&w=800&q=80"
+      ],
+      "video_url": "",
+      "variants": [
+        {
+          "name": "কালার",
+          "options": [
+            "SPACE GRAY",
+            "MIDNIGHT BLUE"
+          ]
+        }
+      ],
+      "specifications": [],
+      "stock": 25,
+      "low_stock_threshold": 10,
+      "status": "active",
+      "is_featured": true,
+      "is_best_seller": true,
+      "timer_enabled": false,
+      "timer_title": "",
+      "rating": 4.9,
+      "reviews_count": 87,
+      "seo_title": "Kino Power Bank 10000mAh Price in Bangladesh",
+      "seo_description": "MagSafe Wireless powerbank in BD.",
+      "created_at": "2026-07-28T09:00:14.709Z"
+    },
+    {
+      "id": "prod-3",
+      "name": "KinoBreathe Nasal Inhaler & Health Aid",
+      "slug": "kinobreathe-nasal-inhaler-health-aid",
+      "description": "শ্বাস-প্রশ্বাস সহজ করার জন্য প্রাকৃতিক এসেনশিয়াল অয়েল ইনহেলার ও অ্যালার্জি রিলিফ গ্যাজেট। কমপ্যাক্ট এবং পোর্টেবল ডিজাইন।",
+      "short_description": "",
+      "price": 1200,
+      "discount_price": 690,
+      "category_id": "cat-3",
+      "category_name": "হেলথ ও কেয়ার গ্যাজেট",
+      "images": [
+        "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=800&q=80",
+        "https://images.unsplash.com/photo-1628771065518-0d82f1938462?auto=format&fit=crop&w=800&q=80"
+      ],
+      "video_url": "",
+      "variants": [
+        {
+          "name": "ফ্লেভার",
+          "options": [
+            "MINT",
+            "EUCALYPTUS",
+            "PEACE",
+            "WATERMELON"
+          ]
+        }
+      ],
+      "specifications": [],
+      "stock": 60,
+      "low_stock_threshold": 10,
+      "status": "active",
+      "is_featured": true,
+      "is_best_seller": false,
+      "timer_enabled": false,
+      "timer_title": "",
+      "rating": 4.7,
+      "reviews_count": 62,
+      "seo_title": "KinoBreathe Health Inhaler BD",
+      "seo_description": "Natural nasal health aid gadget in BD.",
+      "created_at": "2026-07-27T09:00:14.709Z"
+    },
+    {
+      "id": "prod-2",
+      "name": "KinoFit Pro Amoled Smartwatch",
+      "slug": "kinofit-pro-amoled-smartwatch",
+      "description": "১.৪৩ ইঞ্চি প্রিমিয়াম অ্যামোলেড ডিসপ্লে, ব্লুটুথ কলিং, হার্ট রেট ও অক্সিজেন মনিটর, ১০০+ স্পোর্টস মোড এবং ৭ দিনের ব্যাটারি ব্যাকআপ।",
+      "short_description": "",
+      "price": 4500,
+      "discount_price": 2990,
+      "category_id": "cat-1",
+      "category_name": "স্মার্টওয়াচ",
+      "images": [
+        "https://images.unsplash.com/photo-1579586337278-3befd40fd17a?auto=format&fit=crop&w=800&q=80",
+        "https://images.unsplash.com/photo-1508685096489-7aacd43bd3b1?auto=format&fit=crop&w=800&q=80"
+      ],
+      "video_url": "",
+      "variants": [
+        {
+          "name": "কালার",
+          "options": [
+            "MATTE BLACK",
+            "SILVER",
+            "ARMY GREEN"
+          ]
+        }
+      ],
+      "specifications": [],
+      "stock": 30,
+      "low_stock_threshold": 10,
+      "status": "active",
+      "is_featured": true,
+      "is_best_seller": true,
+      "timer_enabled": false,
+      "timer_title": "",
+      "rating": 4.8,
+      "reviews_count": 94,
+      "seo_title": "KinoFit Pro Amoled Smartwatch BD",
+      "seo_description": "Best Amoled Smartwatch with bluetooth calling in Bangladesh.",
+      "created_at": "2026-07-26T09:00:14.709Z"
+    },
+    {
+      "id": "prod-1",
+      "name": "Kino Ultra ANC Wireless Earbuds",
+      "slug": "kino-ultra-anc-wireless-earbuds",
+      "description": "এইচডি সাউন্ড এবং অ্যাক্টিভ নয়েজ ক্যানসেলেশন (ANC) সহ সেরা এয়ারবাডস। ৩০ ঘন্টা ব্যাকআপ, টাইপ-সি ফাস্ট চার্জিং এবং ওয়াটারপ্রুফ ডিজাইন।",
+      "short_description": "এইচডি অডিও ক্ল্যারিটি, অ্যাক্টিভ নয়েজ ক্যানসেলেশন এবং ৩০ ঘন্টা ব্যাকআপ সহ প্রিমিয়াম কোয়ালিটি গ্যাজেট।",
+      "price": 2490,
+      "discount_price": 1490,
+      "category_id": "cat-2",
+      "category_name": "এয়ারবাডস ও হেডফোন",
+      "images": [
+        "https://images.unsplash.com/photo-1590658268037-6bf12165a8df?auto=format&fit=crop&w=800&q=80",
+        "https://images.unsplash.com/photo-1572536147248-ac59a8abfa4b?auto=format&fit=crop&w=800&q=80",
+        "https://images.unsplash.com/photo-1606220588913-b3aacb4d2f46?auto=format&fit=crop&w=800&q=80",
+        "https://images.unsplash.com/photo-1546435770-a3e426bf472b?auto=format&fit=crop&w=800&q=80",
+        "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=800&q=80"
+      ],
+      "video_url": "https://www.youtube.com/watch?v=3JZ_D3ELwOQ",
+      "variants": [
+        {
+          "name": "কালার",
+          "options": [
+            "BLACK",
+            "PEACE",
+            "MINT",
+            "WHITE"
+          ]
+        }
+      ],
+      "specifications": [
+        {
+          "key": "ব্লুটুথ ভার্সন (Bluetooth)",
+          "value": "v5.3 Fast Pair"
+        },
+        {
+          "key": "নয়েজ ক্যানসেলেশন (ANC)",
+          "value": "Up to 35dB Active Noise Cancellation"
+        },
+        {
+          "key": "প্লেব্যাক টাইম (Battery)",
+          "value": "৩০ ঘণ্টা পর্যন্ত (চার্জিং কেস সহ)"
+        },
+        {
+          "key": "চার্জিং প্রযুক্তি",
+          "value": "Type-C Fast Charging (10 min charge = 2 hours)"
+        },
+        {
+          "key": "ওয়াটার রেজিস্ট্যান্স",
+          "value": "IPX5 Water & Sweat Proof"
+        },
+        {
+          "key": "ড্রাইভার সাইজ",
+          "value": "10mm Dynamic Bass Boost Drivers"
+        },
+        {
+          "key": "ওয়ারেন্টি",
+          "value": "৬ মাসের রিপ্লেসমেন্ট ওয়ারেন্টি"
+        }
+      ],
+      "stock": 45,
+      "low_stock_threshold": 10,
+      "status": "active",
+      "is_featured": true,
+      "is_best_seller": true,
+      "timer_enabled": true,
+      "timer_title": "অফারটি শেষ হতে বাকি:",
+      "rating": 4.9,
+      "reviews_count": 128,
+      "seo_title": "Kino Ultra ANC Wireless Earbuds Buy Online in BD",
+      "seo_description": "Buy Kino Ultra ANC Wireless Earbuds in Bangladesh at best price.",
+      "created_at": "2026-07-25T09:00:14.709Z"
+    }
+  ],
+  "orders": [
+    {
+      "id": "ord-1785312344868",
+      "area": "outside_dhaka",
+      "city": "Dhaka",
+      "note": "",
+      "items": [
+        {
+          "qty": 1,
+          "image": "https://images.unsplash.com/photo-1579586337278-3befd40fd17a?auto=format&fit=crop&w=800&q=80",
+          "price": 2990,
+          "product_id": "prod-2",
+          "product_name": "KinoFit Pro Amoled Smartwatch",
+          "selected_variant": "MATTE BLACK"
+        }
+      ],
+      "phone": "01316297483",
+      "total": 3110,
+      "status": "active",
+      "address": "SgRSFGsrg",
+      "courier": "Steadfast",
+      "discount": 0,
+      "subtotal": 3110,
+      "created_at": "2026-07-29T08:05:44.868Z",
+      "invoice_id": "KM-65259",
+      "call_status": "not_called",
+      "customer_id": "cust-1785312344868",
+      "order_notes": "",
+      "bkash_number": "",
+      "delivery_fee": 120,
+      "order_number": "KM-65259",
+      "order_status": "pending",
+      "customer_name": "rakib",
+      "shipping_cost": 120,
+      "total_revenue": 3110,
+      "payment_method": "cod",
+      "payment_status": "unpaid",
+      "transaction_id": ""
+    },
+    {
+      "id": "ord-1002",
+      "area": "outside_dhaka",
+      "city": "Dhaka",
+      "note": "",
+      "items": [
+        {
+          "qty": 1,
+          "image": "https://images.unsplash.com/photo-1579586337278-3befd40fd17a?auto=format&fit=crop&w=800&q=80",
+          "price": 2990,
+          "product_id": "prod-2",
+          "product_name": "KinoFit Pro Amoled Smartwatch",
+          "selected_variant": "MATTE BLACK"
+        }
+      ],
+      "phone": "01899887766",
+      "total": 3110,
+      "status": "active",
+      "trx_id": "9B2K71L0",
+      "address": "জিইসি মোড়, সিডিএ এভিনিউ, চট্টগ্রাম",
+      "courier": "Steadfast",
+      "discount": 0,
+      "subtotal": 3110,
+      "created_at": "2026-07-23T13:44:09.296Z",
+      "invoice_id": "KM-10822",
+      "call_status": "not_called",
+      "order_notes": "",
+      "bkash_number": "01899887766",
+      "delivery_fee": 120,
+      "order_number": "KM-10822",
+      "order_status": "pending",
+      "customer_name": "সাবরিনা সুলতানা",
+      "shipping_cost": 120,
+      "total_revenue": 3110,
+      "payment_method": "bkash",
+      "payment_status": "unpaid",
+      "transaction_id": "9B2K71L0"
+    },
+    {
+      "id": "ord-1001",
+      "area": "inside_dhaka",
+      "city": "Dhaka",
+      "note": "কাস্টমার কালকে ১০টার পর ডেলিভারি চেয়েছে।",
+      "items": [
+        {
+          "qty": 1,
+          "image": "https://images.unsplash.com/photo-1590658268037-6bf12165a8df?auto=format&fit=crop&w=800&q=80",
+          "price": 1490,
+          "product_id": "prod-1",
+          "product_name": "Kino Ultra ANC Wireless Earbuds",
+          "selected_variant": "MINT"
+        }
+      ],
+      "phone": "01711223344",
+      "total": 1550,
+      "status": "active",
+      "address": "হাউজ ১২, রোড ৫, ধানমন্ডি, ঢাকা",
+      "courier": "Steadfast",
+      "discount": 0,
+      "subtotal": 1550,
+      "created_at": "2026-07-23T12:14:09.296Z",
+      "invoice_id": "KM-10821",
+      "call_status": "call_success",
+      "order_notes": "কাস্টমার কালকে ১০টার পর ডেলিভারি চেয়েছে।",
+      "delivery_fee": 60,
+      "order_number": "KM-10821",
+      "order_status": "confirmed",
+      "customer_name": "আরিফুল ইসলাম",
+      "shipping_cost": 60,
+      "total_revenue": 1550,
+      "payment_method": "cod",
+      "payment_status": "unpaid"
+    },
+    {
+      "id": "ord-1003",
+      "area": "inside_dhaka",
+      "city": "Dhaka",
+      "note": "ফেক নম্বর, ভুল ঠিকানা।",
+      "items": [
+        {
+          "qty": 2,
+          "image": "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=800&q=80",
+          "price": 690,
+          "product_id": "prod-3",
+          "product_name": "KinoBreathe Nasal Inhaler & Health Aid",
+          "selected_variant": "EUCALYPTUS"
+        }
+      ],
+      "phone": "01522334455",
+      "total": 1440,
+      "status": "active",
+      "address": "মিরপুর ১০, সেনপাড়া পর্বতা, ঢাকা",
+      "courier": "Steadfast",
+      "discount": 0,
+      "subtotal": 1440,
+      "created_at": "2026-07-22T14:14:09.296Z",
+      "invoice_id": "KM-10823",
+      "call_status": "fake_order",
+      "order_notes": "ফেক নম্বর, ভুল ঠিকানা।",
+      "delivery_fee": 60,
+      "order_number": "KM-10823",
+      "order_status": "cancelled",
+      "customer_name": "তানভীর আহমেদ",
+      "shipping_cost": 60,
+      "total_revenue": 1440,
+      "payment_method": "cod",
+      "payment_status": "unpaid"
+    }
+  ],
+  "customers": [
+    {
+      "id": "cust-1",
+      "name": "আরিফুল ইসলাম",
+      "phone": "01711223344",
+      "status": "active",
+      "address": "হাউজ ১২, রোড ৫, ধানমন্ডি, ঢাকা",
+      "password": "01711223344",
+      "created_at": "2026-07-23T14:14:09.296Z",
+      "total_spent": 0,
+      "orders_count": 0
+    },
+    {
+      "id": "cust-2",
+      "name": "সাবরিনা সুলতানা",
+      "phone": "01899887766",
+      "status": "active",
+      "address": "জিইসি মোড়, সিডিএ এভিনিউ, চট্টগ্রাম",
+      "password": "01899887766",
+      "created_at": "2026-07-23T14:14:09.296Z",
+      "total_spent": 0,
+      "orders_count": 0
+    },
+    {
+      "id": "cust-1785312344868",
+      "name": "rakib",
+      "phone": "01316297483",
+      "status": "active",
+      "address": "SgRSFGsrg",
+      "password": "01316297483",
+      "created_at": "2026-07-29T08:05:44.868Z",
+      "total_spent": 0,
+      "orders_count": 0
+    }
+  ],
+  "coupons": [
+    {
+      "id": "coup-3",
+      "code": "SPECIAL50",
+      "type": "fixed",
+      "amount": 50,
+      "status": "active",
+      "is_active": true,
+      "created_at": "2026-07-27T08:05:15.329Z",
+      "expires_at": "",
+      "used_count": 32,
+      "usage_limit": 200,
+      "discount_type": "fixed",
+      "discount_value": 50,
+      "min_order_amount": 300
+    },
+    {
+      "id": "coup-2",
+      "code": "SAVE100",
+      "type": "fixed",
+      "amount": 100,
+      "status": "active",
+      "is_active": true,
+      "created_at": "2026-07-24T08:05:15.329Z",
+      "expires_at": "",
+      "used_count": 8,
+      "usage_limit": 50,
+      "discount_type": "fixed",
+      "discount_value": 100,
+      "min_order_amount": 1000
+    },
+    {
+      "id": "coup-1",
+      "code": "KINO10",
+      "type": "fixed",
+      "amount": 10,
+      "status": "active",
+      "is_active": true,
+      "created_at": "2026-07-19T08:05:15.329Z",
+      "expires_at": "",
+      "used_count": 14,
+      "usage_limit": 100,
+      "discount_type": "percentage",
+      "discount_value": 10,
+      "min_order_amount": 500,
+      "max_discount_amount": 300
+    }
+  ],
+  "reviews": [
+    {
+      "id": "rev-1",
+      "product_id": "prod-1",
+      "customer_name": "তানভীর আহমেদ",
+      "phone": "",
+      "rating": 5,
+      "comment": "এক কথায় অসাধারণ এয়ারবাডস! ANC ফাংশনালিটি সত্যিই চমৎকার কাজ করে। আর সাউন্ড কোয়ালিটি বিট অনুযায়ী সেরা। ২ দিনে ডেলিভারি পেয়েছি।",
+      "is_verified_buyer": true,
+      "created_at": "2026-07-27T08:05:15.329Z",
+      "status": "active"
+    },
+    {
+      "id": "rev-2",
+      "product_id": "prod-1",
+      "customer_name": "মেহেদী হাসান",
+      "phone": "",
+      "rating": 5,
+      "comment": "ব্যাটারি ব্যাকআপ অবিশ্বাস্য। এক চার্জে সারা দিন চলেছে। কীনোমার্টের সার্ভিস অনেক ভালো, প্রডাক্ট প্যাকেট চেক করে নেয়ার সুযোগ ছিল।",
+      "is_verified_buyer": true,
+      "created_at": "2026-07-24T08:05:15.329Z",
+      "status": "active"
+    },
+    {
+      "id": "rev-3",
+      "product_id": "prod-1",
+      "customer_name": "ফারজানা আক্তার",
+      "phone": "",
+      "rating": 4,
+      "comment": "প্যাকেজিং খুব প্রিমিয়াম ছিল। মাইক্রোফোনের ভয়েস ক্ল্যারিটি খুব ক্লিয়ার। সাউন্ড বেইজ আরেকটু বেশি হলে ১০/১০ দিতাম, তবে এই প্রাইসে সেরা।",
+      "is_verified_buyer": true,
+      "created_at": "2026-07-21T08:05:15.329Z",
+      "status": "active"
+    },
+    {
+      "id": "rev-4",
+      "product_id": "prod-2",
+      "customer_name": "রাশেদুল ইসলাম",
+      "phone": "",
+      "rating": 5,
+      "comment": "অ্যামোলেড ডিসপ্লে এবং ব্লুটুথ কলিং সিস্টেমটা খুব স্মুথ। ফুল চার্জে ৬ দিন সার্ভিস দিচ্ছে। ধন্যবাদ কীনোমার্ট।",
+      "is_verified_buyer": true,
+      "created_at": "2026-07-26T08:05:15.329Z",
+      "status": "active"
+    }
+  ],
+  "contact_messages": [],
+  "settings": {
+    "logo_title": "KinoMart",
+    "tagline": "সেরা গ্যাজেট ও প্রিমিয়াম ইলেকট্রনিক্স",
+    "logo_url": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/7QCEUGhvdG9zaG9wIDMuMAA4QklNBAQAAAAAAGgcAigAYkZCTUQwYTAwMGE0MzAyMDAwMDhjMWMwMDAwOGMyNDAwMDBiMTI0MDAwMGNjMjkwMDAwZjYzMzAwMDBiNjQyMDAwMDMzNTUwMDAwNzg1NTAwMDBiNTU3MDAwMGEwNjMwMDAwAP/bAIQABQYGCwgLCwsLCw0LCwsNDg4NDQ4ODw0ODg4NDxAQEBEREBAQEA8TEhMPEBETFBQTERMWFhYTFhUVFhkWGRYWEgEFBQUKBwoICQkICwgKCAsKCgkJCgoMCQoJCgkMDQsKCwsKCw0MCwsICwsMDAwNDQwMDQoLCg0MDQ0MExQTExOc/8IAEQgE5gTmAwEiAAIRAQMRAf/EAQ4AAQEBAAIDAQAAAAAAAAAAAAABBwIIBAUGAwEBAAIDAQEAAAAAAAAAAAAAAAEGAwQFAgcQAAAGAAUEAgIBBQEAAAAAAAABAgMEBRMUFUBgERIWUCAwBhBwISIzsMCQEQABAgIDCwgFCQcFAAAAAAACAQMABAUREhMVFiEwMTJSU2KSICJCUJGi0eEQUWFjchRAQXGBobHB4gYzQ4KwwvBgstLx8hIAAQECCQgJAgYDAQAAAAAAAQIAEQMSITEyM0FRkSJAQmBxgZLRIDBQUmGhscHhEPATYnKCovFwssAjEwEAAAMFBwQDAQADAQAAAAABABExIUFRYZFAcYGhwdHwMGCx8RAgUOFwsMCA/9oADAMBAAIQAwEAAAHGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAANnxjZzGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAANnxjZzGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAANnxjZzGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAANnxjZzGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAANnxjZzGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAANnxjZzGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAANnxjZzGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAANnxjZzGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAANnxjZzGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAANnxjZzGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAANnxjZzGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAANnxjZzGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAANnxjZzGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAANnxjZzGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAANnxjZzGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAANnxjZzGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAANnxjZzGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAANnxjZzGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA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AAbPjGzmMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAbPjGzmMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAbPjGzmMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAbPjGzmMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAbPjGzmMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAbPjGzmMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAbPjGzmMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAbPjGzmMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAbPjGzmMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAbPjGzmMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAbPjGzmMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAbPjGzmMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAbPjGzmMNnGMNnGMNnGMNnGMNnGMNnGMNnGMNnGMNnGMNnGMNnGMNnGMNnGMNnGMNnGMNnGMNnGMNnGMNnGMNnGMNnGMNnGMNnGMNnGMNnGMNnGMNnGMNnGMNnGMNnGMNnGMNnGMNnGMNnGMNnGMNnGMNnGMNnGMNnGMNnGMNnGMNnGMNnG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PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPKPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPKPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPKPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPKPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPKPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPKPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPKPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPKPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPKPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPKPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPKPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPKPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPKPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPKPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPKPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPKPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPKPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPKPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPKPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPKPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPKPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPKPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPOLMOMIIEJOPHPPPPPPPNDFAAEEOJDGPPPPPPPPPPPPPPPKPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPENXfQPRAAEKFPPPPPPOMIAAAPQAEALPPPPPPPPPPPPPPPKPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPODAAAAAPQAACPPPPPPLAQAAAPQAAGPPPPPPPPPPPPPPPPPKPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPKIPQPfdffQBNPPPPPONAACAPQPRDPPPPPPPPPPPPPPPPPPKPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPIAPQAPdQAAEHPPPOFAPffQAAADNPPPPPPPPPPPPPPPPPPPKPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPHIALfQIAABKPPPOAFQPQPffQDDHPPPPPPPPPPPPPPPPPPPKPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPBDdQAAPfQAJFPPJAAPQPfffQCLPPPPPPPPPPPPPPPPPPPPPKPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPOFAAPfQPQOUMAePIAAAAPQAAGDPPPPPPPPPPPPPPPPPPPPPPKPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPLGPQPfQPfQBAPJIPQAAPQAAAPPPPPPPPPPPPPPPPPPPPPPPPKPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPMAAPfffffQCEFAHfSPQAABCHPPPPPPPPPPPPPPPPPPPPPPPPKPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPOAAPffQAAAJLQAPfQAAAAFPPPPPPPPPPPPPPPPPPPPPPPPPPKPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPIAPffQAAAAAAAPffQAABFPPPPPPPPPPPPPPPPPPPPPPPPPPPKPPPPPPPPPPPPPPPPPPPPPPPPPPPPPIHfQAAAAAPQAAHQPffQGBPPPPPPPPPPPPPPPPPPPPPPPPPPPPKPPPPPPPPPPPPPPPPPPPPPPPPPPPPOAPQPQAAAAAAAAMQAAAAFPPPPPPPPPPPPPPPPPPPPPPPPPPPPPKPPPPPPPPPPPPPPPPPPPPPPPPPPPPKIQAAAAAAAAAAAAAABFDPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPKPPPPPPPPPPPPPPPPPPPPPPPPPPPPFKAAAAAAAAAAAAEAANB8/PPPPPPPPPPPPPPPPPPPPPPPPPPPPPKPPPPPPPPPPPPPPPPPPPPPPPPPPPLHADBBCBDAAIAAAABPF9E9/PPPPPPPPPPPPPPPPPPPPPPPPPPPPKPPPPPPPPPPPPPPPPPPODaSgASwfPLDLDDDDDHDHDGQHLCdkwz8vPPPPPPPPPPPPPPPPPPPPPPPPPPPKPPPPPPPPPPPPPPPPPPA/M5/7+wiLDHiDIJCtMNAXIJHFRoywww2fPPPPPPPPPPPPPPPPPPPPPPPPPPKPPPPPPPPPPPPPPPPPPLK4nhtiA1//wDf87//AP8A3wdrONJtd2wwww9ufPPPPPPPPPPPPPPPPPPPPPPPPPKPPPPPPPPPPPPPPPPPPPPPPPPGnX//AP8Af/8A3/8A/wDgn88hDb/jDDDDVOP8888888888888888888888888o88888888888888XIOiGGaGaiAb3/wD/APf/AP8A4/51/PPJ0A3+wwww0w6ofPPPPPPPPPPPPPPPPPPPPPPPKPPPPPPPPPPPPPPBkZdz6/8A8+nMf/8A/wD3/wD/APb/AJPPPPPCyswwwwwwww/I/PPPPPPPPPPPPPPPPPPPPPPKPPPPPPPPPPPPPPA1n/3b/n/6Q3//AP8A/wD/AP8A/wDy6fPPPPPCwwwwwwxwyw8AfPPPPPPPPPPPPPPPPPPPPPKPPPPPPPPPPPPPPPPPPPPPPPPBP/8A/wD/AP8A/wD/AP4vPPPPPPPFS0vgw1y4wxzqfPPPPPPPPPPPPPPPPPPPPKPPPPPPPPPPPPPPPPPPFJlBlCX/AP8A/wD/AP8A/wC/4i/PPPPPPPPE48gw04wwww/ivPPPPPPPPPPPPPPPPPPPKPPPPPPPPPPPPPPPPPEf/wCP+Pkf/fvvPvv3Pnzzzzzzzzzyxd4c/MMMMMMJ7zzzzzzzzzzzzzzzzzzzyjzzzzzzzzzzzzzzzzzxmvEywxgTRFxxjK3Hzzzzzzzzzzzzwnb6MMMNMMM0TTzzzzzzzzzzzzzzzzzyjzzzzzzzzzzzzzzzzzzzzzwPKhXzyUAxrzzzzzzzzzzzzzzwpMcMMMMcMNOPTzzzzzzzzzzzzzzzzzyjzzzzzzzzzzzzzzzzzzzzzxec0Lzxj+UnzzzzzzzzzzzzzzzwMIUMsMMcsP8AzA88888888888888888o8888888888888888888888Bw8x88zQqm88888888888888888lAS+4+++6kcEd8888888888888888o88888888888888888888888888888s88888888888888888888sc88888888888888888888888888o888888888888888888888888888888888888888888888888888888888888888888888888888888o888888888888888888888888888888888888888888888888888888888888888888888888888888o888888888888888888888888888888888888888888888888888888888888888888888888888888o888888888888888888888888888888888888888888888888888888888888888888888888888888o888888888888888888888888888888888888888888888888888888888888888888888888888888o888888888888888888888888888888888888888888888888888888888888888888888888888888o888888888888888888888888888888888888888888888888888888888888888888888888888888o888888888888888888888888888888888888888888888888888888888888888888888888888888o888888888888888888888888888888888888888888888888888888888888888888888888888888o888888888888888888888888888888888888888888888888888888888888888888888888888888o888888888888888888888888888888888888888888888888888888888888888888888888888888o888888888888888888888888888888888888888888888888888888888888888888888888888888o888888888888888888888888888888888888888888888888888888888888888888888888888888o888888888888888888888888888888888888888888888888888888888888888888888888888888o888888888888888888888888888888888888888888888888888888888888888888888888888888o888888888888888888888888888888888888888888888888888888888888888888888888888888o888888888888888888888888888888888888888888888888888888888888888888888888888888o888888888888888888888888888888888888888888888888888888888888888888888888888888o888888888888888888888888888888888888888888888888888888888888888888888888888888o888888888888888888888888888888888888888888888888888888888888888888888888888888o888888888888888888888888888888888888888888888888888888888888888888888888888888o888888888888888888888888888888888888888888888888888888888888888888888888888888o888888888888888888888888888888888888888888888888888888888888888888888888888888o888888888888888888888888888888888888888888888888888888888888888888888888888888owwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwg//aAAgBAwMBPxD/AK5qftCfssf1n7DT9Wf9GUSiX4nsR/4DJxOJxOJxOJxOJ+xn2hKJe4j+9P8A+QD+T8v5NtP6KX/Qbv/aAAgBAhMBPxD/AK5kCELy3SPs1tZXP/fy0v8A7z4DT/Ss48D/AAt/EOQg5SDl4OWgyh8UdjnA5/8Ax+gE/PvUeBv0/oS7ur+9DTOzVeL/AFVKUJSlKUpRGpKvJw/Wug+3L+3JV4JWe+Oob3b+hMBsWfrdoz9btGfrdoz9aJJY1nnLhX1jf9E9kV6FqWYOFyYMCG+Rf1LRJ9Ut7eGSyICR+aOUs9J7hTRhif7Hl/v8mrZzBJG8xK30TMzMzPVBT1JcLVpBdyn9NGalHmZvn0vNxfMT1/8AIvKA+uzDIn5vHX9jIrTNFANquTE9K0PxeZ/IEnX46xkM6Pr8fX4+vx9fj67H12PrsW7H7NRZPp5uBkXu49D4O4HowxJmY7vTtIVPN/oZU/p2cfF89PR8sL4+n2XuzXi6DNo/ks/q/WDjDjSH3kJz9JMzPgN7SDEnp6e32CV9KYjZ1B/HkAisDPrgA5rYBbNY4wNn8R6c/kfRU5Cv4TI/QExyP1RIBMiHJhyPwpaAaj7EikbUpWUT/wCXVjzqe/8AR8ltx8Z7QtBuK/0YCTYAEmH84dP6sN9YZYr8g4BbQHg12d2Cv0iWEslT+VwKndRK7BW7S6CqLyvLIv8A0vrOP53aJsQxlHjGT9rZrHllACRsUwfF8hD4kfd4+pY+tY+tY+tY+tY+pY+tYP8AZxZbFsZJKDgK6n/QMf/EACsQAQACAQIGAQQDAAMBAAAAAAEAESExQRAgMEBRYGFQcYGRobHBwNHw4f/aAAgBAQABPxD/AJaBgYnbD8QM0Yl2Ceh0EiRIkSJUnKJORBIk4nDskhlh0lwB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",
+    "favicon_url": "",
+    "phone": "01700000000",
+    "whatsapp": "01700000000",
+    "address": "ঢাকা, বাংলাদেশ",
+    "hero_title": "প্রিমিয়াম গ্যাজেটের নির্ভরযোগ্য ঠিকানা",
+    "hero_subtitle": "সেরা অফারে অরিজিনাল গ্যাজেট কিনুন কীনোমার্ট থেকে",
+    "hero_image": "",
+    "banner_images": [],
+    "special_offer_text": "⚡ মেগা অফার চলছে! 1785397147495",
+    "special_offer_active": true,
+    "footer_about": "কীনোমার্ট বাংলাদেশের একটি বিশ্বস্ত প্রিমিয়াম গ্যাজেট অনলাইন শপ। আমরা সরবরাহ করি ১০০% অরিজিনাল ও মানসম্মত ইলেকট্রনিক্স গ্যাজেট।",
+    "pixel_id": "123456789012345",
+    "capi_token": "EAA123456789ABCDEF...",
+    "bkash_number": "01700123456",
+    "nagad_number": "01700123456",
+    "admin_id": "kinomart",
+    "admin_password": "@kinomart12@",
+    "id": "store_settings",
+    "store_name": "KinoMart",
+    "inside_dhaka_charge": 70,
+    "outside_dhaka_charge": 130,
+    "free_shipping_min": 3000,
+    "header_notice": "টেস্ট নোটিশ 1785397909466",
+    "updated_at": "2026-07-29T08:25:19.660164+00:00",
+    "site_title": "KinoMart - প্রিমিয়াম ইলেকট্রনিক্স গ্যাজেট শপ"
+  }
+}

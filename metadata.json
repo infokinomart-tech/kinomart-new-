@@ -1,0 +1,6 @@
+{
+  "name": "KinoMart",
+  "description": "Gadget & Electronics online store for Bangladeshi customers with Bengali storefront, auto-account creation on checkout, and comprehensive admin panel.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
