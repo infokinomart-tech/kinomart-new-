@@ -1,8 +1,11 @@
 import { createClient } from '@supabase/supabase-js';
 
 function parseSupabaseConfig() {
-  const envUrl = (import.meta.env && import.meta.env.VITE_SUPABASE_URL) || (typeof process !== 'undefined' ? process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL : '') || '';
-  const envKey = (import.meta.env && import.meta.env.VITE_SUPABASE_ANON_KEY) || (typeof process !== 'undefined' ? process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY : '') || '';
+  const DEFAULT_URL = 'https://epsaniuzooobukyahdeq.supabase.co';
+  const DEFAULT_KEY = 'sb_publishable_3dY-J_VCplcZO4Zv0_kWYg_x6d26BVd';
+
+  const envUrl = (import.meta.env && import.meta.env.VITE_SUPABASE_URL) || (typeof process !== 'undefined' ? process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL : '') || DEFAULT_URL;
+  const envKey = (import.meta.env && import.meta.env.VITE_SUPABASE_ANON_KEY) || (typeof process !== 'undefined' ? process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY : '') || DEFAULT_KEY;
 
   let url = String(envUrl).trim().replace(/^["']|["']$/g, '');
   let key = String(envKey).trim().replace(/^["']|["']$/g, '');

@@ -17,8 +17,8 @@ export const Home: React.FC = () => {
         setIsLoading(true);
         const prodData = await api.getProducts();
 
-        const best = prodData.filter(p => p.is_best_seller || p.rating >= 4.8);
-        setBestSellers(best.length > 0 ? best : prodData.slice(0, 4));
+        const best = prodData.filter(p => p.is_best_seller || (Number(p.rating || 0) >= 4.5));
+        setBestSellers(best.length > 0 ? best : prodData.slice(0, 8));
 
         const feat = prodData.filter(p => p.is_featured);
         setFeaturedProducts(feat.length > 0 ? feat : prodData);

@@ -36,8 +36,11 @@ function verifyPassword(inputPass: string, storedPass: string): boolean {
 
 // Supabase setup (if environment variables are provided)
 function parseSupabaseConfig() {
-  let url = (process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '').trim().replace(/^["']|["']$/g, '');
-  let key = (process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || '').trim().replace(/^["']|["']$/g, '');
+  const DEFAULT_URL = 'https://epsaniuzooobukyahdeq.supabase.co';
+  const DEFAULT_KEY = 'sb_publishable_3dY-J_VCplcZO4Zv0_kWYg_x6d26BVd';
+
+  let url = (process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || DEFAULT_URL).trim().replace(/^["']|["']$/g, '');
+  let key = (process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || DEFAULT_KEY).trim().replace(/^["']|["']$/g, '');
 
   if (!url || !key) return { url: '', key: '', valid: false };
   if (!url.startsWith('http://') && !url.startsWith('https://')) {
@@ -594,7 +597,7 @@ function loadDatabaseFromFile() {
     if (!db.coupons) db.coupons = initialCoupons;
     if (!db.contact_messages) db.contact_messages = [];
     return db;
-  } catch (err) {
+} catch (err) {
     return {
       categories: initialCategories,
       products: initialProducts,
@@ -606,6 +609,103 @@ function loadDatabaseFromFile() {
       contact_messages: []
     };
   }
+}
+
+function sanitizeProduct(p: any): any {
+  if (!p || typeof p !== 'object') return null;
+  const idStr = String(p.id || 'prod-' + Date.now());
+  const nameStr = String(p.name || 'আনটাইটেল্ড প্রোডাক্ট');
+
+  // Price
+  const rawPrice = p.price !== undefined && p.price !== null ? Number(p.price) : 0;
+  const price = !isNaN(rawPrice) && rawPrice >= 0 ? rawPrice : 0;
+
+  // Discount Price
+  let discountPrice: number | null = null;
+  if (p.discount_price !== undefined && p.discount_price !== null && p.discount_price !== '') {
+    const rawDisc = Number(p.discount_price);
+    if (!isNaN(rawDisc) && rawDisc > 0 && rawDisc < price) {
+      discountPrice = rawDisc;
+    }
+  }
+
+  // Images
+  let imagesArr: string[] = [];
+  if (Array.isArray(p.images)) {
+    imagesArr = p.images.map((img: any) => String(img || '').trim()).filter(Boolean);
+  } else if (typeof p.images === 'string' && p.images.trim()) {
+    try {
+      const parsed = JSON.parse(p.images);
+      if (Array.isArray(parsed)) {
+        imagesArr = parsed.map((img: any) => String(img || '').trim()).filter(Boolean);
+      } else if (typeof parsed === 'string' && parsed.trim()) {
+        imagesArr = [parsed.trim()];
+      }
+    } catch {
+      if (p.images.startsWith('http')) {
+        imagesArr = [p.images.trim()];
+      }
+    }
+  }
+  if (imagesArr.length === 0) {
+    imagesArr = ['https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=800&q=80'];
+  }
+
+  // Status (Default to 'active' if missing, null, or empty string)
+  const statusStr = (p.status && String(p.status).trim()) ? String(p.status).trim().toLowerCase() : 'active';
+
+  // Rating & Reviews Count
+  const rawRating = Number(p.rating);
+  const rating = !isNaN(rawRating) && rawRating > 0 ? rawRating : 5.0;
+
+  const rawReviews = Number(p.reviews_count);
+  const reviewsCount = !isNaN(rawReviews) && rawReviews >= 0 ? rawReviews : 1;
+
+  // Stock & Low Stock Threshold
+  const rawStock = Number(p.stock);
+  const stock = !isNaN(rawStock) ? rawStock : 50;
+
+  const rawLowStock = Number(p.low_stock_threshold);
+  const lowStockThreshold = !isNaN(rawLowStock) ? rawLowStock : 10;
+
+  // Slug
+  let slugStr = (p.slug && String(p.slug).trim() && String(p.slug).trim() !== '-')
+    ? String(p.slug).trim()
+    : nameStr.toLowerCase().replace(/\s+/g, '-').replace(/[^\p{L}\p{M}\p{N}\-_]+/gu, '');
+  if (!slugStr || slugStr === '-') slugStr = 'prod-' + idStr;
+
+  return {
+    ...p,
+    id: idStr,
+    name: nameStr,
+    slug: slugStr,
+    description: String(p.description || ''),
+    short_description: String(p.short_description || ''),
+    price,
+    discount_price: discountPrice,
+    category_id: p.category_id ? String(p.category_id) : null,
+    category_name: p.category_name ? String(p.category_name) : null,
+    subcategory_id: p.subcategory_id ? String(p.subcategory_id) : null,
+    subcategory_name: p.subcategory_name ? String(p.subcategory_name) : null,
+    images: imagesArr,
+    video_url: String(p.video_url || ''),
+    variants: Array.isArray(p.variants) ? p.variants : [],
+    specifications: Array.isArray(p.specifications) ? p.specifications : [],
+    stock,
+    low_stock_threshold: lowStockThreshold,
+    status: statusStr,
+    is_featured: Boolean(p.is_featured),
+    is_best_seller: Boolean(p.is_best_seller),
+    timer_enabled: Boolean(p.timer_enabled),
+    timer_title: String(p.timer_title || ''),
+    timer_end_time: p.timer_end_time ? String(p.timer_end_time) : null,
+    timer_hours: (p.timer_hours !== undefined && p.timer_hours !== null && p.timer_hours !== '') ? Number(p.timer_hours) : null,
+    rating,
+    reviews_count: reviewsCount,
+    seo_title: String(p.seo_title || nameStr),
+    seo_description: String(p.seo_description || p.description || ''),
+    created_at: p.created_at || new Date().toISOString()
+  };
 }
 
 async function loadDatabase(forceRefresh = false) {
@@ -691,7 +791,7 @@ async function loadDatabase(forceRefresh = false) {
 
         const merged = {
           categories: mergeLists(catRes.data, supaDb.categories, localDb.categories),
-          products: mergeLists(prodRes.data, supaDb.products, localDb.products),
+          products: mergeLists(prodRes.data, supaDb.products, localDb.products).map(sanitizeProduct).filter(Boolean),
           orders: mergeLists(ordRes.data, supaDb.orders, localDb.orders || []),
           customers: mergeLists(custRes.data, supaDb.customers, localDb.customers || []),
           coupons: mergeLists(coupRes.data, supaDb.coupons, localDb.coupons || []),
@@ -704,7 +804,9 @@ async function loadDatabase(forceRefresh = false) {
           merged.categories = [...initialCategories];
         }
         if (!hasSupaData && (!merged.products || merged.products.length === 0)) {
-          merged.products = [...initialProducts];
+          merged.products = initialProducts.map(sanitizeProduct).filter(Boolean);
+        } else {
+          merged.products = merged.products.map(sanitizeProduct).filter(Boolean);
         }
 
         cachedDbMemory = merged;
@@ -713,7 +815,7 @@ async function loadDatabase(forceRefresh = false) {
         // If Supabase was completely empty, seed it now so tables populate immediately
         const isSupaEmpty = !storeRes.data && (!catRes.data || catRes.data.length === 0) && (!prodRes.data || prodRes.data.length === 0);
         if (isSupaEmpty) {
-          saveDatabase(merged).catch(err => console.error('[Supabase Initial Seed Error]', err));
+          saveDatabase(merged).catch(() => {});
         }
 
         return cachedDbMemory;
@@ -722,8 +824,8 @@ async function loadDatabase(forceRefresh = false) {
       const result = await Promise.race([fetchPromise, timeoutPromise]) as any;
       if (timeoutId) clearTimeout(timeoutId);
       if (result) return result;
-    } catch (err) {
-      console.error('[Supabase Read Error or Timeout]', err);
+    } catch {
+      // Fallback silently to local cached DB if Supabase is unreachable
     }
   }
 
@@ -758,30 +860,30 @@ async function saveDatabase(data: any) {
         const { error: storeErr } = await supabase
           .from('store_data')
           .upsert({ id: 'main', data, updated_at: new Date().toISOString() }, { onConflict: 'id' });
-        if (storeErr) {
+        if (storeErr && !storeErr.message?.includes('fetch failed')) {
           console.error('[Supabase store_data upsert error]:', storeErr.message);
         }
       } catch (e: any) {
-        if (e?.message?.includes('fetch failed')) {
-          console.warn('[Supabase Sync Warning]: Could not reach Supabase (fetch failed). Please verify your SUPABASE_URL and network connection.');
-          return; // Stop further table syncs if endpoint is unreachable
+        if (!e?.message?.includes('fetch failed')) {
+          console.error('[Supabase store_data catch]:', e?.message || e);
         }
-        console.error('[Supabase store_data catch]:', e?.message || e);
       }
 
       // 2. Save cleaned items to relational tables in parallel
       const relationalPromises: Promise<any>[] = [];
 
-      const safeUpsert = (table: string, records: any[], onConflict = 'id') => {
-        return supabase.from(table).upsert(records, { onConflict }).then(({ error }) => {
-          if (error && !error.message.includes('Could not find')) {
+      const safeUpsert = async (table: string, records: any[], onConflict = 'id') => {
+        if (!records || records.length === 0) return;
+        try {
+          const { error } = await supabase.from(table).upsert(records, { onConflict });
+          if (error && !error.message.includes('Could not find') && !error.message.includes('fetch failed')) {
             console.error(`[Supabase ${table} upsert error]:`, error.message);
           }
-        }).catch(e => {
+        } catch (e: any) {
           if (!e?.message?.includes('fetch failed')) {
             console.error(`[Supabase ${table} catch]:`, e?.message || e);
           }
-        });
+        }
       };
 
       if (data.categories && data.categories.length > 0) {
@@ -806,7 +908,8 @@ async function saveDatabase(data: any) {
             icon_name: String(c.icon_name || 'Grid'),
             icon_url: String(c.icon_url || ''),
             display_order: Number(c.display_order || 1),
-            is_visible: Boolean(c.is_visible ?? true)
+            is_visible: Boolean(c.is_visible ?? true),
+            subcategories: Array.isArray(c.subcategories) ? c.subcategories : []
           };
         });
         relationalPromises.push(safeUpsert('categories', cleanCats));
@@ -834,24 +937,28 @@ async function saveDatabase(data: any) {
             description: String(p.description || ''),
             short_description: String(p.short_description || ''),
             price: Number(p.price || 0),
-            discount_price: p.discount_price !== undefined && p.discount_price !== null ? Number(p.discount_price) : null,
+            discount_price: (p.discount_price !== undefined && p.discount_price !== null && p.discount_price !== '') ? Number(p.discount_price) : null,
             category_id: p.category_id ? String(p.category_id) : null,
             category_name: p.category_name ? String(p.category_name) : null,
+            subcategory_id: p.subcategory_id ? String(p.subcategory_id) : null,
+            subcategory_name: p.subcategory_name ? String(p.subcategory_name) : null,
             images: Array.isArray(p.images) ? p.images : [],
             video_url: String(p.video_url || ''),
             variants: Array.isArray(p.variants) ? p.variants : [],
             specifications: Array.isArray(p.specifications) ? p.specifications : [],
             stock: Number(p.stock || 0),
-            low_stock_threshold: p.low_stock_threshold !== undefined ? Number(p.low_stock_threshold) : 10,
+            low_stock_threshold: (p.low_stock_threshold !== undefined && p.low_stock_threshold !== null) ? Number(p.low_stock_threshold) : 10,
             status: String(p.status || 'active'),
             is_featured: Boolean(p.is_featured),
             is_best_seller: Boolean(p.is_best_seller),
+            timer_enabled: Boolean(p.timer_enabled),
+            timer_title: String(p.timer_title || ''),
+            timer_end_time: p.timer_end_time ? String(p.timer_end_time) : null,
+            timer_hours: (p.timer_hours !== undefined && p.timer_hours !== null && p.timer_hours !== '') ? Number(p.timer_hours) : null,
             rating: Number(p.rating || 5.0),
             reviews_count: Number(p.reviews_count || 1),
             seo_title: String(p.seo_title || p.name || ''),
             seo_description: String(p.seo_description || p.description || ''),
-            timer_enabled: Boolean(p.timer_enabled),
-            timer_title: String(p.timer_title || ''),
             created_at: p.created_at || new Date().toISOString()
           };
         });
@@ -862,21 +969,32 @@ async function saveDatabase(data: any) {
         const cleanOrders = data.orders.map((o: any) => ({
           id: String(o.id),
           invoice_id: String(o.invoice_id || o.order_number || o.id),
+          order_number: String(o.order_number || o.invoice_id || o.id),
+          customer_id: o.customer_id ? String(o.customer_id) : null,
           customer_name: String(o.customer_name || 'গ্রাহক'),
           phone: String(o.phone || ''),
           address: String(o.address || ''),
           city: String(o.city || 'Dhaka'),
+          area: String(o.area || 'inside_dhaka'),
           courier: String(o.courier || 'Steadfast'),
           items: Array.isArray(o.items) ? o.items : [],
           subtotal: Number(o.subtotal || o.total_revenue || 0),
           delivery_fee: Number(o.delivery_fee || o.shipping_cost || 60),
+          shipping_cost: Number(o.shipping_cost || o.delivery_fee || 60),
           discount: Number(o.discount || o.discount_amount || 0),
+          discount_amount: Number(o.discount_amount || o.discount || 0),
           total: Number(o.total || o.total_revenue || 0),
+          total_revenue: Number(o.total_revenue || o.total || 0),
           status: String(o.status || o.order_status || 'pending'),
+          order_status: String(o.order_status || o.status || 'pending'),
           payment_method: String(o.payment_method || 'cod'),
           payment_status: String(o.payment_status || 'unpaid'),
           bkash_number: o.bkash_number ? String(o.bkash_number) : null,
+          transaction_id: o.transaction_id || o.trx_id ? String(o.transaction_id || o.trx_id) : null,
           trx_id: o.trx_id || o.transaction_id ? String(o.trx_id || o.transaction_id) : null,
+          coupon_code: o.coupon_code ? String(o.coupon_code) : null,
+          call_status: String(o.call_status || 'not_called'),
+          note: String(o.note || o.order_notes || ''),
           order_notes: String(o.order_notes || o.note || ''),
           created_at: o.created_at || new Date().toISOString()
         }));
@@ -899,13 +1017,15 @@ async function saveDatabase(data: any) {
         const cleanCoups = data.coupons.map((c: any) => ({
           id: String(c.id),
           code: String(c.code || '').toUpperCase(),
-          type: String(c.type || 'fixed'),
+          type: String(c.type || c.discount_type || 'fixed'),
+          discount_type: String(c.discount_type || c.type || 'fixed'),
           amount: Number(c.amount || c.discount_value || 0),
+          discount_value: Number(c.discount_value || c.amount || 0),
           min_order_amount: Number(c.min_order_amount || 0),
-          max_discount_amount: c.max_discount_amount ? Number(c.max_discount_amount) : null,
-          usage_limit: c.usage_limit ? Number(c.usage_limit) : null,
+          max_discount_amount: (c.max_discount_amount !== undefined && c.max_discount_amount !== null && c.max_discount_amount !== '') ? Number(c.max_discount_amount) : null,
+          usage_limit: (c.usage_limit !== undefined && c.usage_limit !== null && c.usage_limit !== '') ? Number(c.usage_limit) : null,
           used_count: Number(c.used_count || 0),
-          expires_at: c.expires_at || null,
+          expires_at: c.expires_at ? String(c.expires_at) : null,
           is_active: Boolean(c.is_active ?? true),
           created_at: c.created_at || new Date().toISOString()
         }));
@@ -929,7 +1049,9 @@ async function saveDatabase(data: any) {
           id: 'store_settings',
           store_name: String(data.settings.logo_title || data.settings.store_name || 'KinoMart'),
           logo_title: String(data.settings.logo_title || 'KinoMart'),
+          tagline: String(data.settings.tagline || ''),
           logo_url: data.settings.logo_url || null,
+          favicon_url: data.settings.favicon_url || null,
           phone: String(data.settings.phone || ''),
           whatsapp: String(data.settings.whatsapp || ''),
           address: String(data.settings.address || ''),
@@ -939,6 +1061,8 @@ async function saveDatabase(data: any) {
           hero_subtitle: String(data.settings.hero_subtitle || ''),
           hero_image: data.settings.hero_image || null,
           banner_images: Array.isArray(data.settings.banner_images) ? data.settings.banner_images : [],
+          special_offer_text: String(data.settings.special_offer_text || ''),
+          special_offer_active: Boolean(data.settings.special_offer_active ?? true),
           inside_dhaka_charge: Number(data.settings.inside_dhaka_charge || 70),
           outside_dhaka_charge: Number(data.settings.outside_dhaka_charge || 130),
           free_shipping_min: Number(data.settings.free_shipping_min || 3000),

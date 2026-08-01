@@ -43,7 +43,10 @@ export const Products: React.FC = () => {
         setCategories(cats);
 
         // Apply subcategory & price filter on client
-        let filtered = prods.filter(p => (p.discount_price || p.price) <= priceFilter);
+        let filtered = prods.filter(p => {
+          const effectivePrice = Number(p.discount_price || p.price || 0);
+          return effectivePrice <= priceFilter;
+        });
         if (selectedSubCategory !== 'all') {
           filtered = filtered.filter(p => p.subcategory_id === selectedSubCategory);
         }

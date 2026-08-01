@@ -74,7 +74,8 @@ export const AdminProducts: React.FC = () => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
-    for (const file of Array.from(files)) {
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
       const compressed = await compressImage(file, 1000, 1000, 0.82);
       if (compressed) {
         setImageUrls(prev => (prev ? `${prev.trim()}\n${compressed}` : compressed));

@@ -185,8 +185,13 @@ export const ProductDetail: React.FC = () => {
     );
   }
 
-  const hasDiscount = product.discount_price && product.discount_price < product.price;
-  const currentPrice = product.discount_price || product.price;
+  const price = Number(product.price || 0);
+  const discountPrice = (product.discount_price !== null && product.discount_price !== undefined && product.discount_price !== '')
+    ? Number(product.discount_price)
+    : null;
+
+  const hasDiscount = Boolean(discountPrice && discountPrice > 0 && discountPrice < price);
+  const currentPrice = hasDiscount ? discountPrice! : price;
 
   const handleDirectBuy = () => {
     openCheckout(product, selectedVariant, qty);
@@ -317,11 +322,11 @@ export const ProductDetail: React.FC = () => {
             {/* Price Box */}
             <div className="p-4 rounded-2xl bg-[#F7F5EF] border border-[#E5E3DA] flex items-baseline space-x-3">
               <span className="text-3xl sm:text-4xl font-extrabold text-[#6B7A4F]">
-                <span className="text-[#6B7A4F] mr-0.5">৳</span>{currentPrice.toLocaleString('bn-BD')}
+                <span className="text-[#6B7A4F] mr-0.5">৳</span>{(currentPrice || 0).toLocaleString('bn-BD')}
               </span>
               {hasDiscount && (
                 <span className="text-sm sm:text-base text-[#6B6B6B] line-through font-medium">
-                  ৳{product.price.toLocaleString('bn-BD')}
+                  ৳{(price || 0).toLocaleString('bn-BD')}
                 </span>
               )}
             </div>

@@ -11,17 +11,30 @@ interface ProductCardProps {
 export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   const { openCheckout } = useCart();
 
-  const mainImage = product.images?.[0] || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=600&q=80';
-  const hasDiscount = product.discount_price && product.discount_price < product.price;
-  const currentPrice = product.discount_price || product.price;
+  let mainImage = 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=600&q=80';
+  if (Array.isArray(product.images) && product.images.length > 0 && product.images[0]) {
+    mainImage = product.images[0];
+  } else if (typeof product.images === 'string' && (product.images as string).startsWith('http')) {
+    mainImage = product.images as string;
+  }
+
+  const price = Number(product.price || 0);
+  const discountPrice = (product.discount_price !== null && product.discount_price !== undefined && product.discount_price !== '')
+    ? Number(product.discount_price)
+    : null;
+
+  const hasDiscount = Boolean(discountPrice && discountPrice > 0 && discountPrice < price);
+  const currentPrice = hasDiscount ? discountPrice! : price;
 
   let discountPercent = 0;
-  if (hasDiscount) {
-    discountPercent = Math.round(((product.price - product.discount_price!) / product.price) * 100);
+  if (hasDiscount && price > 0) {
+    discountPercent = Math.round(((price - discountPrice!) / price) * 100);
   }
 
   // Default selected variant if exists
-  const defaultVariant = product.variants?.[0]?.options?.[0];
+  const defaultVariant = Array.isArray(product.variants) && product.variants[0]?.options?.[0]
+    ? product.variants[0].options[0]
+    : undefined;
 
   const handleBuyNow = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -96,11 +109,11 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           {/* Price */}
           <div className="flex items-baseline space-x-2 mt-0.5 mb-1">
             <span className="font-extrabold text-xl text-[#6B7A4F]">
-              <span className="text-[#6B7A4F] mr-0.5">৳</span>{currentPrice.toLocaleString('bn-BD')}
+              <span className="text-[#6B7A4F] mr-0.5">৳</span>{(currentPrice || 0).toLocaleString('bn-BD')}
             </span>
             {hasDiscount && (
               <span className="text-xs text-[#6B6B6B] line-through">
-                ৳{product.price.toLocaleString('bn-BD')}
+                ৳{(price || 0).toLocaleString('bn-BD')}
               </span>
             )}
           </div>
