@@ -88,6 +88,18 @@ interface StoreContextType {
   resetToDefaults: () => void;
 }
 
+const safeGetStorage = <T,>(key: string, fallback: T): T => {
+  try {
+    if (typeof window === 'undefined') return fallback;
+    const saved = localStorage.getItem(key);
+    if (!saved || saved === 'undefined' || saved === 'null') return fallback;
+    return JSON.parse(saved);
+  } catch (err) {
+    console.error(`Error reading ${key} from localStorage:`, err);
+    return fallback;
+  }
+};
+
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
 
 export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -99,13 +111,11 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // Customer Account state
   const [customerProfiles, setCustomerProfiles] = useState<Record<string, CustomerProfile>>(() => {
-    const saved = localStorage.getItem('kinomart_customer_profiles');
-    return saved ? JSON.parse(saved) : {};
+    return safeGetStorage('kinomart_customer_profiles', {});
   });
 
   const [customerUser, setCustomerUser] = useState<CustomerProfile | null>(() => {
-    const saved = localStorage.getItem('kinomart_current_customer');
-    return saved ? JSON.parse(saved) : null;
+    return safeGetStorage('kinomart_current_customer', null);
   });
 
   const [isCustomerLoginModalOpen, setIsCustomerLoginModalOpen] = useState<boolean>(false);
@@ -124,33 +134,27 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // Persistent States
   const [products, setProducts] = useState<Product[]>(() => {
-    const saved = localStorage.getItem('kinomart_products');
-    return saved ? JSON.parse(saved) : INITIAL_PRODUCTS;
+    return safeGetStorage('kinomart_products', INITIAL_PRODUCTS);
   });
 
   const [categories, setCategories] = useState<Category[]>(() => {
-    const saved = localStorage.getItem('kinomart_categories');
-    return saved ? JSON.parse(saved) : INITIAL_CATEGORIES;
+    return safeGetStorage('kinomart_categories', INITIAL_CATEGORIES);
   });
 
   const [orders, setOrders] = useState<Order[]>(() => {
-    const saved = localStorage.getItem('kinomart_orders');
-    return saved ? JSON.parse(saved) : INITIAL_ORDERS;
+    return safeGetStorage('kinomart_orders', INITIAL_ORDERS);
   });
 
   const [coupons, setCoupons] = useState<Coupon[]>(() => {
-    const saved = localStorage.getItem('kinomart_coupons');
-    return saved ? JSON.parse(saved) : INITIAL_COUPONS;
+    return safeGetStorage('kinomart_coupons', INITIAL_COUPONS);
   });
 
   const [team, setTeam] = useState<TeamMember[]>(() => {
-    const saved = localStorage.getItem('kinomart_team');
-    return saved ? JSON.parse(saved) : INITIAL_TEAM;
+    return safeGetStorage('kinomart_team', INITIAL_TEAM);
   });
 
   const [settings, setSettings] = useState<StoreSettings>(() => {
-    const saved = localStorage.getItem('kinomart_settings');
-    return saved ? JSON.parse(saved) : INITIAL_SETTINGS;
+    return safeGetStorage('kinomart_settings', INITIAL_SETTINGS);
   });
 
   // Sync Customer Profiles to LocalStorage
