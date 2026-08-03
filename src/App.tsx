@@ -93,9 +93,24 @@ const MainAppContent: React.FC = () => {
     return matchesCategory && matchesSearch;
   });
 
-  // If in Admin Mode and authenticated
-  if (viewMode === 'admin' && isAdminAuthenticated) {
-    return <AdminLayout />;
+  // If in Admin Mode
+  if (viewMode === 'admin') {
+    if (isAdminAuthenticated) {
+      return <AdminLayout />;
+    }
+    return (
+      <div className="min-h-screen bg-[#070C18] text-white flex flex-col items-center justify-center p-4">
+        <AdminLoginModal
+          onClose={() => {
+            setIsAdminModalOpen(false);
+            setViewMode('client');
+            if (window.location.pathname.includes('/admin')) {
+              window.history.pushState({}, '', '/');
+            }
+          }}
+        />
+      </div>
+    );
   }
 
   return (
@@ -345,11 +360,10 @@ const MainAppContent: React.FC = () => {
       )}
 
       {/* Admin Login Modal */}
-      {(isAdminModalOpen || (viewMode === 'admin' && !isAdminAuthenticated)) && (
+      {isAdminModalOpen && (
         <AdminLoginModal
           onClose={() => {
             setIsAdminModalOpen(false);
-            if (!isAdminAuthenticated) setViewMode('client');
           }}
         />
       )}

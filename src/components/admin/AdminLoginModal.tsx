@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useStore } from '../../context/StoreContext';
-import { Shield, Lock, User, X } from 'lucide-react';
+import { Shield, Lock, User, X, Eye, EyeOff } from 'lucide-react';
 
 interface AdminLoginModalProps {
   onClose: () => void;
@@ -9,8 +9,9 @@ interface AdminLoginModalProps {
 export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({ onClose }) => {
   const { loginAdmin } = useStore();
 
-  const [username, setUsername] = useState('kinomart');
-  const [password, setPassword] = useState('@kinomart@');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -67,27 +68,38 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({ onClose }) => 
             <label className="block text-[#CBD5E1] font-extrabold mb-1.5">পাসওয়ার্ড (Password)</label>
             <div className="relative">
               <input
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="পাসওয়ার্ড দিন"
-                className="w-full bg-[#0B1329] border border-[#1E293B] rounded-xl py-3 px-3.5 pl-10 text-white text-sm focus:outline-none focus:border-[#2563EB] transition-colors"
+                className="w-full bg-[#0B1329] border border-[#1E293B] rounded-xl py-3 px-3.5 pl-10 pr-11 text-white text-sm focus:outline-none focus:border-[#2563EB] transition-colors"
               />
               <Lock className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors cursor-pointer p-1 rounded-lg hover:bg-white/5"
+                title={showPassword ? 'পাসওয়ার্ড লুকান' : 'পাসওয়ার্ড দেখুন'}
+              >
+                {showPassword ? <EyeOff className="w-4 h-4 text-blue-400" /> : <Eye className="w-4 h-4" />}
+              </button>
             </div>
-          </div>
-
-          <div className="bg-[#0B1329] p-3 rounded-xl border border-[#1E293B] text-[11px] text-[#94A3B8] text-center leading-relaxed">
-            💡 ডিফল্ট আইডি: <strong className="text-white font-mono">kinomart</strong> | পাসওয়ার্ড:{' '}
-            <strong className="text-white font-mono">@kinomart@</strong>
           </div>
 
           <button
             type="submit"
-            className="w-full bg-[#2563EB] hover:bg-blue-600 text-white font-black py-3.5 px-6 rounded-2xl text-sm transition-all shadow-lg hover:shadow-blue-500/25 cursor-pointer"
+            className="w-full bg-[#2563EB] hover:bg-blue-600 text-white font-black py-3.5 px-6 rounded-2xl text-sm transition-all shadow-lg hover:shadow-blue-500/25 cursor-pointer mt-2"
           >
             প্যানেলে প্রবেশ করুন
+          </button>
+
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-full bg-[#1E293B] hover:bg-[#334155] text-gray-300 font-bold py-2.5 px-4 rounded-xl text-xs transition-colors cursor-pointer mt-2"
+          >
+            ← প্রধান ওয়েবসাইটে ফিরে যান
           </button>
         </form>
       </div>

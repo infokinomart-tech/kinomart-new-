@@ -127,7 +127,14 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [completedOrder, setCompletedOrder] = useState<Order | null>(null);
 
   // Admin state
-  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState<boolean>(true); // Logged in by default for smooth evaluation
+  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState<boolean>(() => {
+    try {
+      if (typeof window === 'undefined') return false;
+      return sessionStorage.getItem('kinomart_admin_auth') === 'true';
+    } catch {
+      return false;
+    }
+  });
   const [isAdminModalOpen, setIsAdminModalOpen] = useState<boolean>(false);
   const isAdminAuthenticated = isAdminLoggedIn;
   const [activeAdminTab, setActiveAdminTab] = useState<'orders' | 'products' | 'categories' | 'coupons' | 'team' | 'settings'>('orders');
@@ -337,6 +344,11 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const loginAdmin = (username: string, pass: string): boolean => {
     if (username === settings.adminUsername && pass === settings.adminPasswordHash) {
       setIsAdminLoggedIn(true);
+      try {
+        sessionStorage.setItem('kinomart_admin_auth', 'true');
+      } catch (e) {
+        console.error(e);
+      }
       setViewMode('admin');
       return true;
     }
@@ -345,7 +357,12 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const logoutAdmin = () => {
     setIsAdminLoggedIn(false);
-    setViewMode('client');
+    try {
+      sessionStorage.removeItem('kinomart_admin_auth');
+    } catch (e) {
+      console.error(e);
+    }
+    setViewMode('admin');
   };
 
   // Order Operations

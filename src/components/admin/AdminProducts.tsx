@@ -211,16 +211,16 @@ export const AdminProducts: React.FC = () => {
         </div>
       </div>
 
-      {/* Product Add / Edit Modal (Matching Image 11) */}
+      {/* Product Add / Edit Modal (Matching Image 2) */}
       {isModalOpen && editingProduct && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
-          <div className="bg-[#181B26] border border-[#2B3042] rounded-2xl max-w-2xl w-full p-5 sm:p-6 space-y-4 text-white my-auto max-h-[90vh] overflow-y-auto shadow-2xl">
+        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
+          <div className="bg-[#0B1329] border border-[#1E293B] rounded-2xl max-w-3xl w-full p-5 sm:p-6 space-y-4 text-white my-auto max-h-[92vh] overflow-y-auto shadow-2xl">
             {/* Header */}
-            <div className="flex justify-between items-center border-b border-[#2B3042] pb-3">
-              <h3 className="font-extrabold text-base sm:text-lg">
-                {editingProduct.id ? 'প্রোডাক্ট এডিট করুন' : 'নতুন প্রোডাক্ট যোগ করুন'}
+            <div className="flex justify-between items-center border-b border-[#1E293B] pb-3">
+              <h3 className="font-extrabold text-base sm:text-lg text-white">
+                {editingProduct.id && editingProduct.name ? 'প্রোডাক্ট এডিট করুন' : 'নতুন প্রোডাক্ট যোগ করুন'}
               </h3>
-              <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-white">
+              <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-white p-1 rounded-lg hover:bg-white/5">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -228,7 +228,7 @@ export const AdminProducts: React.FC = () => {
             <form onSubmit={handleSave} className="space-y-4 text-xs">
               {/* Product Name */}
               <div>
-                <label className="block text-[#94A3B8] font-bold mb-1">
+                <label className="block text-[#CBD5E1] font-bold mb-1.5">
                   প্রোডাক্ট নাম (বাংলা) *
                 </label>
                 <input
@@ -236,25 +236,25 @@ export const AdminProducts: React.FC = () => {
                   required
                   value={editingProduct.name || ''}
                   onChange={(e) => setEditingProduct({ ...editingProduct, name: e.target.value })}
-                  placeholder="যেমন: Supabase Verified Product..."
-                  className="w-full bg-[#11131A] border border-[#33384B] rounded-xl p-3 text-white focus:outline-none focus:border-[#2563EB]"
+                  placeholder="যেমন: African Organic Wild Honey 500g..."
+                  className="w-full bg-[#050B18] border border-[#1E293B] rounded-xl p-3 text-white focus:outline-none focus:border-[#2563EB]"
                 />
               </div>
 
               {/* Price & Offer Price */}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[#94A3B8] font-bold mb-1">মূল্য (Price) ৳ *</label>
+                  <label className="block text-[#CBD5E1] font-bold mb-1.5">মূল্য (Price) ৳ *</label>
                   <input
                     type="number"
                     required
                     value={editingProduct.price || ''}
                     onChange={(e) => setEditingProduct({ ...editingProduct, price: Number(e.target.value) })}
-                    className="w-full bg-[#11131A] border border-[#33384B] rounded-xl p-3 text-white focus:outline-none"
+                    className="w-full bg-[#050B18] border border-[#1E293B] rounded-xl p-3 text-white focus:outline-none focus:border-[#2563EB]"
                   />
                 </div>
                 <div>
-                  <label className="block text-[#94A3B8] font-bold mb-1">অফার মূল্য (Discount Price) ৳</label>
+                  <label className="block text-[#CBD5E1] font-bold mb-1.5">অফার মূল্য (Discount Price) ৳</label>
                   <input
                     type="number"
                     value={editingProduct.discountPrice || ''}
@@ -265,19 +265,19 @@ export const AdminProducts: React.FC = () => {
                       })
                     }
                     placeholder="ঐচ্ছিক"
-                    className="w-full bg-[#11131A] border border-[#33384B] rounded-xl p-3 text-white focus:outline-none"
+                    className="w-full bg-[#050B18] border border-[#1E293B] rounded-xl p-3 text-white focus:outline-none focus:border-[#2563EB]"
                   />
                 </div>
               </div>
 
-              {/* Category & Subcategory */}
-              <div className="grid grid-cols-2 gap-3">
+              {/* Category, Subcategory, Stock, Limited Threshold */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div>
-                  <label className="block text-[#94A3B8] font-bold mb-1">ক্যাটাগরি *</label>
+                  <label className="block text-[#CBD5E1] font-bold mb-1.5">ক্যাটাগরি *</label>
                   <select
                     value={editingProduct.category || ''}
                     onChange={(e) => setEditingProduct({ ...editingProduct, category: e.target.value })}
-                    className="w-full bg-[#11131A] border border-[#33384B] rounded-xl p-3 text-white focus:outline-none"
+                    className="w-full bg-[#050B18] border border-[#1E293B] rounded-xl p-3 text-white focus:outline-none focus:border-[#2563EB]"
                   >
                     {categories.map((c) => (
                       <option key={c.id} value={c.name}>
@@ -286,43 +286,60 @@ export const AdminProducts: React.FC = () => {
                     ))}
                   </select>
                 </div>
+
                 <div>
-                  <label className="block text-[#94A3B8] font-bold mb-1">সাব-ক্যাটাগরি</label>
-                  <input
-                    type="text"
+                  <label className="block text-[#CBD5E1] font-bold mb-1.5">সাব-ক্যাটাগরি</label>
+                  <select
                     value={editingProduct.subCategory || ''}
                     onChange={(e) => setEditingProduct({ ...editingProduct, subCategory: e.target.value })}
-                    placeholder="যেমন: TWS এয়ারবাডস"
-                    className="w-full bg-[#11131A] border border-[#33384B] rounded-xl p-3 text-white focus:outline-none"
-                  />
+                    className="w-full bg-[#050B18] border border-[#1E293B] rounded-xl p-3 text-white focus:outline-none focus:border-[#2563EB]"
+                  >
+                    <option value="">-- বাছাই সাব-ক্যাটাগরি --</option>
+                    {(
+                      categories.find((c) => c.name === editingProduct.category)?.subCategories || []
+                    ).map((sc, i) => (
+                      <option key={i} value={sc}>
+                        {sc}
+                      </option>
+                    ))}
+                  </select>
                 </div>
-              </div>
 
-              {/* Stock & Limited Stock Threshold */}
-              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[#94A3B8] font-bold mb-1">বর্তমান স্টক সংখ্যা</label>
+                  <label className="block text-[#CBD5E1] font-bold mb-1.5">বর্তমান স্টক সংখ্যা</label>
                   <input
                     type="number"
                     value={editingProduct.stock || 0}
                     onChange={(e) => setEditingProduct({ ...editingProduct, stock: Number(e.target.value) })}
-                    className="w-full bg-[#11131A] border border-[#33384B] rounded-xl p-3 text-white"
+                    className="w-full bg-[#050B18] border border-[#1E293B] rounded-xl p-3 text-white focus:outline-none focus:border-[#2563EB]"
                   />
                 </div>
+
                 <div>
-                  <label className="block text-[#94A3B8] font-bold mb-1">লিমিটেড স্টক সীমা</label>
+                  <label className="block text-amber-400 font-bold mb-1.5">লিমিটেড স্টক সীমা</label>
                   <input
                     type="number"
                     value={editingProduct.limitedStockThreshold || 10}
-                    onChange={(e) => setEditingProduct({ ...editingProduct, limitedStockThreshold: Number(e.target.value) })}
-                    className="w-full bg-[#11131A] border border-[#33384B] rounded-xl p-3 text-white"
+                    onChange={(e) =>
+                      setEditingProduct({
+                        ...editingProduct,
+                        limitedStockThreshold: Number(e.target.value)
+                      })
+                    }
+                    className="w-full bg-[#050B18] border border-amber-500/40 rounded-xl p-3 text-amber-300 focus:outline-none focus:border-amber-400"
                   />
                 </div>
               </div>
 
+              <p className="text-[11px] text-amber-400/90 font-medium flex items-center gap-1.5">
+                <span>💡 স্টক এই সংখ্যার নিচে বা সমান হলে (যেমন ≤ 10) প্রোডাক্ট পেজে অটোমেটিক "লিমিটেড স্টক / Limited Stock" ব্যাজ দেখাবে</span>
+              </p>
+
               {/* Color/Variants */}
               <div>
-                <label className="block text-[#94A3B8] font-bold mb-1">কালার/ভেরিয়েন্ট অপশন (কমা দিয়ে লিখুন)</label>
+                <label className="block text-[#CBD5E1] font-bold mb-1.5">
+                  কালার/ভেরিয়েন্ট অপশন (কমা দিয়ে লিখুন)
+                </label>
                 <input
                   type="text"
                   value={editingProduct.colors?.join(', ') || ''}
@@ -332,174 +349,290 @@ export const AdminProducts: React.FC = () => {
                       colors: e.target.value.split(',').map((s) => s.trim())
                     })
                   }
-                  placeholder="যেমন: MINT, PEACH, WATERMELON, GRAPE, BLACK"
-                  className="w-full bg-[#11131A] border border-[#33384B] rounded-xl p-3 text-white"
+                  placeholder="MINT, PEACE, WATERMELON, GRAPE"
+                  className="w-full bg-[#050B18] border border-[#1E293B] rounded-xl p-3 text-white focus:outline-none focus:border-[#2563EB]"
                 />
               </div>
 
-              {/* Thumbnail Image with Upload */}
-              <div>
-                <label className="block text-[#94A3B8] font-bold mb-1">
+              {/* Product Images (Square Format) */}
+              <div className="space-y-2">
+                <label className="block text-[#CBD5E1] font-bold">
                   প্রোডাক্ট ছবিসমূহ (১০৮০ × ১০৮০ স্কয়ার ফরম্যাট)
                 </label>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-3">
-                    <label className="bg-[#2563EB] hover:bg-blue-600 text-white font-bold py-2.5 px-4 rounded-xl text-xs flex items-center gap-2 cursor-pointer transition-colors shadow-sm">
-                      <Upload className="w-4 h-4" />
-                      <span>কম্পিউটার/মোবাইল থেকে ছবি আপলোড করুন</span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) {
-                            const reader = new FileReader();
-                            reader.onload = (evt) => {
-                              if (evt.target?.result) {
-                                setEditingProduct({ ...editingProduct, thumbnail: evt.target.result as string });
-                              }
-                            };
-                            reader.readAsDataURL(file);
-                          }
-                        }}
-                      />
-                    </label>
-                    <span className="text-[11px] text-[#64748B]">অথবা ইমেজ URL দিন:</span>
-                  </div>
 
-                  <div className="flex gap-2">
+                {/* Custom Upload Area */}
+                <div className="border-2 border-dashed border-[#1E293B] hover:border-[#2563EB] rounded-2xl p-4 text-center bg-[#050B18]/50 transition-colors">
+                  <label className="cursor-pointer flex flex-col items-center justify-center gap-2">
+                    <Upload className="w-6 h-6 text-[#2563EB]" />
+                    <span className="font-extrabold text-blue-400 hover:underline text-xs">
+                      ডিভাইস থেকে ছবি আপলোড করুন (Custom Image Upload)
+                    </span>
                     <input
-                      type="text"
-                      value={editingProduct.thumbnail || ''}
-                      onChange={(e) => setEditingProduct({ ...editingProduct, thumbnail: e.target.value })}
-                      placeholder="https://images.unsplash.com/photo-..."
-                      className="flex-1 bg-[#11131A] border border-[#33384B] rounded-xl p-3 text-white"
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      className="hidden"
+                      onChange={(e) => {
+                        const fileList = e.target.files;
+                        if (!fileList) return;
+                        const files = Array.from(fileList) as File[];
+                        files.forEach((file: File) => {
+                          const reader = new FileReader();
+                          reader.onload = (evt) => {
+                            if (evt.target?.result) {
+                              const newImg = evt.target.result as string;
+                              setEditingProduct((prev) => {
+                                if (!prev) return prev;
+                                const existingThumbnail = prev.thumbnail || '';
+                                if (!existingThumbnail) {
+                                  return { ...prev, thumbnail: newImg };
+                                } else {
+                                  const gallery = prev.gallery || [];
+                                  return { ...prev, gallery: [...gallery, newImg] };
+                                }
+                              });
+                            }
+                          };
+                          reader.readAsDataURL(file);
+                        });
+                      }}
                     />
-                    {editingProduct.thumbnail && (
+                  </label>
+                </div>
+
+                {/* Thumbnail Previews */}
+                {editingProduct.thumbnail && (
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    <div className="relative w-16 h-16 rounded-xl overflow-hidden border border-[#2563EB] group">
                       <img
                         src={editingProduct.thumbnail}
-                        alt="Preview"
-                        className="w-11 h-11 rounded-xl object-cover border border-[#33384B] shrink-0"
+                        alt="Thumbnail"
+                        className="w-full h-full object-cover"
+                        referrerPolicy="no-referrer"
                       />
-                    )}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const gallery = editingProduct.gallery || [];
+                          if (gallery.length > 0) {
+                            setEditingProduct({
+                              ...editingProduct,
+                              thumbnail: gallery[0],
+                              gallery: gallery.slice(1)
+                            });
+                          } else {
+                            setEditingProduct({ ...editingProduct, thumbnail: '' });
+                          }
+                        }}
+                        className="absolute top-1 right-1 bg-red-600 text-white rounded-full p-0.5 hover:bg-red-700 cursor-pointer"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+
+                    {(editingProduct.gallery || []).map((img, idx) => (
+                      <div key={idx} className="relative w-16 h-16 rounded-xl overflow-hidden border border-[#1E293B] group">
+                        <img
+                          src={img}
+                          alt={`Gallery ${idx}`}
+                          className="w-full h-full object-cover"
+                          referrerPolicy="no-referrer"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newGallery = (editingProduct.gallery || []).filter((_, i) => i !== idx);
+                            setEditingProduct({ ...editingProduct, gallery: newGallery });
+                          }}
+                          className="absolute top-1 right-1 bg-red-600 text-white rounded-full p-0.5 hover:bg-red-700 cursor-pointer"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
                   </div>
+                )}
+
+                {/* Online Image URLs */}
+                <div>
+                  <label className="block text-[11px] text-[#94A3B8] font-bold mb-1">
+                    অথবা অনলাইন ইমেজ URL লিখুন (প্রতি লাইনে একটি করে):
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={
+                      [editingProduct.thumbnail, ...(editingProduct.gallery || [])]
+                        .filter(Boolean)
+                        .join('\n')
+                    }
+                    onChange={(e) => {
+                      const lines = e.target.value.split('\n').map((l) => l.trim()).filter(Boolean);
+                      setEditingProduct({
+                        ...editingProduct,
+                        thumbnail: lines[0] || '',
+                        gallery: lines.slice(1)
+                      });
+                    }}
+                    placeholder="https://images.unsplash.com/photo-..."
+                    className="w-full bg-[#050B18] border border-[#1E293B] rounded-xl p-3 text-white font-mono text-[11px] focus:outline-none focus:border-[#2563EB]"
+                  />
+                  <p className="text-[11px] text-[#64748B] mt-0.5">
+                    প্রোডাক্ট পেজে এই ছবিগুলো ১০৮০×১০৮০ স্কয়ার গ্যালারিতে প্রদর্শিত হবে
+                  </p>
                 </div>
               </div>
 
               {/* Video URL */}
               <div>
-                <label className="block text-[#94A3B8] font-bold mb-1 flex items-center gap-1.5">
-                  <Video className="w-4 h-4 text-red-400" />
-                  <span>ভিডিও লিঙ্ক (16:9 Video URL / YouTube Link)</span>
+                <label className="block text-[#CBD5E1] font-bold mb-1">
+                  ভিডিও লিঙ্ক (16:9 Video URL / YouTube Link)
                 </label>
                 <input
                   type="text"
                   value={editingProduct.videoUrl || ''}
                   onChange={(e) => setEditingProduct({ ...editingProduct, videoUrl: e.target.value })}
-                  placeholder="যেমন: https://www.youtube.com/watch?v=dQw4w9WgXcQ"
-                  className="w-full bg-[#11131A] border border-[#33384B] rounded-xl p-3 text-white"
+                  placeholder="যেমন: https://www.youtube.com/watch?v=VIDEO_ID"
+                  className="w-full bg-[#050B18] border border-[#1E293B] rounded-xl p-3 text-white focus:outline-none focus:border-[#2563EB]"
                 />
+                <p className="text-[11px] text-[#64748B] mt-0.5">
+                  ইউটিউব বা ভিডিওর লিংক দিলে প্রোডাক্ট পেজে ১০৮০p ভিডিও টিউটোরিয়াল দেখাবে
+                </p>
               </div>
 
-              {/* Short & Long Description */}
+              {/* Short Description */}
               <div>
-                <label className="block text-[#94A3B8] font-bold mb-1">সংক্ষিপ্ত বিবরণ (Short Description)</label>
+                <label className="block text-[#CBD5E1] font-bold mb-1">
+                  সংক্ষিপ্ত বিবরণ (Short Description) - <span className="text-[#64748B] font-normal">(হেডিং/টাইটেল এর নিচে এবং কালার/ভেরিয়েন্ট এর উপরে দেখাবে)</span>
+                </label>
                 <textarea
                   rows={2}
                   value={editingProduct.shortDescription || ''}
                   onChange={(e) => setEditingProduct({ ...editingProduct, shortDescription: e.target.value })}
-                  placeholder="যেমন: প্রিমিয়াম এইচডি সাউন্ড, অ্যাক্টিভ নয়েজ ক্যানসেলেশন ও ৩০ ঘণ্টা ব্যাটারি ব্যাকআপ"
-                  className="w-full bg-[#11131A] border border-[#33384B] rounded-xl p-3 text-white"
+                  placeholder="যেমন: প্রিমিয়াম এইচডি সাউন্ড, ফাস্ট চার্জিং, ও ৩০ ঘণ্টা ব্যাটারি ব্যাকআপ"
+                  className="w-full bg-[#050B18] border border-[#1E293B] rounded-xl p-3 text-white focus:outline-none focus:border-[#2563EB]"
                 />
               </div>
 
+              {/* Long Description */}
               <div>
-                <label className="block text-[#94A3B8] font-bold mb-1">বিস্তারিত বিবরণ (Long Description)</label>
+                <label className="block text-[#CBD5E1] font-bold mb-1">
+                  বিস্তারিত বিবরণ (Long Description) - <span className="text-[#64748B] font-normal">(প্রোডাক্ট বিবরণ ট্যাবে এই দীর্ঘ বিবরণটি দেখাবে)</span>
+                </label>
                 <textarea
-                  rows={4}
+                  rows={3}
                   value={editingProduct.longDescription || ''}
                   onChange={(e) => setEditingProduct({ ...editingProduct, longDescription: e.target.value })}
                   placeholder="এখানে প্রোডাক্টের সম্পূর্ণ বিস্তারিত বিবরণ লিখুন..."
-                  className="w-full bg-[#11131A] border border-[#33384B] rounded-xl p-3 text-white"
+                  className="w-full bg-[#050B18] border border-[#1E293B] rounded-xl p-3 text-white focus:outline-none focus:border-[#2563EB]"
                 />
               </div>
 
-              {/* Specifications Dynamic Key-Value Rows */}
-              <div className="space-y-2 border-t border-[#2B3042] pt-3">
+              {/* Specifications Table */}
+              <div className="space-y-2 border-t border-[#1E293B] pt-3">
                 <div className="flex justify-between items-center">
-                  <label className="text-[#94A3B8] font-bold">পণ্যের স্পেসিফিকেশন (Specifications)</label>
+                  <div>
+                    <label className="text-[#CBD5E1] font-bold block">পণ্যের স্পেসিফিকেশন (Specifications)</label>
+                    <span className="text-[11px] text-[#64748B]">প্রোডাক্টের স্পেসিফিকেশন ট্যাবে এই তথ্যটি দেখাবে</span>
+                  </div>
                   <button
                     type="button"
                     onClick={handleAddSpecRow}
-                    className="bg-[#2563EB]/20 text-blue-400 text-[11px] font-bold px-3 py-1 rounded-lg hover:bg-[#2563EB]/40"
+                    className="bg-[#2563EB] hover:bg-blue-600 text-white text-[11px] font-bold px-3 py-1.5 rounded-xl transition-all cursor-pointer shadow-sm"
                   >
                     + নতুন রো যোগ করুন
                   </button>
                 </div>
 
-                {(editingProduct.specifications || []).map((spec, i) => (
-                  <div key={i} className="flex gap-2 items-center">
-                    <input
-                      type="text"
-                      placeholder="ফিচার/সাইজ (যেমন: ব্লুটুথ)"
-                      value={spec.key}
-                      onChange={(e) => handleUpdateSpecRow(i, e.target.value, spec.value)}
-                      className="flex-1 bg-[#11131A] border border-[#33384B] rounded-xl p-2.5 text-white"
-                    />
-                    <input
-                      type="text"
-                      placeholder="মান/বিবরণ (যেমন: v5.3)"
-                      value={spec.value}
-                      onChange={(e) => handleUpdateSpecRow(i, spec.key, e.target.value)}
-                      className="flex-1 bg-[#11131A] border border-[#33384B] rounded-xl p-2.5 text-white"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveSpecRow(i)}
-                      className="p-2 text-red-400 hover:bg-red-500/20 rounded-lg"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                <div className="space-y-2">
+                  {(editingProduct.specifications || []).map((spec, i) => (
+                    <div key={i} className="flex gap-2 items-center">
+                      <input
+                        type="text"
+                        placeholder="ব্লুটুথ ভার্সন"
+                        value={spec.key}
+                        onChange={(e) => handleUpdateSpecRow(i, e.target.value, spec.value)}
+                        className="flex-1 bg-[#050B18] border border-[#1E293B] rounded-xl p-2.5 text-white focus:outline-none focus:border-[#2563EB]"
+                      />
+                      <input
+                        type="text"
+                        placeholder="v5.2"
+                        value={spec.value}
+                        onChange={(e) => handleUpdateSpecRow(i, spec.key, e.target.value)}
+                        className="flex-1 bg-[#050B18] border border-[#1E293B] rounded-xl p-2.5 text-white focus:outline-none focus:border-[#2563EB]"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveSpecRow(i)}
+                        className="p-2 text-red-400 hover:bg-red-500/20 rounded-xl transition-colors cursor-pointer"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Offer Timer Toggle Switch */}
+              <div className="flex items-center justify-between border-t border-[#1E293B] pt-3 bg-[#050B18]/40 p-3 rounded-xl border">
+                <div>
+                  <div className="font-bold text-[#CBD5E1]">অফার কাউন্টডাউন টাইমার (Offer Timer)</div>
+                  <div className="text-[11px] text-[#64748B]">
+                    এই সুইচ অন করলে এই প্রোডাক্টের পেজে কাউন্টডাউন টাইমার শো করবে
                   </div>
-                ))}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    setEditingProduct({ ...editingProduct, hasTimer: !editingProduct.hasTimer })
+                  }
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
+                    editingProduct.hasTimer ? 'bg-[#2563EB]' : 'bg-gray-700'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      editingProduct.hasTimer ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
               </div>
 
               {/* Checkboxes */}
-              <div className="flex gap-4 border-t border-[#2B3042] pt-3">
-                <label className="flex items-center gap-2 cursor-pointer">
+              <div className="flex gap-6 border-t border-[#1E293B] pt-3">
+                <label className="flex items-center gap-2 cursor-pointer font-bold text-[#CBD5E1]">
                   <input
                     type="checkbox"
                     checked={editingProduct.isBestSeller || false}
                     onChange={(e) => setEditingProduct({ ...editingProduct, isBestSeller: e.target.checked })}
-                    className="accent-[#2563EB]"
+                    className="w-4 h-4 accent-[#2563EB] rounded cursor-pointer"
                   />
                   <span>বেস্ট সেলার (Best Seller)</span>
                 </label>
 
-                <label className="flex items-center gap-2 cursor-pointer">
+                <label className="flex items-center gap-2 cursor-pointer font-bold text-[#CBD5E1]">
                   <input
                     type="checkbox"
                     checked={editingProduct.isFeatured || false}
                     onChange={(e) => setEditingProduct({ ...editingProduct, isFeatured: e.target.checked })}
-                    className="accent-[#2563EB]"
+                    className="w-4 h-4 accent-[#2563EB] rounded cursor-pointer"
                   />
                   <span>ফিচারড (Featured)</span>
                 </label>
               </div>
 
               {/* Action Buttons */}
-              <div className="flex justify-end gap-3 pt-4 border-t border-[#2B3042]">
+              <div className="flex justify-end gap-3 pt-4 border-t border-[#1E293B]">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-5 py-2.5 rounded-xl bg-gray-800 hover:bg-gray-700 text-white font-bold"
+                  className="px-5 py-2.5 rounded-xl bg-[#1E293B] hover:bg-gray-700 text-white font-bold cursor-pointer transition-colors"
                 >
-                  বাতিল
+                  ক্যানসেল
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2.5 rounded-xl bg-[#2563EB] hover:bg-blue-600 text-white font-extrabold flex items-center gap-1.5 shadow-md"
+                  className="px-6 py-2.5 rounded-xl bg-[#2563EB] hover:bg-blue-600 text-white font-extrabold flex items-center gap-1.5 shadow-md cursor-pointer transition-colors"
                 >
                   <Check className="w-4 h-4" />
                   <span>প্রোডাক্ট সেভ করুন</span>
