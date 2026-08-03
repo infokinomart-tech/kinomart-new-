@@ -306,53 +306,55 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
               )}
             </div>
 
-            {/* Offer Countdown Banner */}
-            <div className="bg-[#23311A] text-white p-3.5 rounded-2xl border border-[#3B4D2B] flex flex-wrap sm:flex-nowrap items-center justify-between gap-3 shadow-sm">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-full bg-[#3B4D2B] flex items-center justify-center text-amber-400 shrink-0">
-                  <Flame className="w-5 h-5 fill-amber-400" />
-                </div>
-                <div>
-                  <div className="font-black text-amber-300 text-xs sm:text-sm">
-                    অফারটি শেষ হতে বাকি:
+            {/* Offer Countdown Banner (Shows only if enabled in Admin Panel) */}
+            {Boolean(product.hasTimer) && (
+              <div className="bg-[#23311A] text-white p-3.5 rounded-2xl border border-[#3B4D2B] flex flex-wrap sm:flex-nowrap items-center justify-between gap-3 shadow-sm">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-full bg-[#3B4D2B] flex items-center justify-center text-amber-400 shrink-0">
+                    <Flame className="w-5 h-5 fill-amber-400" />
                   </div>
-                  <div className="text-[11px] text-gray-300 font-medium">
-                    অফারের সময় সীমিত! দ্রুত অর্ডার করুন।
+                  <div>
+                    <div className="font-black text-amber-300 text-xs sm:text-sm">
+                      অফারটি শেষ হতে বাকি:
+                    </div>
+                    <div className="text-[11px] text-gray-300 font-medium">
+                      অফারের সময় সীমিত! দ্রুত অর্ডার করুন।
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Countdown Digits */}
-              <div className="flex items-center gap-1.5 text-xs font-black">
-                <div className="flex flex-col items-center">
-                  <span className="bg-[#151E10] px-2.5 py-1 rounded-lg text-white font-mono text-sm border border-[#3B4D2B]">
-                    {toBnNum(timeLeft.days)}
-                  </span>
-                  <span className="text-[9px] text-gray-400 mt-0.5">দিন</span>
-                </div>
-                <span className="text-amber-300 pb-3">:</span>
-                <div className="flex flex-col items-center">
-                  <span className="bg-[#151E10] px-2.5 py-1 rounded-lg text-white font-mono text-sm border border-[#3B4D2B]">
-                    {toBnNum(timeLeft.hours)}
-                  </span>
-                  <span className="text-[9px] text-gray-400 mt-0.5">ঘণ্টা</span>
-                </div>
-                <span className="text-amber-300 pb-3">:</span>
-                <div className="flex flex-col items-center">
-                  <span className="bg-[#151E10] px-2.5 py-1 rounded-lg text-white font-mono text-sm border border-[#3B4D2B]">
-                    {toBnNum(timeLeft.minutes)}
-                  </span>
-                  <span className="text-[9px] text-gray-400 mt-0.5">মিন</span>
-                </div>
-                <span className="text-amber-300 pb-3">:</span>
-                <div className="flex flex-col items-center">
-                  <span className="bg-[#151E10] px-2.5 py-1 rounded-lg text-white font-mono text-sm border border-[#3B4D2B]">
-                    {toBnNum(timeLeft.seconds)}
-                  </span>
-                  <span className="text-[9px] text-gray-400 mt-0.5">সে</span>
+                {/* Countdown Digits */}
+                <div className="flex items-center gap-1.5 text-xs font-black">
+                  <div className="flex flex-col items-center">
+                    <span className="bg-[#151E10] px-2.5 py-1 rounded-lg text-white font-mono text-sm border border-[#3B4D2B]">
+                      {toBnNum(timeLeft.days)}
+                    </span>
+                    <span className="text-[9px] text-gray-400 mt-0.5">দিন</span>
+                  </div>
+                  <span className="text-amber-300 pb-3">:</span>
+                  <div className="flex flex-col items-center">
+                    <span className="bg-[#151E10] px-2.5 py-1 rounded-lg text-white font-mono text-sm border border-[#3B4D2B]">
+                      {toBnNum(timeLeft.hours)}
+                    </span>
+                    <span className="text-[9px] text-gray-400 mt-0.5">ঘণ্টা</span>
+                  </div>
+                  <span className="text-amber-300 pb-3">:</span>
+                  <div className="flex flex-col items-center">
+                    <span className="bg-[#151E10] px-2.5 py-1 rounded-lg text-white font-mono text-sm border border-[#3B4D2B]">
+                      {toBnNum(timeLeft.minutes)}
+                    </span>
+                    <span className="text-[9px] text-gray-400 mt-0.5">মিন</span>
+                  </div>
+                  <span className="text-amber-300 pb-3">:</span>
+                  <div className="flex flex-col items-center">
+                    <span className="bg-[#151E10] px-2.5 py-1 rounded-lg text-white font-mono text-sm border border-[#3B4D2B]">
+                      {toBnNum(timeLeft.seconds)}
+                    </span>
+                    <span className="text-[9px] text-gray-400 mt-0.5">সে</span>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
 
             {/* Short Description Box */}
             <div className="bg-[#F4F4F5] rounded-2xl p-4 text-xs sm:text-sm text-[#374151] font-medium leading-relaxed border border-gray-200/50">

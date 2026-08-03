@@ -49,9 +49,8 @@ const MainAppContent: React.FC = () => {
       const hash = window.location.hash;
       if (path.includes('/admin') || hash.includes('admin')) {
         setViewMode('admin');
-        if (!isAdminAuthenticated) {
-          setIsAdminModalOpen(true);
-        }
+      } else {
+        setViewMode('client');
       }
     };
 
@@ -62,15 +61,18 @@ const MainAppContent: React.FC = () => {
       window.removeEventListener('popstate', handleUrlChange);
       window.removeEventListener('hashchange', handleUrlChange);
     };
-  }, [setViewMode, isAdminAuthenticated, setIsAdminModalOpen]);
+  }, [setViewMode]);
 
   // Trigger Admin Login when user searches "admin"
   React.useEffect(() => {
     if (searchQuery.trim().toLowerCase() === 'admin') {
-      setIsAdminModalOpen(true);
+      setViewMode('admin');
+      if (!window.location.pathname.includes('/admin')) {
+        window.history.pushState({}, '', '/admin');
+      }
       setSearchQuery('');
     }
-  }, [searchQuery, setIsAdminModalOpen, setSearchQuery]);
+  }, [searchQuery, setViewMode, setSearchQuery]);
 
   // Find parent category object if selectedCategory is set (either as category name or subcategory name)
   const activeParentCategory = categories.find(

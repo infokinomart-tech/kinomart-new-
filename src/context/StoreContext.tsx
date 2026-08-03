@@ -350,6 +350,10 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         console.error(e);
       }
       setViewMode('admin');
+      setIsAdminModalOpen(false);
+      if (typeof window !== 'undefined' && !window.location.pathname.includes('/admin')) {
+        window.history.pushState({}, '', '/admin');
+      }
       return true;
     }
     return false;
@@ -362,7 +366,11 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     } catch (e) {
       console.error(e);
     }
-    setViewMode('admin');
+    setViewMode('client');
+    setIsAdminModalOpen(false);
+    if (typeof window !== 'undefined') {
+      window.history.pushState({}, '', '/');
+    }
   };
 
   // Order Operations

@@ -17,9 +17,7 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({ onClose }) => 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const success = loginAdmin(username.trim(), password.trim());
-    if (success) {
-      onClose();
-    } else {
+    if (!success) {
       setErrorMsg('⚠️ ভুল ইউজারনেম অথবা পাসওয়ার্ড!');
     }
   };
