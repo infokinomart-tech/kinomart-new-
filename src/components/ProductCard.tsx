@@ -1,7 +1,7 @@
 import React from 'react';
 import { Product } from '../types';
 import { useStore } from '../context/StoreContext';
-import { Star, Zap, AlertTriangle, BellRing } from 'lucide-react';
+import { Star, Zap, BellRing } from 'lucide-react';
 
 interface ProductCardProps {
   product: Product;
@@ -35,10 +35,6 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
 
   const displayPrice = product.discountPrice || product.price;
 
-  const isLimitedStock =
-    product.stock > 0 &&
-    product.stock <= (product.limitedStockThreshold || 10);
-
   return (
     <div
       onClick={handleCardClick}
@@ -54,35 +50,27 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
             referrerPolicy="no-referrer"
           />
 
-          {/* Badges */}
-          <div className="absolute top-2 left-2 flex flex-wrap items-center gap-1.5 z-10 max-w-[90%]">
+          {/* Left Corner Badge */}
+          <div className="absolute top-1.5 left-1.5 z-10 pointer-events-none">
             {isOutOfStock ? (
-              <span className="bg-red-600 text-white text-[10px] sm:text-xs font-black px-2.5 py-0.5 rounded-full shadow-xs whitespace-nowrap">
+              <span className="bg-red-600 text-white text-[8.5px] sm:text-[10px] font-black px-1.5 py-0.5 rounded-full shadow-xs whitespace-nowrap inline-flex items-center">
                 আউট অব স্টক
               </span>
-            ) : (
-              <>
-                {discountPercent > 0 && (
-                  <span className="bg-[#E65100] text-white text-[10px] sm:text-xs font-extrabold px-2.5 py-0.5 rounded-full shadow-xs whitespace-nowrap">
-                    {discountPercent}% ছাড়
-                  </span>
-                )}
-
-                {product.isBestSeller && (
-                  <span className="bg-[#5E6A45] text-white text-[10px] sm:text-xs font-extrabold px-2.5 py-0.5 rounded-full shadow-xs whitespace-nowrap">
-                    বেস্ট সেলার
-                  </span>
-                )}
-
-                {isLimitedStock && !discountPercent && !product.isBestSeller && (
-                  <span className="bg-[#E67E22] text-white text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-full flex items-center gap-1 shadow-xs whitespace-nowrap">
-                    <AlertTriangle className="w-3 h-3 text-yellow-200 fill-yellow-200" />
-                    লিমিটেড স্টক
-                  </span>
-                )}
-              </>
-            )}
+            ) : discountPercent > 0 ? (
+              <span className="bg-[#CB6532] text-white text-[8.5px] sm:text-[10px] font-black px-1.5 py-0.5 rounded-full shadow-xs whitespace-nowrap inline-flex items-center">
+                {discountPercent}% ছাড়
+              </span>
+            ) : null}
           </div>
+
+          {/* Right Corner Badge */}
+          {product.isBestSeller && !isOutOfStock && (
+            <div className="absolute top-1.5 right-1.5 z-10 pointer-events-none">
+              <span className="bg-[#5E6A45] text-white text-[8.5px] sm:text-[10px] font-black px-1.5 py-0.5 rounded-full shadow-xs whitespace-nowrap inline-flex items-center">
+                বেস্ট সেলার
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Content */}
@@ -91,7 +79,10 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
             {product.category || 'গ্যাজেট'}
           </span>
 
-          <h3 className="text-xs sm:text-sm font-extrabold text-[#1F241E] line-clamp-2 min-h-[32px] sm:min-h-[38px] group-hover:text-[#5E7A3B] transition-colors leading-snug">
+          <h3
+            className="text-xs sm:text-sm font-extrabold text-[#1F241E] truncate group-hover:text-[#5E7A3B] transition-colors leading-snug"
+            title={product.name}
+          >
             {product.name}
           </h3>
 

@@ -218,6 +218,7 @@ export const AdminOrders: React.FC = () => {
           <table className="w-full text-left text-xs">
             <thead className="bg-[#0B1329] text-[#94A3B8] font-bold uppercase tracking-wider border-b border-[#1E293B]">
               <tr>
+                <th className="p-3 text-center w-12">SL</th>
                 <th className="p-3">ACTION</th>
                 <th className="p-3">ORDER #</th>
                 <th className="p-3">STATUS</th>
@@ -232,13 +233,20 @@ export const AdminOrders: React.FC = () => {
             <tbody className="divide-y divide-[#1E293B] text-[#CBD5E1]">
               {filteredOrders.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="text-center p-8 text-[#64748B]">
+                  <td colSpan={10} className="text-center p-8 text-[#64748B]">
                     No orders found matching filters.
                   </td>
                 </tr>
               ) : (
-                filteredOrders.map((ord) => (
+                filteredOrders.map((ord, index) => (
                   <tr key={ord.id} className="hover:bg-[#162032] transition-colors">
+                    {/* Serial Number */}
+                    <td className="p-3 text-center font-bold whitespace-nowrap">
+                      <span className="inline-flex items-center justify-center min-w-7 h-7 px-2 rounded-lg bg-[#1E293B] text-amber-400 text-xs font-mono font-bold border border-amber-500/30 shadow-xs">
+                        #{index + 1}
+                      </span>
+                    </td>
+
                     {/* Action */}
                     <td className="p-3 whitespace-nowrap">
                       <div className="flex items-center gap-1.5">

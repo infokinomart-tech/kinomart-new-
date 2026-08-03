@@ -21,7 +21,6 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { ProductCard } from './ProductCard';
-import { BenefitsGrid } from './BenefitsGrid';
 
 interface ProductDetailsModalProps {
   product: Product;
@@ -79,6 +78,7 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
   const [notifySubmitted, setNotifySubmitted] = useState(false);
 
   const isOutOfStock = product.stock <= 0 || product.status === 'INACTIVE';
+  const isLowStock = !isOutOfStock && product.stock > 0 && product.stock <= 10;
 
   const handleNotifySubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -206,11 +206,6 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
     return 'https://www.youtube.com/embed/dQw4w9WgXcQ';
   };
 
-  // Related Products
-  const relatedProducts = products
-    .filter((p) => p.id !== product.id && p.status === 'ACTIVE')
-    .slice(0, 4);
-
   const handlePrevThumb = () => {
     const nextIdx = (currentThumbIdx - 1 + allImages.length) % allImages.length;
     setCurrentThumbIdx(nextIdx);
@@ -299,25 +294,9 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
               referrerPolicy="no-referrer"
             />
 
-            {/* Discount Badge */}
-            {discountPercent > 0 && (
-              <span className="absolute top-3 left-3 bg-[#CB6532] text-white text-xs font-black px-3 py-1 rounded-full shadow-md z-10 pointer-events-none">
-                {discountPercent}% ছাড়
-              </span>
-            )}
 
-            {/* Zoom Overlay Button */}
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsZoomOpen(true);
-              }}
-              className="absolute bottom-3 right-3 bg-black/60 hover:bg-black/80 text-white text-[11px] font-bold px-3 py-1.5 rounded-full flex items-center gap-1.5 backdrop-blur-xs transition-all shadow-md z-10 cursor-pointer"
-            >
-              <ZoomIn className="w-3.5 h-3.5" />
-              <span>{isHovered ? 'ফুলস্ক্রিন জুম' : 'ছবিতে মাউস রেখে জুম করুন'}</span>
-            </button>
+
+
           </div>
 
           {/* Thumbnail Slider Bar */}
@@ -377,6 +356,11 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
                   <AlertCircle className="w-3.5 h-3.5" />
                   আউট অব স্টক
                 </span>
+              ) : isLowStock ? (
+                <span className="bg-[#FEF3C7] text-[#B45309] text-xs font-black px-3.5 py-1 rounded-full border border-[#FDE68A] flex items-center gap-1">
+                  <AlertCircle className="w-3.5 h-3.5 text-[#D97706]" />
+                  লিমিটেড স্টক ({toBnNum(product.stock)} টি বাকি)
+                </span>
               ) : (
                 <span className="bg-[#DCFCE7] text-[#15803D] text-xs font-black px-3.5 py-1 rounded-full border border-[#BBF7D0]">
                   ইন স্টক ({toBnNum(product.stock || 50)} টি এভেলেবল)
@@ -418,6 +402,24 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
                 </span>
               )}
             </div>
+
+            {/* Low Stock Alert Banner (Shows when stock <= 10) */}
+            {isLowStock && (
+              <div className="bg-[#FFFDF3] border border-[#FDE68A] rounded-2xl p-3.5 sm:p-4 flex items-center gap-3.5 shadow-2xs">
+                <div className="w-10 h-10 rounded-full bg-[#FEF3C7] border border-[#FDE68A]/80 text-[#D97706] flex items-center justify-center shrink-0">
+                  <AlertCircle className="w-5 h-5 text-[#D97706]" />
+                </div>
+                <div className="space-y-0.5">
+                  <div className="text-xs sm:text-sm font-extrabold text-[#92400E] flex items-center gap-1">
+                    <span>🔥</span>
+                    <span>স্টক শেষ হওয়ার আগেই অর্ডার করুন! (Limited Stock)</span>
+                  </div>
+                  <div className="text-xs text-[#B45309] font-medium">
+                    গুদামে আর মাত্র <strong className="font-black text-[#92400E]">{toBnNum(product.stock)} টি</strong> পিস রয়েছে।
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Offer Countdown Banner (Shows only if enabled in Admin Panel) */}
             {Boolean(product.hasTimer) && (
@@ -955,30 +957,50 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
         </div>
       </div>
 
-      {/* Related Products Section */}
-      <div className="space-y-4 pt-4">
-        <h2 className="text-xl sm:text-2xl font-black text-[#1F241E]">
-          সম্পর্কিত অন্যান্য গ্যাজেট
-        </h2>
+      {/* High-Converting Animated CTA Banner matching KinoMart Theme */}
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#1F241E] via-[#2A3324] to-[#121611] p-8 sm:p-12 text-center text-white shadow-2xl border border-[#3E4935]/50 my-6">
+        {/* Ambient Animated Glow Effects */}
+        <div className="absolute -top-20 -left-20 w-56 h-56 bg-[#5E6A45]/30 rounded-full blur-3xl animate-pulse pointer-events-none" />
+        <div className="absolute -bottom-20 -right-20 w-56 h-56 bg-amber-500/20 rounded-full blur-3xl animate-pulse pointer-events-none" style={{ animationDelay: '1s' }} />
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6">
-          {relatedProducts.map((relProduct) => (
-            <div
-              key={relProduct.id}
-              onClick={() => {
-                setSelectedProduct(relProduct);
-                setActiveClientPage('product-detail');
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-              }}
-            >
-              <ProductCard product={relProduct} />
-            </div>
-          ))}
+        <div className="relative z-10 max-w-2xl mx-auto space-y-4">
+          {/* Animated Heading */}
+          <h2 className="text-2xl sm:text-4xl font-black tracking-tight text-white drop-shadow-md animate-pulse">
+            আজই অর্ডার করুন!
+          </h2>
+
+          {/* Subheading */}
+          <p className="text-xs sm:text-base text-gray-300 font-medium leading-relaxed max-w-lg mx-auto">
+            সীমিত স্টক — দেরি না করে এখনই নিশ্চিত করুন আপনার অর্ডার
+          </p>
+
+          {/* Glowing Animated Order Button */}
+          <div className="pt-3">
+            {isOutOfStock ? (
+              <button
+                type="button"
+                onClick={() => {
+                  const el = document.getElementById('notify-me-box');
+                  el?.scrollIntoView({ behavior: 'smooth' });
+                }}
+                className="inline-flex items-center justify-center gap-2.5 bg-[#D9A74A] hover:bg-[#C99639] active:scale-95 text-[#1F241E] font-black text-sm sm:text-base py-3.5 px-7 rounded-2xl shadow-xl shadow-amber-500/20 hover:shadow-amber-500/40 transition-all cursor-pointer"
+              >
+                <BellRing className="w-5 h-5 text-[#1F241E]" />
+                <span>স্টকে ফিরলে জানান (Notify Me)</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={handleOrderNow}
+                className="inline-flex items-center justify-center gap-2.5 bg-[#D9A74A] hover:bg-[#C99639] active:scale-95 text-[#1F241E] font-black text-sm sm:text-lg py-3.5 sm:py-4 px-8 sm:px-10 rounded-2xl shadow-xl shadow-amber-500/20 hover:shadow-amber-500/40 hover:scale-[1.03] transition-all cursor-pointer group"
+              >
+                <Zap className="w-5 h-5 fill-[#1F241E] text-[#1F241E] group-hover:scale-125 transition-transform" />
+                <span>৳{totalPrice.toLocaleString('bn-BD')} — এখনই কিনুন</span>
+              </button>
+            )}
+          </div>
         </div>
       </div>
-
-      {/* Benefits Trust Badges Grid */}
-      <BenefitsGrid />
 
       {/* Mobile Sticky Order Bar */}
       <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-[#E8E3D9] p-3 shadow-2xl z-40 flex items-center justify-between gap-3">

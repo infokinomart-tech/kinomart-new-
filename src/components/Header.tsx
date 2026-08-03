@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useStore } from '../context/StoreContext';
 import { Search, User, Menu, X, ChevronDown, ChevronRight, Phone } from 'lucide-react';
 import { KinoMartLogo } from './KinoMartLogo';
@@ -6,6 +6,7 @@ import { KinoMartLogo } from './KinoMartLogo';
 export const Header: React.FC = () => {
   const {
     settings,
+    products,
     categories,
     activeClientPage,
     setActiveClientPage,
@@ -20,10 +21,29 @@ export const Header: React.FC = () => {
     setIsCustomerLoginModalOpen
   } = useStore();
 
-
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [activeSubDropdown, setActiveSubDropdown] = useState<string | null>(null);
   const [expandedMobileCatId, setExpandedMobileCatId] = useState<string | null>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (isSearchOpen && searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
+  }, [isSearchOpen]);
+
+  // Live matching products for search popup
+  const matchingProducts = searchQuery.trim()
+    ? products
+        .filter(
+          (p) =>
+            p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            p.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            (p.subCategory && p.subCategory.toLowerCase().includes(searchQuery.toLowerCase()))
+        )
+        .slice(0, 6)
+    : [];
 
   const handleCategoryClick = (catName: string) => {
     if (selectedCategory === catName) {
@@ -38,7 +58,7 @@ export const Header: React.FC = () => {
 
   const toggleMobileCat = (catId: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    setExpandedMobileCatId(prev => prev === catId ? null : catId);
+    setExpandedMobileCatId((prev) => (prev === catId ? null : catId));
   };
 
   return (
@@ -127,18 +147,14 @@ export const Header: React.FC = () => {
         {/* Search Bar & Actions */}
         <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
           {/* Search Pill Bar with Search Icon on Left */}
-          <div className="relative hidden md:block w-48 lg:w-60">
+          <div
+            onClick={() => setIsSearchOpen(true)}
+            className="relative hidden md:flex items-center w-48 lg:w-60 bg-white border border-[#D5CEBF] hover:border-[#5E6A45] text-[#222] text-xs rounded-full py-2 pl-9 pr-4 shadow-2xs cursor-pointer transition-colors"
+          >
             <Search className="w-4 h-4 text-[#6B7264] absolute left-3.5 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value);
-                if (e.target.value.trim() !== '') setActiveClientPage('products');
-              }}
-              placeholder="প্রোডাক্ট খুঁজুন..."
-              className="w-full bg-white border border-[#D5CEBF] text-[#222] placeholder-[#888] text-xs rounded-full py-2 pl-9 pr-4 focus:outline-none focus:border-[#5E6A45] focus:ring-1 focus:ring-[#5E6A45] shadow-2xs"
-            />
+            <span className={searchQuery ? 'text-[#1F241E] font-medium truncate' : 'text-[#888] font-normal'}>
+              {searchQuery || 'প্রোডাক্ট খুঁজুন...'}
+            </span>
           </div>
 
           {/* Desktop "আমার অ্যাকাউন্ট" Button */}
@@ -156,14 +172,13 @@ export const Header: React.FC = () => {
             <span>{customerUser ? customerUser.name : 'আমার অ্যাকাউন্ট'}</span>
           </button>
 
-          {/* Mobile Search Icon */}
+          {/* Mobile Search Icon Button */}
           <button
-            onClick={() => {
-              setActiveClientPage('products');
-            }}
-            className="md:hidden p-2 text-[#2E3B2B] hover:bg-[#EFECE6] rounded-full cursor-pointer"
+            onClick={() => setIsSearchOpen(true)}
+            className="md:hidden p-2 text-[#2E3B2B] hover:bg-[#EFECE6] rounded-full cursor-pointer transition-colors"
+            title="প্রোডাক্ট খুঁজুন"
           >
-            <Search className="w-5 h-5" />
+            <Search className="w-5.5 h-5.5" />
           </button>
 
           {/* Mobile User Icon */}
@@ -512,6 +527,160 @@ export const Header: React.FC = () => {
                   <ChevronRight className="w-4 h-4 text-gray-400" />
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Interactive Search Modal / Top Bar Overlay */}
+      {isSearchOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-start justify-center pt-3 sm:pt-12 px-3 sm:px-4 animate-fadeIn">
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0"
+            onClick={() => setIsSearchOpen(false)}
+          />
+
+          {/* Search Popup Window */}
+          <div className="relative w-full max-w-2xl bg-white rounded-2xl shadow-2xl border border-[#E8E3D9] overflow-hidden z-10 my-2">
+            {/* Top Search Input Header */}
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (searchQuery.trim().toLowerCase() === 'admin') {
+                  setIsAdminModalOpen(true);
+                  setSearchQuery('');
+                  setIsSearchOpen(false);
+                } else if (searchQuery.trim() !== '') {
+                  setActiveClientPage('products');
+                  setIsSearchOpen(false);
+                }
+              }}
+              className="p-3 sm:p-4 flex items-center gap-2 border-b border-[#E8E3D9] bg-[#FAF8F5]"
+            >
+              <div className="relative flex-1 flex items-center">
+                <Search className="w-5 h-5 text-[#5E6A45] absolute left-3.5 pointer-events-none" />
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setSearchQuery(val);
+                    if (val.trim().toLowerCase() === 'admin') {
+                      setIsAdminModalOpen(true);
+                      setSearchQuery('');
+                      setIsSearchOpen(false);
+                    }
+                  }}
+                  placeholder="কী খুঁজছেন? প্রোডাক্টের নাম লিখুন..."
+                  className="w-full bg-white border border-[#D5CEBF] text-[#1F241E] placeholder-[#888] text-sm sm:text-base rounded-xl py-2.5 pl-11 pr-10 focus:outline-none focus:border-[#5E6A45] focus:ring-2 focus:ring-[#5E6A45]/20 shadow-xs"
+                  autoFocus
+                />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-3 p-1 rounded-full text-gray-400 hover:text-black hover:bg-gray-100 transition-colors cursor-pointer"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+
+              {/* Search Action Button */}
+              <button
+                type="submit"
+                className="bg-[#5E6A45] hover:bg-[#4A5535] active:scale-95 text-white font-extrabold text-xs sm:text-sm px-4 sm:px-5 py-2.5 rounded-xl transition-all shadow-xs flex items-center gap-1.5 shrink-0 cursor-pointer"
+              >
+                <Search className="w-4 h-4" />
+                <span>খুঁজুন</span>
+              </button>
+
+              {/* Close Modal Button */}
+              <button
+                type="button"
+                onClick={() => setIsSearchOpen(false)}
+                className="p-2 text-gray-500 hover:text-black hover:bg-gray-200/60 rounded-xl transition-colors shrink-0 cursor-pointer"
+                title="বন্ধ করুন"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </form>
+
+            {/* Live Search Results List */}
+            <div className="max-h-[65vh] overflow-y-auto p-3 space-y-2">
+              {searchQuery.trim() ? (
+                <div>
+                  <div className="px-2 pb-2 text-xs font-bold text-gray-500 flex justify-between items-center border-b border-gray-100 mb-2">
+                    <span>সার্চ ফলাফল ({matchingProducts.length} টি পাওয়া গেছে)</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveClientPage('products');
+                        setIsSearchOpen(false);
+                      }}
+                      className="text-[#5E6A45] hover:underline font-extrabold cursor-pointer"
+                    >
+                      সব দেখুন →
+                    </button>
+                  </div>
+
+                  {matchingProducts.length > 0 ? (
+                    <div className="divide-y divide-[#F0EDE6]">
+                      {matchingProducts.map((p) => {
+                        const displayPrice = p.discountPrice || p.price;
+                        return (
+                          <div
+                            key={p.id}
+                            onClick={() => {
+                              setSelectedProduct(p);
+                              setActiveClientPage('product-detail');
+                              setIsSearchOpen(false);
+                            }}
+                            className="p-2.5 hover:bg-[#F5F2EA] rounded-xl flex items-center gap-3 cursor-pointer transition-colors"
+                          >
+                            <img
+                              src={p.images?.[0] || p.image}
+                              alt={p.name}
+                              className="w-12 h-12 object-cover rounded-lg border border-[#E8E3D9] shrink-0"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <h4 className="text-xs sm:text-sm font-bold text-[#1F241E] truncate">
+                                {p.name}
+                              </h4>
+                              <p className="text-[11px] text-[#6B7264] font-medium">
+                                {p.category}
+                              </p>
+                            </div>
+                            <div className="text-right shrink-0">
+                              <div className="text-xs sm:text-sm font-black text-[#5E6A45]">
+                                ৳{displayPrice}
+                              </div>
+                              {p.discountPrice && (
+                                <div className="text-[10px] text-gray-400 line-through">
+                                  ৳{p.price}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-gray-500 text-xs">
+                      "{searchQuery}" নামে কোনো প্রোডাক্ট পাওয়া যায়নি।
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="py-6 text-center">
+                  <Search className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+                  <p className="text-xs text-gray-500 font-medium">
+                    প্রোডাক্টের নাম লিখুন এবং "খুঁজুন" বাটনে ক্লিক করুন
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         </div>
