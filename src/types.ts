@@ -3,6 +3,15 @@ export interface Specification {
   value: string;
 }
 
+export interface Review {
+  id: string;
+  userName: string;
+  rating: number;
+  comment: string;
+  date: string;
+  isVerifiedPurchase?: boolean;
+}
+
 export interface Product {
   id: string;
   name: string;
@@ -20,11 +29,13 @@ export interface Product {
   longDescription?: string;
   specifications?: Specification[];
   hasTimer?: boolean;
+  timerTitle?: string;
   timerEndTime?: string;
   isBestSeller?: boolean;
   isFeatured?: boolean;
   rating: number;
   reviewsCount: number;
+  reviews?: Review[];
   status: 'ACTIVE' | 'INACTIVE';
 }
 
@@ -64,6 +75,8 @@ export interface Order {
   deliveryArea: 'Inside Dhaka' | 'Outside Dhaka';
   deliveryFee: number;
   paymentMethod: 'COD' | 'bKash' | 'Nagad';
+  senderPhone?: string;
+  trxId?: string;
   items: OrderItem[];
   subtotal: number;
   discount: number;

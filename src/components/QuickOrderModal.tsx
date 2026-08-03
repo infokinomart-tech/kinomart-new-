@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Product } from '../types';
 import { useStore } from '../context/StoreContext';
-import { Truck, X, Plus, Minus, Check, Tag, ShieldCheck } from 'lucide-react';
+import { Truck, X, Plus, Minus, Check, Tag, ShieldCheck, Copy } from 'lucide-react';
 
 interface QuickOrderModalProps {
   product: Product;
@@ -9,7 +9,7 @@ interface QuickOrderModalProps {
 }
 
 export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({ product, onClose }) => {
-  const { createOrder, validateCoupon } = useStore();
+  const { createOrder, validateCoupon, settings } = useStore();
 
   const [quantity, setQuantity] = useState<number>(1);
   const [customerName, setCustomerName] = useState<string>('');
@@ -17,6 +17,11 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({ product, onClo
   const [shippingAddress, setShippingAddress] = useState<string>('');
   const [deliveryArea, setDeliveryArea] = useState<'Inside Dhaka' | 'Outside Dhaka'>('Inside Dhaka');
   const [paymentMethod, setPaymentMethod] = useState<'COD' | 'bKash' | 'Nagad'>('COD');
+
+  // Payment inputs for bKash & Nagad
+  const [senderPhone, setSenderPhone] = useState<string>('');
+  const [trxId, setTrxId] = useState<string>('');
+  const [copiedNumber, setCopiedNumber] = useState<boolean>(false);
 
   // Coupon state
   const [couponCodeInput, setCouponCodeInput] = useState<string>('');
@@ -31,6 +36,14 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({ product, onClo
   const subtotal = unitPrice * quantity;
   const deliveryFee = deliveryArea === 'Inside Dhaka' ? 60 : 120;
   const totalPrice = Math.max(0, subtotal - discountAmount + deliveryFee);
+
+  const handleCopyNumber = (num: string) => {
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(num);
+      setCopiedNumber(true);
+      setTimeout(() => setCopiedNumber(false), 2000);
+    }
+  };
 
   const handleApplyCoupon = () => {
     if (!couponCodeInput.trim()) return;
@@ -59,6 +72,17 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({ product, onClo
       return;
     }
 
+    if (paymentMethod !== 'COD') {
+      if (!senderPhone.trim()) {
+        setErrorMsg(`অনুগ্রহ করে ${paymentMethod === 'bKash' ? 'বিকাশ' : 'নগদ'} প্রেরক নম্বরটি লিখুন`);
+        return;
+      }
+      if (!trxId.trim()) {
+        setErrorMsg('অনুগ্রহ করে ট্রানজেকশন আইডি (TrxID) প্রদান করুন');
+        return;
+      }
+    }
+
     setErrorMsg('');
     setIsSubmitting(true);
 
@@ -70,6 +94,8 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({ product, onClo
         deliveryArea,
         deliveryFee,
         paymentMethod,
+        senderPhone: paymentMethod !== 'COD' ? senderPhone.trim() : undefined,
+        trxId: paymentMethod !== 'COD' ? trxId.trim() : undefined,
         items: [
           {
             product,
@@ -241,7 +267,7 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({ product, onClo
           </div>
 
           {/* Payment Method Selection */}
-          <div className="space-y-2">
+          <div className="space-y-3">
             <label className="block font-bold text-[#1F241E] text-xs sm:text-sm">
               পেমেন্ট পদ্ধতি
             </label>
@@ -249,10 +275,10 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({ product, onClo
               <button
                 type="button"
                 onClick={() => setPaymentMethod('COD')}
-                className={`py-2.5 px-2 rounded-xl border text-xs font-bold transition-all ${
+                className={`py-2.5 px-2 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
                   paymentMethod === 'COD'
-                    ? 'bg-[#5E6A45] text-white border-[#5E6A45]'
-                    : 'bg-[#FAF8F5] border-[#D5CEBF] text-[#2E3B2B]'
+                    ? 'bg-[#5E6A45] text-white border-[#5E6A45] shadow-xs'
+                    : 'bg-[#FAF8F5] border-[#D5CEBF] text-[#2E3B2B] hover:bg-[#F0EDE6]'
                 }`}
               >
                 ক্যাশ অন ডেলিভারি
@@ -260,10 +286,10 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({ product, onClo
               <button
                 type="button"
                 onClick={() => setPaymentMethod('bKash')}
-                className={`py-2.5 px-2 rounded-xl border text-xs font-bold transition-all ${
+                className={`py-2.5 px-2 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
                   paymentMethod === 'bKash'
-                    ? 'bg-[#D12053] text-white border-[#D12053]'
-                    : 'bg-[#FAF8F5] border-[#D5CEBF] text-[#2E3B2B]'
+                    ? 'bg-[#D12053] text-white border-[#D12053] shadow-xs'
+                    : 'bg-[#FAF8F5] border-[#D5CEBF] text-[#2E3B2B] hover:bg-[#F0EDE6]'
                 }`}
               >
                 বিকাশ (bKash)
@@ -271,15 +297,113 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({ product, onClo
               <button
                 type="button"
                 onClick={() => setPaymentMethod('Nagad')}
-                className={`py-2.5 px-2 rounded-xl border text-xs font-bold transition-all ${
+                className={`py-2.5 px-2 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
                   paymentMethod === 'Nagad'
-                    ? 'bg-[#EA580C] text-white border-[#EA580C]'
-                    : 'bg-[#FAF8F5] border-[#D5CEBF] text-[#2E3B2B]'
+                    ? 'bg-[#EA580C] text-white border-[#EA580C] shadow-xs'
+                    : 'bg-[#FAF8F5] border-[#D5CEBF] text-[#2E3B2B] hover:bg-[#F0EDE6]'
                 }`}
               >
                 নগদ (Nagad)
               </button>
             </div>
+
+            {/* bKash Payment Box (Matching Demo Image) */}
+            {paymentMethod === 'bKash' && (
+              <div className="bg-[#FDF2F8] border border-[#FBCFE8] rounded-2xl p-4 space-y-3 animate-fadeIn">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-extrabold text-[#831843] text-xs sm:text-sm">
+                    বিকাশ পার্সোনাল নম্বর:
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => handleCopyNumber(settings.bkashNumber || '01700123456')}
+                    className="bg-[#FCE7F3] border border-[#F472B6]/40 hover:bg-[#FBCFE8] px-3 py-1 rounded-xl font-black text-xs sm:text-sm text-[#9D174D] flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs"
+                    title="কপি করতে ক্লিক করুন"
+                  >
+                    <span className="underline decoration-1 underline-offset-2">
+                      {settings.bkashNumber || '01700123456'}
+                    </span>
+                    {copiedNumber ? (
+                      <Check className="w-3.5 h-3.5 text-emerald-600" />
+                    ) : (
+                      <Copy className="w-3.5 h-3.5 opacity-70" />
+                    )}
+                  </button>
+                </div>
+
+                <p className="text-xs sm:text-sm text-[#9D174D] font-medium leading-relaxed">
+                  মোট ৳{totalPrice.toLocaleString('bn-BD')} টাকা সেন্ড মানি করে আপনার নম্বর ও ট্রানজেকশন আইডি প্রদান করুন:
+                </p>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <input
+                    type="tel"
+                    required
+                    value={senderPhone}
+                    onChange={(e) => setSenderPhone(e.target.value)}
+                    placeholder="প্রেরক নম্বর"
+                    className="w-full bg-white border border-[#F472B6]/60 rounded-2xl px-3.5 py-2.5 text-xs sm:text-sm text-[#1F241E] focus:outline-none focus:ring-2 focus:ring-[#D12053]/30 focus:border-[#D12053] placeholder:text-gray-400 font-medium"
+                  />
+                  <input
+                    type="text"
+                    required
+                    value={trxId}
+                    onChange={(e) => setTrxId(e.target.value)}
+                    placeholder="TrxID (ট্রানজেকশন আইডি)"
+                    className="w-full bg-white border border-[#F472B6]/60 rounded-2xl px-3.5 py-2.5 text-xs sm:text-sm text-[#1F241E] focus:outline-none focus:ring-2 focus:ring-[#D12053]/30 focus:border-[#D12053] placeholder:text-gray-400 font-medium"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Nagad Payment Box (Matching Demo Image) */}
+            {paymentMethod === 'Nagad' && (
+              <div className="bg-[#FFF7ED] border border-[#FFEDD5] rounded-2xl p-4 space-y-3 animate-fadeIn">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-extrabold text-[#9A3412] text-xs sm:text-sm">
+                    নগদ পার্সোনাল নম্বর:
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => handleCopyNumber(settings.nagadNumber || '01700123456')}
+                    className="bg-[#FFEDD5] border border-[#FB923C]/40 hover:bg-[#FED7AA] px-3 py-1 rounded-xl font-black text-xs sm:text-sm text-[#C2410C] flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs"
+                    title="কপি করতে ক্লিক করুন"
+                  >
+                    <span className="underline decoration-1 underline-offset-2">
+                      {settings.nagadNumber || '01700123456'}
+                    </span>
+                    {copiedNumber ? (
+                      <Check className="w-3.5 h-3.5 text-emerald-600" />
+                    ) : (
+                      <Copy className="w-3.5 h-3.5 opacity-70" />
+                    )}
+                  </button>
+                </div>
+
+                <p className="text-xs sm:text-sm text-[#C2410C] font-medium leading-relaxed">
+                  মোট ৳{totalPrice.toLocaleString('bn-BD')} টাকা সেন্ড মানি করে আপনার নম্বর ও ট্রানজেকশন আইডি প্রদান করুন:
+                </p>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <input
+                    type="tel"
+                    required
+                    value={senderPhone}
+                    onChange={(e) => setSenderPhone(e.target.value)}
+                    placeholder="প্রেরক নম্বর"
+                    className="w-full bg-white border border-[#FB923C]/60 rounded-2xl px-3.5 py-2.5 text-xs sm:text-sm text-[#1F241E] focus:outline-none focus:ring-2 focus:ring-[#EA580C]/30 focus:border-[#EA580C] placeholder:text-gray-400 font-medium"
+                  />
+                  <input
+                    type="text"
+                    required
+                    value={trxId}
+                    onChange={(e) => setTrxId(e.target.value)}
+                    placeholder="TrxID (ট্রানজেকশন আইডি)"
+                    className="w-full bg-white border border-[#FB923C]/60 rounded-2xl px-3.5 py-2.5 text-xs sm:text-sm text-[#1F241E] focus:outline-none focus:ring-2 focus:ring-[#EA580C]/30 focus:border-[#EA580C] placeholder:text-gray-400 font-medium"
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Discount Coupon Code Box */}

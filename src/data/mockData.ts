@@ -218,6 +218,23 @@ export const INITIAL_PRODUCTS: Product[] = [
     rating: 4.9,
     reviewsCount: 138,
     status: 'ACTIVE'
+  },
+  {
+    id: 'prod-9',
+    name: 'Kino SoundBar Pro Cinema Sound System (Out of Stock)',
+    price: 4500,
+    discountPrice: 3800,
+    category: 'স্পিকার ও সাউন্ড',
+    subCategory: 'সাউন্ডবার ও হোম থিয়েটার',
+    stock: 0,
+    limitedStockThreshold: 5,
+    thumbnail: 'https://images.unsplash.com/photo-1545454675-3531b543be5d?w=800&auto=format&fit=crop&q=80',
+    gallery: ['https://images.unsplash.com/photo-1545454675-3531b543be5d?w=800&auto=format&fit=crop&q=80'],
+    shortDescription: '১২০ ওয়াট আরএমএস আউটপুট, থ্রিডি ডলবি সাউন্ড, ওয়্যারলেস সাবউফার ও ব্লুটুথ ৫.২।',
+    longDescription: 'হোম সিনেমা এক্সপেরিয়েন্সের জন্য সেরা সাউন্ডবার। প্রোডাক্টটি অত্যন্ত জনপ্রিয় হওয়ায় আপাতত স্টক শেষ। পুনরায় স্টকে আসামাত্রই নোটিফিকেশন পেতে নিচে রেজিস্টার করুন।',
+    rating: 5.0,
+    reviewsCount: 84,
+    status: 'ACTIVE'
   }
 ];
 

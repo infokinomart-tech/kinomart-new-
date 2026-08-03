@@ -11,7 +11,8 @@ import {
   Star,
   Layers,
   Upload,
-  Video
+  Video,
+  Clock
 } from 'lucide-react';
 
 export const AdminProducts: React.FC = () => {
@@ -171,12 +172,14 @@ export const AdminProducts: React.FC = () => {
                   <td className="p-3 font-bold">
                     <span
                       className={`px-2 py-0.5 rounded text-[11px] ${
-                        p.stock <= (p.limitedStockThreshold || 10)
+                        p.stock <= 0
+                          ? 'bg-red-500/20 text-red-300 border border-red-500/30'
+                          : p.stock <= (p.limitedStockThreshold || 10)
                           ? 'bg-amber-500/20 text-amber-300'
                           : 'bg-emerald-500/20 text-emerald-300'
                       }`}
                     >
-                      {p.stock} pcs
+                      {p.stock <= 0 ? 'Stock Out (0)' : `${p.stock} pcs`}
                     </span>
                   </td>
                   <td className="p-3">
@@ -572,30 +575,80 @@ export const AdminProducts: React.FC = () => {
                 </div>
               </div>
 
-              {/* Offer Timer Toggle Switch */}
-              <div className="flex items-center justify-between border-t border-[#1E293B] pt-3 bg-[#050B18]/40 p-3 rounded-xl border">
-                <div>
-                  <div className="font-bold text-[#CBD5E1]">অফার কাউন্টডাউন টাইমার (Offer Timer)</div>
-                  <div className="text-[11px] text-[#64748B]">
-                    এই সুইচ অন করলে এই প্রোডাক্টের পেজে কাউন্টডাউন টাইমার শো করবে
+              {/* Offer Timer Section (Matching Demo Image) */}
+              <div className="bg-[#0B1220] border border-[#1E293B] rounded-2xl p-4 text-white space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-full border border-amber-500/50 bg-amber-500/10 text-amber-400 flex items-center justify-center shrink-0">
+                      <Clock className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <div className="font-bold text-sm sm:text-base text-white">
+                        অফার কাউন্টডাউন টাইমার (Offer Timer)
+                      </div>
+                      <div className="text-xs text-gray-400 mt-0.5">
+                        এই সুইচ অন করলে এই প্রোডাক্টের পেজে কাউন্টডাউন টাইমার শো করবে
+                      </div>
+                    </div>
                   </div>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setEditingProduct({ ...editingProduct, hasTimer: !editingProduct.hasTimer })
+                    }
+                    className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors cursor-pointer shrink-0 ${
+                      editingProduct.hasTimer ? 'bg-[#658238]' : 'bg-slate-700'
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${
+                        editingProduct.hasTimer ? 'translate-x-6' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() =>
-                    setEditingProduct({ ...editingProduct, hasTimer: !editingProduct.hasTimer })
-                  }
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
-                    editingProduct.hasTimer ? 'bg-[#2563EB]' : 'bg-gray-700'
-                  }`}
-                >
-                  <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                      editingProduct.hasTimer ? 'translate-x-6' : 'translate-x-1'
-                    }`}
-                  />
-                </button>
+                {/* Sub-inputs when Offer Timer is toggled ON */}
+                {editingProduct.hasTimer && (
+                  <div className="border-t border-[#1E293B] pt-3.5 mt-3 space-y-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {/* Timer Title */}
+                      <div>
+                        <label className="block text-xs font-bold text-[#CBD5E1] mb-1.5">
+                          টাইমার টাইটেল (Timer Title)
+                        </label>
+                        <input
+                          type="text"
+                          value={editingProduct.timerTitle ?? 'অফারটি শেষ হতে বাকি:'}
+                          onChange={(e) =>
+                            setEditingProduct({ ...editingProduct, timerTitle: e.target.value })
+                          }
+                          placeholder="অফারটি শেষ হতে বাকি:"
+                          className="w-full bg-[#050B18] border border-[#1E293B] rounded-xl p-3 text-white focus:outline-none focus:border-[#2563EB] text-xs font-medium"
+                        />
+                      </div>
+
+                      {/* Target End Time */}
+                      <div>
+                        <label className="block text-xs font-bold text-[#CBD5E1] mb-1.5">
+                          অফার শেষ হওয়ার তারিখ ও সময় (Target End Time)
+                        </label>
+                        <input
+                          type="datetime-local"
+                          value={editingProduct.timerEndTime || ''}
+                          onChange={(e) =>
+                            setEditingProduct({ ...editingProduct, timerEndTime: e.target.value })
+                          }
+                          className="w-full bg-[#050B18] border border-[#1E293B] rounded-xl p-3 text-white focus:outline-none focus:border-[#2563EB] text-xs font-medium [color-scheme:dark]"
+                        />
+                        <span className="text-[11px] text-[#64748B] mt-1.5 block">
+                          ফাঁকা রাখলে ২৪ ঘণ্টার স্ট্যান্ডার্ড কাউন্টডাউন চলবে
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Checkboxes */}

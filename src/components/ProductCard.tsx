@@ -1,7 +1,7 @@
 import React from 'react';
 import { Product } from '../types';
 import { useStore } from '../context/StoreContext';
-import { Star, Zap, AlertTriangle } from 'lucide-react';
+import { Star, Zap, AlertTriangle, BellRing } from 'lucide-react';
 
 interface ProductCardProps {
   product: Product;
@@ -9,6 +9,8 @@ interface ProductCardProps {
 
 export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   const { setSelectedProduct, setQuickOrderProduct, setIsQuickOrderOpen, setActiveClientPage } = useStore();
+
+  const isOutOfStock = product.stock <= 0 || product.status === 'INACTIVE';
 
   const handleCardClick = () => {
     setSelectedProduct(product);
@@ -18,6 +20,10 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
 
   const handleQuickOrder = (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (isOutOfStock) {
+      handleCardClick();
+      return;
+    }
     setQuickOrderProduct(product);
     setIsQuickOrderOpen(true);
   };
@@ -50,23 +56,31 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
 
           {/* Badges */}
           <div className="absolute top-2 left-2 flex flex-wrap items-center gap-1.5 z-10 max-w-[90%]">
-            {discountPercent > 0 && (
-              <span className="bg-[#E65100] text-white text-[10px] sm:text-xs font-extrabold px-2.5 py-0.5 rounded-full shadow-xs whitespace-nowrap">
-                {discountPercent}% ছাড়
+            {isOutOfStock ? (
+              <span className="bg-red-600 text-white text-[10px] sm:text-xs font-black px-2.5 py-0.5 rounded-full shadow-xs whitespace-nowrap">
+                আউট অব স্টক
               </span>
-            )}
+            ) : (
+              <>
+                {discountPercent > 0 && (
+                  <span className="bg-[#E65100] text-white text-[10px] sm:text-xs font-extrabold px-2.5 py-0.5 rounded-full shadow-xs whitespace-nowrap">
+                    {discountPercent}% ছাড়
+                  </span>
+                )}
 
-            {product.isBestSeller && (
-              <span className="bg-[#5E6A45] text-white text-[10px] sm:text-xs font-extrabold px-2.5 py-0.5 rounded-full shadow-xs whitespace-nowrap">
-                বেস্ট সেলার
-              </span>
-            )}
+                {product.isBestSeller && (
+                  <span className="bg-[#5E6A45] text-white text-[10px] sm:text-xs font-extrabold px-2.5 py-0.5 rounded-full shadow-xs whitespace-nowrap">
+                    বেস্ট সেলার
+                  </span>
+                )}
 
-            {isLimitedStock && !discountPercent && !product.isBestSeller && (
-              <span className="bg-[#E67E22] text-white text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-full flex items-center gap-1 shadow-xs whitespace-nowrap">
-                <AlertTriangle className="w-3 h-3 text-yellow-200 fill-yellow-200" />
-                লিমিটেড স্টক
-              </span>
+                {isLimitedStock && !discountPercent && !product.isBestSeller && (
+                  <span className="bg-[#E67E22] text-white text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-full flex items-center gap-1 shadow-xs whitespace-nowrap">
+                    <AlertTriangle className="w-3 h-3 text-yellow-200 fill-yellow-200" />
+                    লিমিটেড স্টক
+                  </span>
+                )}
+              </>
             )}
           </div>
         </div>
@@ -114,15 +128,25 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
         </div>
       </div>
 
-      {/* Quick Order Button */}
+      {/* Quick Order / Notify Me Button */}
       <div className="pt-3">
-        <button
-          onClick={handleQuickOrder}
-          className="w-full bg-[#5E6A45] hover:bg-[#485333] active:scale-[0.98] text-white text-xs sm:text-sm font-bold py-2 sm:py-2.5 px-3 rounded-xl flex items-center justify-center gap-1.5 transition-all shadow-xs"
-        >
-          <Zap className="w-4 h-4 fill-white text-white animate-pulse" />
-          <span>অর্ডার করুন</span>
-        </button>
+        {isOutOfStock ? (
+          <button
+            onClick={handleCardClick}
+            className="w-full bg-[#374151] hover:bg-[#1F241E] active:scale-[0.98] text-white text-xs sm:text-sm font-bold py-2 sm:py-2.5 px-3 rounded-xl flex items-center justify-center gap-1.5 transition-all shadow-xs cursor-pointer"
+          >
+            <BellRing className="w-3.5 h-3.5 text-amber-300" />
+            <span>স্টকে ফিরলে জানান</span>
+          </button>
+        ) : (
+          <button
+            onClick={handleQuickOrder}
+            className="w-full bg-[#5E6A45] hover:bg-[#485333] active:scale-[0.98] text-white text-xs sm:text-sm font-bold py-2 sm:py-2.5 px-3 rounded-xl flex items-center justify-center gap-1.5 transition-all shadow-xs cursor-pointer"
+          >
+            <Zap className="w-4 h-4 fill-white text-white animate-pulse" />
+            <span>অর্ডার করুন</span>
+          </button>
+        )}
       </div>
     </div>
   );

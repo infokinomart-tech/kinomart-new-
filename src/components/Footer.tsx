@@ -159,7 +159,15 @@ export const Footer: React.FC = () => {
         <div className="pt-6 border-t border-[#232724] flex flex-col sm:flex-row items-center justify-between text-xs text-[#717A88] gap-2">
           <p>© 2026 KinoMart. সর্বস্বত্ব সংরক্ষিত।</p>
           <p>
-            Developed by <span className="text-[#F57C00] font-extrabold">B2Bfly .</span>
+            Developed by{' '}
+            <a
+              href="https://b2bfiy-com-two.vercel.app/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[#F57C00] font-extrabold hover:underline transition-all"
+            >
+              B2Bfly .
+            </a>
           </p>
         </div>
       </div>

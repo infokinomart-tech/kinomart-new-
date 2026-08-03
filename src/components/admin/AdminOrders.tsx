@@ -336,14 +336,32 @@ export const AdminOrders: React.FC = () => {
                       ))}
                     </td>
 
-                    {/* Revenue */}
+                    {/* Revenue & Payment */}
                     <td className="p-3 whitespace-nowrap">
                       <div className="font-black text-[#10B981] text-sm">
                         ৳{ord.totalPrice.toLocaleString('bn-BD')}
                       </div>
-                      <div className="text-[10px] text-[#64748B]">
-                        {ord.items.reduce((sum, i) => sum + i.quantity, 0)} pcs
+                      <div className="flex items-center gap-1 mt-0.5">
+                        <span
+                          className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
+                            ord.paymentMethod === 'bKash'
+                              ? 'bg-pink-500/20 text-pink-400 border border-pink-500/30'
+                              : ord.paymentMethod === 'Nagad'
+                              ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30'
+                              : 'bg-slate-700 text-slate-300'
+                          }`}
+                        >
+                          {ord.paymentMethod}
+                        </span>
+                        <span className="text-[10px] text-[#64748B]">
+                          ({ord.items.reduce((sum, i) => sum + i.quantity, 0)} pcs)
+                        </span>
                       </div>
+                      {ord.trxId && (
+                        <div className="text-[10px] text-amber-400 font-mono mt-0.5">
+                          Trx: {ord.trxId}
+                        </div>
+                      )}
                     </td>
 
                     {/* Time */}
@@ -438,11 +456,41 @@ export const AdminOrders: React.FC = () => {
 
               <div className="bg-[#0B1329] border border-[#1E293B] p-3 rounded-2xl flex justify-between items-center sm:col-span-2">
                 <div>
-                  <span className="text-[#94A3B8] text-[10px] block font-semibold">Total Revenue:</span>
-                  <span className="font-black text-[#10B981] text-base">৳{editingOrder.totalPrice}</span>
+                  <span className="text-[#94A3B8] text-[10px] block font-semibold">Total Revenue & Payment:</span>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span className="font-black text-[#10B981] text-base">৳{editingOrder.totalPrice}</span>
+                    <span
+                      className={`text-xs font-bold px-2 py-0.5 rounded ${
+                        editingOrder.paymentMethod === 'bKash'
+                          ? 'bg-pink-500/20 text-pink-400 border border-pink-500/30'
+                          : editingOrder.paymentMethod === 'Nagad'
+                          ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30'
+                          : 'bg-slate-700 text-slate-300'
+                      }`}
+                    >
+                      {editingOrder.paymentMethod}
+                    </span>
+                  </div>
+                  {editingOrder.senderPhone && (
+                    <div className="text-xs text-[#CBD5E1] mt-1 font-mono">
+                      Sender Phone: <span className="font-bold text-amber-400">{editingOrder.senderPhone}</span>
+                    </div>
+                  )}
+                  {editingOrder.trxId && (
+                    <div className="text-xs text-[#CBD5E1] font-mono">
+                      TrxID: <span className="font-bold text-amber-400">{editingOrder.trxId}</span>
+                    </div>
+                  )}
                 </div>
                 <button
-                  onClick={() => copyToClipboard(`৳${editingOrder.totalPrice}`, 'Revenue')}
+                  onClick={() =>
+                    copyToClipboard(
+                      `৳${editingOrder.totalPrice} (${editingOrder.paymentMethod}${
+                        editingOrder.senderPhone ? `, Sender: ${editingOrder.senderPhone}` : ''
+                      }${editingOrder.trxId ? `, TrxID: ${editingOrder.trxId}` : ''})`,
+                      'Revenue'
+                    )
+                  }
                   className="bg-[#1E293B] hover:bg-[#334155] text-[#94A3B8] hover:text-white px-2.5 py-1.5 rounded-xl font-bold flex items-center gap-1 cursor-pointer transition-colors"
                 >
                   {copiedField === 'Revenue' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
