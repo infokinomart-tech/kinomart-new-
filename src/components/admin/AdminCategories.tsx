@@ -52,9 +52,17 @@ export const AdminCategories: React.FC = () => {
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
     if (editingCategory && editingCategory.name) {
-      saveCategory(editingCategory as Category);
+      let finalSubCategories = editingCategory.subCategories || [];
+      if (newSubName.trim()) {
+        finalSubCategories = [...finalSubCategories, newSubName.trim()];
+      }
+      saveCategory({
+        ...editingCategory,
+        subCategories: finalSubCategories,
+      } as Category);
       setIsModalOpen(false);
       setEditingCategory(null);
+      setNewSubName('');
     }
   };
 
@@ -126,13 +134,13 @@ export const AdminCategories: React.FC = () => {
             {/* Subcategories tags */}
             <div className="pt-2 border-t border-[#2B3042]">
               <p className="text-xs font-bold text-[#94A3B8] mb-1.5">
-                সাব-ক্যাটাগরি সমূহ ({cat.subCategories.length}টি):
+                সাব-ক্যাটাগরি সমূহ ({(cat.subCategories || []).length}টি):
               </p>
               <div className="flex flex-wrap gap-1.5">
-                {cat.subCategories.length === 0 ? (
+                {(cat.subCategories || []).length === 0 ? (
                   <span className="text-xs text-gray-500 italic">কোনো সাব-ক্যাটাগরি নেই</span>
                 ) : (
-                  cat.subCategories.map((sub, idx) => (
+                  (cat.subCategories || []).map((sub, idx) => (
                     <span
                       key={idx}
                       className="text-[11px] bg-[#222736] text-[#CBD5E1] px-2.5 py-1 rounded-lg border border-[#33384B]"

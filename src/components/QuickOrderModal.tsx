@@ -10,6 +10,17 @@ interface QuickOrderModalProps {
   onClose: () => void;
 }
 
+const DIVISIONS = [
+  { name: 'Dhaka (Dhaka)', area: 'Inside Dhaka', fee: 60 },
+  { name: 'Chattogram (Chattogram)', area: 'Outside Dhaka', fee: 120 },
+  { name: 'Rajshahi (Rajshahi)', area: 'Outside Dhaka', fee: 120 },
+  { name: 'Khulna (Khulna)', area: 'Outside Dhaka', fee: 120 },
+  { name: 'Barishal (Barishal)', area: 'Outside Dhaka', fee: 120 },
+  { name: 'Sylhet (Sylhet)', area: 'Outside Dhaka', fee: 120 },
+  { name: 'Rangpur (Rangpur)', area: 'Outside Dhaka', fee: 120 },
+  { name: 'Mymensingh (Mymensingh)', area: 'Outside Dhaka', fee: 120 },
+];
+
 export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({ product, onClose }) => {
   const { createOrder, validateCoupon, settings } = useStore();
 
@@ -24,8 +35,21 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({ product, onClo
   const [customerName, setCustomerName] = useState<string>(customerNameInitial);
   const [customerPhone, setCustomerPhone] = useState<string>('');
   const [shippingAddress, setShippingAddress] = useState<string>('');
+  const [selectedDivision, setSelectedDivision] = useState<string>('Dhaka (Dhaka)');
   const [deliveryArea, setDeliveryArea] = useState<'Inside Dhaka' | 'Outside Dhaka'>('Inside Dhaka');
   const [paymentMethod, setPaymentMethod] = useState<'COD' | 'bKash' | 'Nagad'>('COD');
+
+  const handleDivisionChange = (divisionName: string) => {
+    setSelectedDivision(divisionName);
+    const matched = DIVISIONS.find((d) => d.name === divisionName);
+    if (matched) {
+      setDeliveryArea(matched.area as 'Inside Dhaka' | 'Outside Dhaka');
+    } else if (divisionName.toLowerCase().includes('dhaka')) {
+      setDeliveryArea('Inside Dhaka');
+    } else {
+      setDeliveryArea('Outside Dhaka');
+    }
+  };
 
   // Payment inputs for bKash & Nagad
   const [senderPhone, setSenderPhone] = useState<string>('');
@@ -99,7 +123,7 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({ product, onClo
       createOrder({
         customerName: customerName.trim(),
         customerPhone: customerPhone.trim(),
-        shippingAddress: shippingAddress.trim(),
+        shippingAddress: `[বিভাগ: ${selectedDivision}] ${shippingAddress.trim()}`,
         deliveryArea,
         deliveryFee,
         paymentMethod,
@@ -210,6 +234,31 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({ product, onClo
               />
             </div>
 
+            {/* Division Dropdown */}
+            <div>
+              <label className="block font-bold text-[#1F241E] mb-1">
+                বিভাগ <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <select
+                  value={selectedDivision}
+                  onChange={(e) => handleDivisionChange(e.target.value)}
+                  className="w-full bg-[#FAF8F5] border border-[#D5CEBF] rounded-xl p-3 text-[#1F241E] font-semibold text-xs sm:text-sm focus:outline-none focus:ring-1 focus:ring-[#5E7A3B] focus:border-[#5E7A3B] cursor-pointer appearance-none pr-8"
+                >
+                  {DIVISIONS.map((div) => (
+                    <option key={div.name} value={div.name}>
+                      {div.name}
+                    </option>
+                  ))}
+                </select>
+                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-[#1F241E]">
+                  <svg className="w-4 h-4 fill-current" viewBox="0 0 20 20">
+                    <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+
             <div>
               <label className="block font-bold text-[#1F241E] mb-1">
                 সম্পূর্ণ ঠিকানা (বাসা/রোড/এলাকা/জেলা) <span className="text-red-500">*</span>
@@ -219,7 +268,7 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({ product, onClo
                 rows={2}
                 value={shippingAddress}
                 onChange={(e) => setShippingAddress(e.target.value)}
-                placeholder="যেমন: বাসা ১২, রোড ৫, সেক্টর ৩, উত্তরা, ঢাকা"
+                placeholder="যেমন: বাসা ১২, রোড ৫, সেক্টর ৩, উত্তরা"
                 className="w-full bg-[#FAF8F5] border border-[#D5CEBF] rounded-xl p-3 text-[#1F241E] focus:outline-none focus:ring-1 focus:ring-[#5E7A3B] focus:border-[#5E7A3B]"
               />
             </div>

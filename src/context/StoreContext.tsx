@@ -328,7 +328,28 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
           const { data: cats } = await supabase.from('categories').select('*');
           if (cats && cats.length > 0) {
-            setCategories(cats.map(r => r.data || r));
+            setCategories(cats.map(r => {
+              const item = r.data || r;
+              const rawSub = item.subCategories ?? r.subCategories ?? r.sub_categories ?? r.subcategories ?? (item.data?.subCategories);
+              let parsedSub: string[] = [];
+              if (Array.isArray(rawSub)) {
+                parsedSub = rawSub;
+              } else if (typeof rawSub === 'string') {
+                try {
+                  parsedSub = JSON.parse(rawSub);
+                } catch {
+                  parsedSub = [];
+                }
+              }
+              return {
+                id: String(item.id || r.id),
+                name: String(item.name || r.name || ''),
+                image: item.image || r.image || '',
+                position: Number(item.position ?? r.position ?? 1),
+                isVisibleOnHome: Boolean(item.isVisibleOnHome ?? r.is_visible_on_home ?? r.isVisibleOnHome ?? true),
+                subCategories: Array.isArray(parsedSub) ? parsedSub : []
+              };
+            }));
           }
 
           const { data: cpn } = await supabase.from('coupons').select('*');
@@ -451,6 +472,19 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setQuickOrderProduct(null);
     setSelectedProduct(null);
     setActiveClientPage('order-success');
+
+    if (isSupabaseConfigured() && supabase) {
+      supabase.from('orders').upsert({
+        id: newOrder.id,
+        orderNumber: newOrder.orderNumber,
+        customerName: newOrder.customerName,
+        customerPhone: newOrder.customerPhone,
+        totalPrice: newOrder.totalPrice,
+        status: newOrder.status,
+        data: newOrder
+      }).then(null, err => console.warn('Supabase order save error:', err));
+    }
+
     window.scrollTo({ top: 0, behavior: 'smooth' });
     return newOrder;
   };
@@ -482,10 +516,22 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     if (sendSms && targetOrder) {
       triggerMockSMS(targetOrder, customSmsMsg);
     }
+
+    if (isSupabaseConfigured() && supabase && targetOrder) {
+      supabase.from('orders').upsert({
+        id: (targetOrder as Order).id,
+        status: (targetOrder as Order).status,
+        callStatus: (targetOrder as Order).callStatus,
+        data: targetOrder
+      }).then(null, err => console.warn('Supabase order status update error:', err));
+    }
   };
 
   const deleteOrder = (orderId: string) => {
     setOrders(prev => prev.filter(o => o.id !== orderId));
+    if (isSupabaseConfigured() && supabase) {
+      supabase.from('orders').delete().eq('id', orderId).then(null, err => console.warn('Supabase order delete error:', err));
+    }
   };
 
   // Product CRUD
@@ -498,10 +544,24 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         return [product, ...prev];
       }
     });
+
+    if (isSupabaseConfigured() && supabase) {
+      supabase.from('products').upsert({
+        id: product.id,
+        name: product.name,
+        category: product.category,
+        subCategory: product.subCategory,
+        price: product.price,
+        data: product
+      }).then(null, err => console.warn('Supabase product save error:', err));
+    }
   };
 
   const deleteProduct = (productId: string) => {
     setProducts(prev => prev.filter(p => p.id !== productId));
+    if (isSupabaseConfigured() && supabase) {
+      supabase.from('products').delete().eq('id', productId).then(null, err => console.warn('Supabase product delete error:', err));
+    }
   };
 
   // Category CRUD
@@ -514,10 +574,29 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         return [...prev, category];
       }
     });
+
+    if (isSupabaseConfigured() && supabase) {
+      const subList = category.subCategories || [];
+      supabase.from('categories').upsert({
+        id: category.id,
+        name: category.name,
+        image: category.image || '',
+        position: category.position,
+        isVisibleOnHome: category.isVisibleOnHome ?? true,
+        is_visible_on_home: category.isVisibleOnHome ?? true,
+        subCategories: subList,
+        sub_categories: subList,
+        subcategories: subList,
+        data: category
+      }).then(null, err => console.warn('Supabase category save error:', err));
+    }
   };
 
   const deleteCategory = (categoryId: string) => {
     setCategories(prev => prev.filter(c => c.id !== categoryId));
+    if (isSupabaseConfigured() && supabase) {
+      supabase.from('categories').delete().eq('id', categoryId).then(null, err => console.warn('Supabase category delete error:', err));
+    }
   };
 
   // Coupon CRUD
@@ -530,10 +609,21 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         return [...prev, coupon];
       }
     });
+
+    if (isSupabaseConfigured() && supabase) {
+      supabase.from('coupons').upsert({
+        id: coupon.id,
+        code: coupon.code,
+        data: coupon
+      }).then(null, err => console.warn('Supabase coupon save error:', err));
+    }
   };
 
   const deleteCoupon = (couponId: string) => {
     setCoupons(prev => prev.filter(c => c.id !== couponId));
+    if (isSupabaseConfigured() && supabase) {
+      supabase.from('coupons').delete().eq('id', couponId).then(null, err => console.warn('Supabase coupon delete error:', err));
+    }
   };
 
   // Settings
