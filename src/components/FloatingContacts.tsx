@@ -33,26 +33,26 @@ export const FloatingContacts: React.FC = () => {
         </div>
       )}
 
-      {/* WhatsApp Button (Bright Neon Green) */}
+      {/* WhatsApp Button (Bright Neon Green with pulse ring & icon wobble) */}
       <button
         onClick={handleWhatsappClick}
-        className="w-12 h-12 sm:w-14 sm:h-14 bg-[#25D366] hover:bg-[#20ba5a] text-white rounded-full flex items-center justify-center shadow-xl hover:scale-110 active:scale-95 transition-all group relative"
+        className="w-12 h-12 sm:w-14 sm:h-14 bg-[#25D366] hover:bg-[#20ba5a] text-white rounded-full flex items-center justify-center shadow-xl hover:scale-110 active:scale-95 transition-all group relative animate-whatsapp-pulse cursor-pointer"
         title="২৪/৭ হোয়াটসঅ্যাপ সাপোর্ট"
       >
-        <MessageCircle className="w-6 h-6 sm:w-7 sm:h-7 fill-white" />
-        <span className="absolute right-full mr-3 bg-black/80 text-white text-[11px] font-bold px-2.5 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+        <MessageCircle className="w-6 h-6 sm:w-7 sm:h-7 fill-white animate-icon-wobble" />
+        <span className="absolute right-full mr-3 bg-black/90 text-white text-[11px] font-bold px-2.5 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none shadow-md">
           ২৪/৭ হোয়াটসঅ্যাপ
         </span>
       </button>
 
-      {/* Phone Call Button (Dark Olive Green) */}
+      {/* Phone Call Button (Dark Olive Green with pulse ring & icon wobble) */}
       <button
         onClick={() => setIsOpenCall(!isOpenCall)}
-        className="w-12 h-12 sm:w-14 sm:h-14 bg-[#5E6A45] hover:bg-[#485333] text-white rounded-full flex items-center justify-center shadow-xl hover:scale-110 active:scale-95 transition-all group relative"
+        className="w-12 h-12 sm:w-14 sm:h-14 bg-[#5E6A45] hover:bg-[#485333] text-white rounded-full flex items-center justify-center shadow-xl hover:scale-110 active:scale-95 transition-all group relative animate-call-pulse cursor-pointer"
         title="সরাসরি কল করুন"
       >
-        <Phone className="w-5 h-5 sm:w-6 sm:h-6" />
-        <span className="absolute right-full mr-3 bg-black/80 text-white text-[11px] font-bold px-2.5 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+        <Phone className="w-5 h-5 sm:w-6 sm:h-6 animate-icon-wobble" />
+        <span className="absolute right-full mr-3 bg-black/90 text-white text-[11px] font-bold px-2.5 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none shadow-md">
           হটলাইন কল
         </span>
       </button>

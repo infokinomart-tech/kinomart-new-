@@ -150,7 +150,7 @@ export const ContactView: React.FC = () => {
                   হোয়াটসঅ্যাপে চ্যাট:
                 </p>
                 <p className="text-xs sm:text-sm font-black text-[#057A3A] mt-0.5">
-                  {settings.whatsappNumber || settings.phone || '01700000000'}
+                  {settings.phone || '01700000000'}
                 </p>
               </div>
             </div>

@@ -263,13 +263,19 @@ export const AdminCategories: React.FC = () => {
                     type="text"
                     value={newSubName}
                     onChange={(e) => setNewSubName(e.target.value)}
-                    placeholder="নতুন সাব-ক্যাটাগরির নাম লিখুন..."
-                    className="flex-1 bg-[#11131A] border border-[#33384B] rounded-xl p-2.5 text-white"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleAddSub();
+                      }
+                    }}
+                    placeholder="নতুন সাব-ক্যাটাগরির নাম লিখুন (যেমন: TWS এয়ারবাডস)..."
+                    className="flex-1 bg-[#11131A] border border-[#33384B] rounded-xl p-2.5 text-white focus:outline-none focus:border-[#2563EB]"
                   />
                   <button
                     type="button"
                     onClick={handleAddSub}
-                    className="bg-[#2563EB] text-white px-4 py-2.5 rounded-xl font-bold hover:bg-blue-600"
+                    className="bg-[#2563EB] text-white px-4 py-2.5 rounded-xl font-bold hover:bg-blue-600 transition-colors shrink-0"
                   >
                     + যোগ করুন
                   </button>

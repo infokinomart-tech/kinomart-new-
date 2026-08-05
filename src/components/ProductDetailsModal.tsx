@@ -18,9 +18,12 @@ import {
   Flame,
   Bell,
   BellRing,
-  AlertCircle
+  AlertCircle,
+  FileText
 } from 'lucide-react';
 import { ProductCard } from './ProductCard';
+import { BundleSelector } from './BundleSelector';
+import { getEffectiveBundles } from '../lib/bundleUtils';
 
 interface ProductDetailsModalProps {
   product: Product;
@@ -47,11 +50,17 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
     setSelectedCategory
   } = useStore();
 
+  const effectiveBundles = getEffectiveBundles(product);
+  const defaultBundle = effectiveBundles.find((b) => b.isPopular) || effectiveBundles[0];
+
+  const [selectedBundleId, setSelectedBundleId] = useState<string>(defaultBundle?.id || '');
+  const selectedBundle = effectiveBundles.find((b) => b.id === selectedBundleId) || defaultBundle;
+
   const [selectedImage, setSelectedImage] = useState<string>(product.thumbnail);
   const [selectedColor, setSelectedColor] = useState<string>(
     product.colors && product.colors.length > 0 ? product.colors[0] : 'MINT'
   );
-  const [quantity, setQuantity] = useState<number>(1);
+  const [quantity, setQuantity] = useState<number>(selectedBundle?.quantity || 1);
   const [activeTab, setActiveTab] = useState<'desc' | 'spec' | 'delivery' | 'reviews' | 'guarantee'>('desc');
   const [isZoomOpen, setIsZoomOpen] = useState<boolean>(false);
 
@@ -174,8 +183,18 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
     ? Math.round(((product.price - product.discountPrice) / product.price) * 100)
     : 0;
 
-  const displayPrice = product.discountPrice || product.price;
-  const totalPrice = displayPrice * quantity;
+  const unitPrice = product.discountPrice || product.price;
+  const unitOriginalPrice = product.discountPrice ? product.price : null;
+
+  const displayPrice = selectedBundle
+    ? selectedBundle.price
+    : unitPrice * quantity;
+
+  const displayOriginalPrice = selectedBundle
+    ? selectedBundle.originalPrice
+    : (unitOriginalPrice ? unitOriginalPrice * quantity : null);
+
+  const totalPrice = displayPrice;
 
   // Variants list
   const variantList = product.colors && product.colors.length > 0
@@ -392,13 +411,20 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
             </div>
 
             {/* Large Price Box */}
-            <div className="bg-[#F4F4F5] rounded-2xl p-4 sm:p-5 border border-gray-200/60 flex items-baseline gap-3">
-              <span className="text-3xl sm:text-4xl font-black text-[#1F241E]">
-                ৳{displayPrice.toLocaleString('bn-BD')}
-              </span>
-              {product.discountPrice && (
-                <span className="text-base sm:text-lg text-gray-400 line-through font-bold">
-                  ৳{product.price.toLocaleString('bn-BD')}
+            <div className="bg-[#F4F4F5] rounded-2xl p-4 sm:p-5 border border-gray-200/60 flex items-center justify-between gap-3">
+              <div className="flex items-baseline gap-3">
+                <span className="text-3xl sm:text-4xl font-black text-[#1F241E]">
+                  ৳{displayPrice.toLocaleString('bn-BD')}
+                </span>
+                {displayOriginalPrice && displayOriginalPrice > displayPrice && (
+                  <span className="text-base sm:text-lg text-gray-400 line-through font-bold">
+                    ৳{displayOriginalPrice.toLocaleString('bn-BD')}
+                  </span>
+                )}
+              </div>
+              {selectedBundle && (
+                <span className="text-xs sm:text-sm font-extrabold bg-[#5E6A45]/15 text-[#5E6A45] px-3.5 py-1.5 rounded-xl border border-[#5E6A45]/20">
+                  {selectedBundle.title}
                 </span>
               )}
             </div>
@@ -555,38 +581,26 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
               </div>
             ) : (
               <>
-                {/* Quantity Selector Box */}
-                <div className="flex flex-wrap items-center justify-between gap-3 pt-1 text-xs sm:text-sm font-bold text-[#1F241E]">
-                  <span>পরিমাণ (Quantity):</span>
-                  <div className="flex items-center gap-4">
-                    <div className="flex items-center border border-gray-300 rounded-xl overflow-hidden bg-[#F4F4F5]">
-                      <button
-                        onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                        className="px-3 py-2 hover:bg-gray-200 text-[#1F241E] transition-colors cursor-pointer font-extrabold"
-                      >
-                        <Minus className="w-3.5 h-3.5" />
-                      </button>
-                      <span className="px-4 font-black text-sm text-[#1F241E]">{quantity}</span>
-                      <button
-                        onClick={() => setQuantity(quantity + 1)}
-                        className="px-3 py-2 hover:bg-gray-200 text-[#1F241E] transition-colors cursor-pointer font-extrabold"
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                    <span className="text-xs font-extrabold text-[#374151]">
-                      মোট দাম: ৳{totalPrice.toLocaleString('bn-BD')}
-                    </span>
-                  </div>
-                </div>
+                {/* Bundle Package Deals Selection */}
+                <BundleSelector
+                  bundles={effectiveBundles}
+                  selectedBundleId={selectedBundleId}
+                  onSelectBundle={(b) => {
+                    setSelectedBundleId(b.id);
+                    setQuantity(b.quantity);
+                  }}
+                />
 
                 {/* Main Order Button */}
                 <button
                   onClick={handleOrderNow}
-                  className="w-full bg-[#5E6A45] hover:bg-[#485333] active:scale-[0.98] text-white text-base sm:text-lg font-black py-3.5 px-6 rounded-2xl flex items-center justify-center gap-2.5 shadow-lg transition-all cursor-pointer mt-2"
+                  className="relative overflow-hidden w-full bg-[#5E6A45] hover:bg-[#485333] active:scale-[0.98] text-white text-base sm:text-lg font-black py-3.5 px-6 rounded-2xl flex items-center justify-center gap-2.5 shadow-xl hover:shadow-2xl transition-all cursor-pointer mt-2 animate-order-btn"
                 >
-                  <Zap className="w-5 h-5 fill-white text-amber-300" />
-                  <span>এখনই অর্ডার করুন</span>
+                  {/* Shimmer Light Bar */}
+                  <span className="absolute inset-0 w-1/2 h-full bg-gradient-to-r from-transparent via-white/35 to-transparent pointer-events-none animate-order-shimmer" />
+
+                  <Zap className="w-5 h-5 sm:w-6 sm:h-6 fill-amber-300 text-amber-300 animate-zap-pop shrink-0" />
+                  <span className="relative z-10 tracking-wide">এখনই অর্ডার করুন</span>
                 </button>
               </>
             )}
@@ -624,26 +638,7 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
           >
             প্রোডাক্ট বিবরণ
           </button>
-          <button
-            onClick={() => setActiveTab('spec')}
-            className={`pb-2.5 transition-colors relative whitespace-nowrap cursor-pointer ${
-              activeTab === 'spec'
-                ? 'text-[#5E6A45] font-black border-b-2 border-[#5E6A45]'
-                : 'hover:text-[#1F241E]'
-            }`}
-          >
-            স্পেসিফিকেশন ({product.specifications?.length || 0})
-          </button>
-          <button
-            onClick={() => setActiveTab('delivery')}
-            className={`pb-2.5 transition-colors relative whitespace-nowrap cursor-pointer ${
-              activeTab === 'delivery'
-                ? 'text-[#5E6A45] font-black border-b-2 border-[#5E6A45]'
-                : 'hover:text-[#1F241E]'
-            }`}
-          >
-            ডেলিভারি ও রিটার্ন
-          </button>
+
           <button
             onClick={() => setActiveTab('reviews')}
             className={`pb-2.5 transition-colors relative whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
@@ -657,40 +652,38 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
               {reviewsList.length}
             </span>
           </button>
-          <button
-            onClick={() => setActiveTab('guarantee')}
-            className={`pb-2.5 transition-colors relative whitespace-nowrap cursor-pointer ${
-              activeTab === 'guarantee'
-                ? 'text-[#5E6A45] font-black border-b-2 border-[#5E6A45]'
-                : 'hover:text-[#1F241E]'
-            }`}
-          >
-            আমাদের গ্যারান্টি
-          </button>
+
         </div>
 
         {/* Tab Content */}
         <div>
           {activeTab === 'desc' && (
             <div className="space-y-8">
-              {/* Special Guarantee Yellow Alert Box */}
-              <div className="bg-[#FFFDF5] border border-[#E6DBBF] p-5 rounded-2xl space-y-3 shadow-2xs">
-                <h3 className="font-extrabold text-[#1F241E] text-sm sm:text-base flex items-center gap-2">
-                  <CheckCircle2 className="w-5 h-5 text-[#5E6A45]" />
-                  <span>কেন কীনোমার্ট থেকে কেনাকাটা করবেন?</span>
-                </h3>
-                <ul className="space-y-2 text-xs sm:text-sm text-[#3D4738] font-medium pl-1">
-                  <li className="flex items-center gap-2">• ১০০% অরিজিনাল অফিশিয়াল বা ইম্পোর্টেড প্রিমিয়াম গ্যাজেট</li>
-                  <li className="flex items-center gap-2">• সরাসরি প্রস্তুতকারক ও ইম্পোর্টার থেকে সংগৃহীত</li>
-                  <li className="flex items-center gap-2">• দ্রুততম সময়ে সারা বাংলাদেশে ক্যাশ অন হোম ডেলিভারি</li>
-                  <li className="flex items-center gap-2">• ডেলিভারিম্যানের সামনে চেক করে দেখে নেওয়ার সুযোগ</li>
-                </ul>
-              </div>
-
               {/* Main Description Text */}
               <div className="text-xs sm:text-sm text-[#3D4738] leading-relaxed whitespace-pre-line font-medium space-y-2">
                 <p>{product.shortDescription}</p>
                 <p>{product.longDescription}</p>
+              </div>
+
+              {/* Specifications Section directly under description */}
+              <div className="space-y-4 border-t border-[#E8E3D9] pt-6">
+                <h3 className="font-black text-[#1F241E] text-base sm:text-lg flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-[#5E6A45]" />
+                  <span>স্পেসিফিকেশন (Specifications)</span>
+                </h3>
+
+                {product.specifications && product.specifications.length > 0 ? (
+                  <div className="border border-[#E8E3D9] rounded-2xl overflow-hidden divide-y divide-[#E8E3D9]">
+                    {product.specifications.map((spec, i) => (
+                      <div key={i} className="flex p-3 sm:p-4 text-xs sm:text-sm bg-white">
+                        <span className="w-1/3 font-black text-[#1F241E]">{spec.key}</span>
+                        <span className="w-2/3 text-[#4A5343] font-medium">{spec.value}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-[#6B7264] italic">কোনো অতিরিক্ত স্পেসিফিকেশন দেওয়া হয়নি।</p>
+                )}
               </div>
 
               {/* Real Product Gallery Posters / Photos */}
@@ -737,30 +730,7 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
             </div>
           )}
 
-          {activeTab === 'spec' && (
-            <div className="space-y-4">
-              {product.specifications && product.specifications.length > 0 ? (
-                <div className="border border-[#E8E3D9] rounded-2xl overflow-hidden divide-y divide-[#E8E3D9]">
-                  {product.specifications.map((spec, i) => (
-                    <div key={i} className="flex p-3 sm:p-4 text-xs sm:text-sm bg-white">
-                      <span className="w-1/3 font-black text-[#1F241E]">{spec.key}</span>
-                      <span className="w-2/3 text-[#4A5343] font-medium">{spec.value}</span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-xs text-[#6B7264] italic">কোনো অতিরিক্ত স্পেসিফিকেশন দেওয়া হয়নি।</p>
-              )}
-            </div>
-          )}
 
-          {activeTab === 'delivery' && (
-            <div className="space-y-3 text-xs sm:text-sm text-[#3D4738] font-medium leading-relaxed">
-              <p>• <strong>ঢাকা সিটি এলাকা:</strong> ১ দিনে ক্যাশ অন হোম ডেলিভারি (চার্জ ৳৬০)</p>
-              <p>• <strong>ঢাকার বাইরে সারা দেশ:</strong> ২-৩ দিনে ক্যাশ অন ডেলিভারি (চার্জ ৳১২০)</p>
-              <p>• প্রোডাক্ট ডেলিভারিম্যানের থেকে বুঝে পাওয়ার পর চেক করে মূল্য পরিশোধ করবেন।</p>
-            </div>
-          )}
 
           {activeTab === 'reviews' && (
             <div className="space-y-6">
@@ -948,12 +918,7 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
             </div>
           )}
 
-          {activeTab === 'guarantee' && (
-            <div className="space-y-3 text-xs sm:text-sm text-[#3D4738] font-medium leading-relaxed">
-              <p>• ১০০% অরিজিনাল ও ইনট্যাক্ট গ্যাজেটের গ্যারান্টি।</p>
-              <p>• কোনো ধরনের ম্যানুফ্যাকচারিং ত্রুটি থাকলে ৭ দিনের মধ্যে সহজ রিটার্ন ও রিপ্লেসমেন্ট।</p>
-            </div>
-          )}
+
         </div>
       </div>
 
@@ -1024,10 +989,13 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
         ) : (
           <button
             onClick={handleOrderNow}
-            className="flex-1 bg-[#5E6A45] hover:bg-[#485333] active:scale-95 text-white font-extrabold text-sm py-2.5 px-4 rounded-xl flex items-center justify-center gap-1.5 shadow-md transition-all cursor-pointer"
+            className="relative overflow-hidden flex-1 bg-[#5E6A45] hover:bg-[#485333] active:scale-95 text-white font-extrabold text-sm py-2.5 px-4 rounded-xl flex items-center justify-center gap-1.5 shadow-lg transition-all cursor-pointer animate-order-btn"
           >
-            <Zap className="w-4 h-4 fill-white text-amber-300" />
-            <span>এখনই অর্ডার করুন</span>
+            {/* Shimmer Light Bar */}
+            <span className="absolute inset-0 w-1/2 h-full bg-gradient-to-r from-transparent via-white/35 to-transparent pointer-events-none animate-order-shimmer" />
+
+            <Zap className="w-4 h-4 fill-amber-300 text-amber-300 animate-zap-pop shrink-0" />
+            <span className="relative z-10">এখনই অর্ডার করুন</span>
           </button>
         )}
       </div>

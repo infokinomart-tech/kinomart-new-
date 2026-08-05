@@ -75,22 +75,30 @@ const MainAppContent: React.FC = () => {
   }, [searchQuery, setViewMode, setSearchQuery]);
 
   // Find parent category object if selectedCategory is set (either as category name or subcategory name)
-  const activeParentCategory = categories.find(
-    (c) => c.name === selectedCategory || c.subCategories?.includes(selectedCategory || '')
-  );
+  const activeParentCategory = categories.find((c) => {
+    const catName = c.name.trim().toLowerCase();
+    const selCat = (selectedCategory || '').trim().toLowerCase();
+    if (catName === selCat) return true;
+    return c.subCategories?.some((s) => s.trim().toLowerCase() === selCat);
+  });
 
   // Filter products by category & search query
   const displayedProducts = products.filter((product) => {
+    const selCat = (selectedCategory || '').trim().toLowerCase();
+    const pCat = (product.category || '').trim().toLowerCase();
+    const pSubCat = (product.subCategory || '').trim().toLowerCase();
+
     const matchesCategory =
       !selectedCategory ||
-      product.category === selectedCategory ||
-      product.subCategory === selectedCategory;
+      pCat === selCat ||
+      pSubCat === selCat;
 
+    const q = searchQuery.trim().toLowerCase();
     const matchesSearch =
-      !searchQuery.trim() ||
-      product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      product.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (product.subCategory && product.subCategory.toLowerCase().includes(searchQuery.toLowerCase()));
+      !q ||
+      product.name.toLowerCase().includes(q) ||
+      pCat.includes(q) ||
+      pSubCat.includes(q);
 
     return matchesCategory && matchesSearch;
   });
@@ -128,6 +136,8 @@ const MainAppContent: React.FC = () => {
           <div className="animate-fadeIn">
             {/* Hero Banner Slider */}
             <HeroSlider />
+
+
 
 
 

@@ -361,18 +361,21 @@ export const Header: React.FC = () => {
                           isCatSelected || isSubSelected ? 'bg-[#F0F5EA] text-[#3D5226]' : 'text-gray-800 hover:bg-gray-100/80'
                         }`}
                       >
+                        {/* Category Name - Clicking selects category */}
                         <span
                           onClick={() => handleCategoryClick(cat.name)}
-                          className="flex-1 cursor-pointer hover:underline"
+                          className="flex-1 font-extrabold cursor-pointer hover:text-[#5E7A3B]"
                         >
                           {cat.name}
                         </span>
 
+                        {/* Arrow - Clicking toggles subcategories accordion */}
                         {hasSubs ? (
                           <button
+                            type="button"
                             onClick={(e) => toggleMobileCat(cat.id, e)}
-                            className="p-1 text-gray-500 hover:text-black hover:bg-gray-200/60 rounded-md transition-colors cursor-pointer"
-                            title="সাব-ক্যাটাগরি দেখুন"
+                            className="p-1.5 text-gray-500 hover:text-black hover:bg-gray-200/60 rounded-md transition-colors cursor-pointer flex items-center gap-1"
+                            title="সাব-ক্যাটাগরি সমূহ দেখুন"
                           >
                             <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${isExpanded ? 'rotate-180 text-[#5E7A3B]' : ''}`} />
                           </button>
@@ -641,7 +644,7 @@ export const Header: React.FC = () => {
                             className="p-2.5 hover:bg-[#F5F2EA] rounded-xl flex items-center gap-3 cursor-pointer transition-colors"
                           >
                             <img
-                              src={p.images?.[0] || p.image}
+                              src={p.thumbnail || p.gallery?.[0] || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500'}
                               alt={p.name}
                               className="w-12 h-12 object-cover rounded-lg border border-[#E8E3D9] shrink-0"
                             />

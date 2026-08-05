@@ -29,11 +29,19 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   };
 
   // Calculate discount percentage if discountPrice exists
-  const discountPercent = product.discountPrice
+  const discountPercent = product.discountPrice && product.price
     ? Math.round(((product.price - product.discountPrice) / product.price) * 100)
     : 0;
 
-  const displayPrice = product.discountPrice || product.price;
+  const displayPrice = (product.discountPrice || product.price || 0);
+
+  const formatPrice = (val: number) => {
+    try {
+      return (val || 0).toLocaleString('bn-BD');
+    } catch {
+      return (val || 0).toString();
+    }
+  };
 
   return (
     <div
@@ -44,8 +52,13 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
       <div>
         <div className="relative w-full aspect-square bg-[#F5F2EA] rounded-xl overflow-hidden flex items-center justify-center mb-3">
           <img
-            src={product.thumbnail}
-            alt={product.name}
+            src={product.thumbnail || product.gallery?.[0] || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500'}
+            alt={product.name || 'প্রোডাক্ট'}
+            loading="lazy"
+            decoding="async"
+            onError={(e) => {
+              (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500';
+            }}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
             referrerPolicy="no-referrer"
           />
@@ -75,8 +88,11 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
 
         {/* Content */}
         <div className="space-y-1">
-          <span className="text-[10px] font-medium text-[#7C8573] uppercase tracking-wider block">
+          <span className="text-[10px] font-medium text-[#7C8573] tracking-wide block truncate">
             {product.category || 'গ্যাজেট'}
+            {product.subCategory && (
+              <span className="text-[#5E7A3B] font-bold"> • {product.subCategory}</span>
+            )}
           </span>
 
           <h3
@@ -108,11 +124,11 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           {/* Price */}
           <div className="flex items-baseline gap-2 pt-1">
             <span className="text-sm sm:text-lg font-black text-[#5E7A3B]">
-              ৳{displayPrice.toLocaleString('bn-BD')}
+              ৳{formatPrice(displayPrice)}
             </span>
-            {product.discountPrice && (
+            {Boolean(product.discountPrice && product.price) && (
               <span className="text-xs text-gray-400 line-through">
-                ৳{product.price.toLocaleString('bn-BD')}
+                ৳{formatPrice(product.price)}
               </span>
             )}
           </div>
@@ -132,10 +148,13 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
         ) : (
           <button
             onClick={handleQuickOrder}
-            className="w-full bg-[#5E6A45] hover:bg-[#485333] active:scale-[0.98] text-white text-xs sm:text-sm font-bold py-2 sm:py-2.5 px-3 rounded-xl flex items-center justify-center gap-1.5 transition-all shadow-xs cursor-pointer"
+            className="relative overflow-hidden w-full bg-[#5E6A45] hover:bg-[#485333] active:scale-[0.98] text-white text-xs sm:text-sm font-black py-2 sm:py-2.5 px-3 rounded-xl flex items-center justify-center gap-1.5 transition-all shadow-md hover:shadow-lg cursor-pointer group animate-order-btn"
           >
-            <Zap className="w-4 h-4 fill-white text-white animate-pulse" />
-            <span>অর্ডার করুন</span>
+            {/* Shimmer Light Bar */}
+            <span className="absolute inset-0 w-1/2 h-full bg-gradient-to-r from-transparent via-white/30 to-transparent pointer-events-none animate-order-shimmer" />
+            
+            <Zap className="w-4 h-4 fill-amber-300 text-amber-300 animate-zap-pop shrink-0" />
+            <span className="relative z-10 tracking-wide">অর্ডার করুন</span>
           </button>
         )}
       </div>

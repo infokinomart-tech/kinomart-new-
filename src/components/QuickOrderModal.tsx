@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { Product } from '../types';
 import { useStore } from '../context/StoreContext';
 import { Truck, X, Plus, Minus, Check, Tag, ShieldCheck, Copy } from 'lucide-react';
+import { BundleSelector } from './BundleSelector';
+import { getEffectiveBundles } from '../lib/bundleUtils';
 
 interface QuickOrderModalProps {
   product: Product;
@@ -11,8 +13,15 @@ interface QuickOrderModalProps {
 export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({ product, onClose }) => {
   const { createOrder, validateCoupon, settings } = useStore();
 
-  const [quantity, setQuantity] = useState<number>(1);
-  const [customerName, setCustomerName] = useState<string>('');
+  const effectiveBundles = getEffectiveBundles(product);
+  const defaultBundle = effectiveBundles.find((b) => b.isPopular) || effectiveBundles[0];
+
+  const [selectedBundleId, setSelectedBundleId] = useState<string>(defaultBundle?.id || '');
+  const selectedBundle = effectiveBundles.find((b) => b.id === selectedBundleId) || defaultBundle;
+
+  const quantity = selectedBundle?.quantity || 1;
+  const customerNameInitial = '';
+  const [customerName, setCustomerName] = useState<string>(customerNameInitial);
   const [customerPhone, setCustomerPhone] = useState<string>('');
   const [shippingAddress, setShippingAddress] = useState<string>('');
   const [deliveryArea, setDeliveryArea] = useState<'Inside Dhaka' | 'Outside Dhaka'>('Inside Dhaka');
@@ -33,7 +42,7 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({ product, onClo
   const [errorMsg, setErrorMsg] = useState<string>('');
 
   const unitPrice = product.discountPrice || product.price;
-  const subtotal = unitPrice * quantity;
+  const subtotal = selectedBundle ? selectedBundle.price : (unitPrice * quantity);
   const deliveryFee = deliveryArea === 'Inside Dhaka' ? 60 : 120;
   const totalPrice = Math.max(0, subtotal - discountAmount + deliveryFee);
 
@@ -152,30 +161,24 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({ product, onClo
                   {product.name}
                 </h4>
                 <p className="text-xs font-bold text-[#5E7A3B]">
-                  ৳{unitPrice.toLocaleString('bn-BD')}
+                  একক দাম: ৳{unitPrice.toLocaleString('bn-BD')}
                 </p>
               </div>
             </div>
 
-            {/* Quantity Controls */}
-            <div className="flex items-center gap-2 border border-[#D5CEBF] bg-white rounded-lg p-1">
-              <button
-                type="button"
-                onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                className="p-1 hover:bg-[#EFECE6] rounded text-[#2E3B2B]"
-              >
-                <Minus className="w-3.5 h-3.5" />
-              </button>
-              <span className="text-xs font-bold px-2">{quantity}</span>
-              <button
-                type="button"
-                onClick={() => setQuantity(quantity + 1)}
-                className="p-1 hover:bg-[#EFECE6] rounded text-[#2E3B2B]"
-              >
-                <Plus className="w-3.5 h-3.5" />
-              </button>
+            <div className="text-right">
+              <span className="text-xs font-extrabold text-[#1F241E] bg-white border border-[#D5CEBF] px-3 py-1.5 rounded-xl">
+                {selectedBundle ? selectedBundle.title : `${quantity} Pcs`}
+              </span>
             </div>
           </div>
+
+          {/* Bundle Package Deals Selection */}
+          <BundleSelector
+            bundles={effectiveBundles}
+            selectedBundleId={selectedBundleId}
+            onSelectBundle={(b) => setSelectedBundleId(b.id)}
+          />
 
           {/* Form Fields */}
           <div className="space-y-3.5 text-xs sm:text-sm">
@@ -474,10 +477,13 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({ product, onClo
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full bg-[#5E6A45] hover:bg-[#485333] active:scale-[0.98] text-white text-base font-extrabold py-3.5 px-6 rounded-2xl flex items-center justify-center gap-2 shadow-md transition-all disabled:opacity-50"
+            className="relative overflow-hidden w-full bg-[#5E6A45] hover:bg-[#485333] active:scale-[0.98] text-white text-base sm:text-lg font-black py-3.5 px-6 rounded-2xl flex items-center justify-center gap-2 shadow-xl hover:shadow-2xl transition-all disabled:opacity-50 cursor-pointer animate-order-btn"
           >
-            <Check className="w-5 h-5" />
-            <span>
+            {/* Shimmer Light Bar */}
+            <span className="absolute inset-0 w-1/2 h-full bg-gradient-to-r from-transparent via-white/35 to-transparent pointer-events-none animate-order-shimmer" />
+
+            <Check className="w-5 h-5 text-amber-300 stroke-[3] animate-zap-pop shrink-0" />
+            <span className="relative z-10 tracking-wide">
               {isSubmitting
                 ? 'অর্ডার প্রসেস হচ্ছে...'
                 : `অর্ডার কনফার্ম করুন (৳${totalPrice.toLocaleString('bn-BD')})`}

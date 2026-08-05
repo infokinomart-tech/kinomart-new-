@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useStore } from '../../context/StoreContext';
-import { Product, Specification } from '../../types';
+import { Product, Specification, ProductBundle } from '../../types';
+import { getDefaultBundles } from '../../lib/bundleUtils';
 import {
   Plus,
   Edit2,
@@ -12,7 +13,9 @@ import {
   Layers,
   Upload,
   Video,
-  Clock
+  Clock,
+  PackageCheck,
+  Zap
 } from 'lucide-react';
 
 export const AdminProducts: React.FC = () => {
@@ -45,6 +48,7 @@ export const AdminProducts: React.FC = () => {
       shortDescription: '',
       longDescription: '',
       specifications: [{ key: '', value: '' }],
+      bundles: [],
       hasTimer: false,
       isBestSeller: false,
       isFeatured: false,
@@ -92,6 +96,47 @@ export const AdminProducts: React.FC = () => {
     if (editingProduct) {
       const specs = (editingProduct.specifications || []).filter((_, i) => i !== index);
       setEditingProduct({ ...editingProduct, specifications: specs });
+    }
+  };
+
+  // Bundle package handlers
+  const handleGenerateDefaultBundles = () => {
+    if (editingProduct) {
+      const price = editingProduct.discountPrice || editingProduct.price || 1000;
+      const gen = getDefaultBundles(price);
+      setEditingProduct({ ...editingProduct, bundles: gen });
+    }
+  };
+
+  const handleAddBundleRow = () => {
+    if (editingProduct) {
+      const bundles = editingProduct.bundles || [];
+      const newB: ProductBundle = {
+        id: `b-${Date.now()}`,
+        title: '1 Pc',
+        quantity: 1,
+        price: editingProduct.discountPrice || editingProduct.price || 1000,
+        originalPrice: Math.round((editingProduct.discountPrice || editingProduct.price || 1000) * 1.3),
+        badgeText: '',
+        tagText: 'ক্যাশ অন ডেলিভারী',
+        isPopular: false
+      };
+      setEditingProduct({ ...editingProduct, bundles: [...bundles, newB] });
+    }
+  };
+
+  const handleUpdateBundleRow = (index: number, field: keyof ProductBundle, value: any) => {
+    if (editingProduct) {
+      const bundles = [...(editingProduct.bundles || [])];
+      bundles[index] = { ...bundles[index], [field]: value };
+      setEditingProduct({ ...editingProduct, bundles });
+    }
+  };
+
+  const handleRemoveBundleRow = (index: number) => {
+    if (editingProduct) {
+      const bundles = (editingProduct.bundles || []).filter((_, i) => i !== index);
+      setEditingProduct({ ...editingProduct, bundles });
     }
   };
 
@@ -279,7 +324,17 @@ export const AdminProducts: React.FC = () => {
                   <label className="block text-[#CBD5E1] font-bold mb-1.5">ক্যাটাগরি *</label>
                   <select
                     value={editingProduct.category || ''}
-                    onChange={(e) => setEditingProduct({ ...editingProduct, category: e.target.value })}
+                    onChange={(e) => {
+                      const newCatName = e.target.value;
+                      const foundCat = categories.find((c) => c.name.trim().toLowerCase() === newCatName.trim().toLowerCase());
+                      const currentSub = editingProduct.subCategory || '';
+                      const subs = foundCat?.subCategories || [];
+                      setEditingProduct({
+                        ...editingProduct,
+                        category: newCatName,
+                        subCategory: subs.includes(currentSub) ? currentSub : ''
+                      });
+                    }}
                     className="w-full bg-[#050B18] border border-[#1E293B] rounded-xl p-3 text-white focus:outline-none focus:border-[#2563EB]"
                   >
                     {categories.map((c) => (
@@ -299,7 +354,7 @@ export const AdminProducts: React.FC = () => {
                   >
                     <option value="">-- বাছাই সাব-ক্যাটাগরি --</option>
                     {(
-                      categories.find((c) => c.name === editingProduct.category)?.subCategories || []
+                      categories.find((c) => c.name.trim().toLowerCase() === (editingProduct.category || '').trim().toLowerCase())?.subCategories || []
                     ).map((sc, i) => (
                       <option key={i} value={sc}>
                         {sc}
@@ -573,6 +628,163 @@ export const AdminProducts: React.FC = () => {
                     </div>
                   ))}
                 </div>
+              </div>
+
+              {/* Package Offers / Quantity Deals Section */}
+              <div className="bg-[#0B1220] border border-[#1E293B] rounded-2xl p-4 text-white space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#1E293B] pb-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 flex items-center justify-center shrink-0">
+                      <PackageCheck className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-sm sm:text-base text-white">
+                        প্যাকেজ অফার / বান্ডেল ডিল (Quantity Deals & Bundles)
+                      </h3>
+                      <p className="text-xs text-gray-400">
+                        অর্ডার করার সময় ১ Pc, ২ Pc, ৪ Pc ইত্যাদি অফার কার্ড প্রদর্শিত হবে
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleGenerateDefaultBundles}
+                      className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-extrabold px-3 py-2 rounded-xl flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
+                    >
+                      <Zap className="w-3.5 h-3.5" />
+                      <span>⚡ স্ট্যান্ডার্ড ৩টি জেনারেট করুন</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleAddBundleRow}
+                      className="bg-[#2563EB] hover:bg-blue-600 text-white text-xs font-bold px-3 py-2 rounded-xl flex items-center gap-1 transition-all cursor-pointer shadow-sm"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>+ নতুন প্যাকেজ</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Bundle Rows */}
+                {(!editingProduct.bundles || editingProduct.bundles.length === 0) ? (
+                  <div className="text-center py-4 bg-[#050B18] rounded-xl border border-dashed border-[#1E293B] text-gray-400 text-xs">
+                    <p className="font-medium text-gray-300 mb-1">কোনো কাস্টম প্যাকেজ নেই (Standard 1, 2, 4 Pc ডায়নামিকালী জেনারেট হবে)</p>
+                    <button
+                      type="button"
+                      onClick={handleGenerateDefaultBundles}
+                      className="text-blue-400 font-bold hover:underline text-xs mt-1"
+                    >
+                      👉 এখানে ক্লিক করে ১-ক্লিকে ৩টি প্যাকেজ তৈরি করুন
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {editingProduct.bundles.map((bundle, idx) => (
+                      <div
+                        key={bundle.id || idx}
+                        className="bg-[#050B18] border border-[#1E293B] rounded-xl p-3.5 space-y-3 relative group"
+                      >
+                        <div className="flex items-center justify-between text-xs font-bold text-gray-300 border-b border-[#1E293B] pb-2">
+                          <span className="text-blue-400">প্যাকেজ #{idx + 1}</span>
+                          <div className="flex items-center gap-3">
+                            <label className="flex items-center gap-1.5 cursor-pointer text-amber-300 text-[11px]">
+                              <input
+                                type="checkbox"
+                                checked={bundle.isPopular || false}
+                                onChange={(e) => handleUpdateBundleRow(idx, 'isPopular', e.target.checked)}
+                                className="accent-amber-500 rounded cursor-pointer"
+                              />
+                              <span>ডিফল্ট সিলেক্টেড (Popular Deal)</span>
+                            </label>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveBundleRow(idx)}
+                              className="text-red-400 hover:text-red-300 p-1 cursor-pointer"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
+                          {/* Title */}
+                          <div>
+                            <label className="block text-gray-400 mb-1 font-bold">টাইটেল (Title)</label>
+                            <input
+                              type="text"
+                              value={bundle.title}
+                              onChange={(e) => handleUpdateBundleRow(idx, 'title', e.target.value)}
+                              placeholder="1 Pc / 2 Pc / 4 Pc"
+                              className="w-full bg-[#0B1220] border border-[#1E293B] rounded-lg p-2 text-white focus:border-[#2563EB]"
+                            />
+                          </div>
+
+                          {/* Quantity */}
+                          <div>
+                            <label className="block text-gray-400 mb-1 font-bold">পরিমাণ (Quantity)</label>
+                            <input
+                              type="number"
+                              value={bundle.quantity}
+                              onChange={(e) => handleUpdateBundleRow(idx, 'quantity', Number(e.target.value))}
+                              placeholder="1"
+                              className="w-full bg-[#0B1220] border border-[#1E293B] rounded-lg p-2 text-white focus:border-[#2563EB]"
+                            />
+                          </div>
+
+                          {/* Price */}
+                          <div>
+                            <label className="block text-emerald-400 mb-1 font-bold">প্যাকেজ মূল্য (Price)</label>
+                            <input
+                              type="number"
+                              value={bundle.price}
+                              onChange={(e) => handleUpdateBundleRow(idx, 'price', Number(e.target.value))}
+                              placeholder="989"
+                              className="w-full bg-[#0B1220] border border-[#1E293B] rounded-lg p-2 text-emerald-300 font-bold focus:border-[#2563EB]"
+                            />
+                          </div>
+
+                          {/* Original Price */}
+                          <div>
+                            <label className="block text-gray-400 mb-1 font-bold">পূর্বের মূল্য (Original Price)</label>
+                            <input
+                              type="number"
+                              value={bundle.originalPrice || ''}
+                              onChange={(e) => handleUpdateBundleRow(idx, 'originalPrice', Number(e.target.value))}
+                              placeholder="1300"
+                              className="w-full bg-[#0B1220] border border-[#1E293B] rounded-lg p-2 text-gray-300 focus:border-[#2563EB]"
+                            />
+                          </div>
+
+                          {/* Save Badge Text */}
+                          <div>
+                            <label className="block text-red-400 mb-1 font-bold">ছাড়ের ব্যাজ (Save Badge)</label>
+                            <input
+                              type="text"
+                              value={bundle.badgeText || ''}
+                              onChange={(e) => handleUpdateBundleRow(idx, 'badgeText', e.target.value)}
+                              placeholder="🔥 SAVE 179 TK"
+                              className="w-full bg-[#0B1220] border border-[#1E293B] rounded-lg p-2 text-red-300 focus:border-[#2563EB]"
+                            />
+                          </div>
+
+                          {/* Tag Text */}
+                          <div>
+                            <label className="block text-gray-400 mb-1 font-bold">ট্যাগ (Tag Text)</label>
+                            <input
+                              type="text"
+                              value={bundle.tagText || ''}
+                              onChange={(e) => handleUpdateBundleRow(idx, 'tagText', e.target.value)}
+                              placeholder="ক্যাশ অন ডেলিভারী"
+                              className="w-full bg-[#0B1220] border border-[#1E293B] rounded-lg p-2 text-white focus:border-[#2563EB]"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Offer Timer Section (Matching Demo Image) */}

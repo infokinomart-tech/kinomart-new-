@@ -1,3 +1,14 @@
+export interface ProductBundle {
+  id: string;
+  title: string;
+  quantity: number;
+  price: number;
+  originalPrice?: number;
+  badgeText?: string;
+  tagText?: string;
+  isPopular?: boolean;
+}
+
 export interface Specification {
   key: string;
   value: string;
@@ -28,6 +39,7 @@ export interface Product {
   shortDescription?: string;
   longDescription?: string;
   specifications?: Specification[];
+  bundles?: ProductBundle[];
   hasTimer?: boolean;
   timerTitle?: string;
   timerEndTime?: string;
@@ -120,5 +132,17 @@ export interface CustomerProfile {
   name: string;
   phone: string;
   address: string;
+}
+
+export interface MockSMSLog {
+  id: string;
+  orderNumber: string;
+  customerName: string;
+  customerPhone: string;
+  message: string;
+  status: 'DELIVERED' | 'FAILED' | 'SENDING';
+  sentAt: string;
+  gateway: string;
+  messageId: string;
 }
 

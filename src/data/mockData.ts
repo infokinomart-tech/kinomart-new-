@@ -100,6 +100,37 @@ export const INITIAL_PRODUCTS: Product[] = [
       { key: 'চার্জিং সময়', value: '১.৫ ঘন্টা (Type-C High Speed)' },
       { key: 'ওয়াটারপ্রুফ', value: 'IPX5 Sweat-proof' }
     ],
+    bundles: [
+      {
+        id: 'b-1',
+        title: '1 Pc',
+        quantity: 1,
+        price: 989,
+        originalPrice: 1300,
+        tagText: 'ক্যাশ অন ডেলিভারী',
+        isPopular: false
+      },
+      {
+        id: 'b-2',
+        title: '2 Pc',
+        quantity: 2,
+        price: 1799,
+        originalPrice: 2600,
+        badgeText: '🔥 SAVE 179 TK',
+        tagText: 'ক্যাশ অন ডেলিভারী',
+        isPopular: true
+      },
+      {
+        id: 'b-3',
+        title: '4 Pc',
+        quantity: 4,
+        price: 3499,
+        originalPrice: 5200,
+        badgeText: '🔥 SAVE 457 TK',
+        tagText: 'ক্যাশ অন ডেলিভারী',
+        isPopular: false
+      }
+    ],
     hasTimer: true,
     isBestSeller: true,
     isFeatured: true,

@@ -14,11 +14,13 @@ import {
   Copy,
   Check,
   Save,
-  FileText
+  MessageSquare,
+  Send,
+  Smartphone
 } from 'lucide-react';
 
 export const AdminOrders: React.FC = () => {
-  const { orders, updateOrderStatus, deleteOrder } = useStore();
+  const { orders, updateOrderStatus, deleteOrder, triggerMockSMS, settings } = useStore();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStatus, setSelectedStatus] = useState<string>('All');
@@ -33,11 +35,29 @@ export const AdminOrders: React.FC = () => {
   const [adminNote, setAdminNote] = useState('');
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
+  // SMS Notification states inside modal
+  const [sendSmsOnUpdate, setSendSmsOnUpdate] = useState(true);
+  const [customSmsText, setCustomSmsText] = useState('');
+  const [smsSentNotice, setSmsSentNotice] = useState(false);
+
   // Calculate metrics
   const todayOrders = orders.length;
   const todayPending = orders.filter((o) => o.status === 'Pending').length;
   const todayConfirmed = orders.filter((o) => o.status === 'Confirmed').length;
   const todayCancelled = orders.filter((o) => o.status === 'Cancelled').length;
+
+  const generateDefaultSms = (st: OrderStatus, ord: Order) => {
+    if (st === 'Confirmed') {
+      return `প্রিয় ${ord.customerName}, আপনার ${ord.orderNumber} নম্বর অর্ডারটি নিশ্চিত (Confirmed) করা হয়েছে। মোট মূল্য: ৳${ord.totalPrice}। দ্রুত ডেলিভারি দেওয়া হবে। - ${settings.websiteTitle}`;
+    } else if (st === 'Shipped') {
+      return `প্রিয় ${ord.customerName}, আপনার ${ord.orderNumber} অর্ডারটি কুরিয়ারে শিপ করা হয়েছে। মোট পরিশোধযোগ্য: ৳${ord.totalPrice}। - ${settings.websiteTitle}`;
+    } else if (st === 'Delivered') {
+      return `প্রিয় ${ord.customerName}, আপনার ${ord.orderNumber} অর্ডারটি সফলভাবে ডেলিভারি করা হয়েছে। আমাদের সাথে থাকার জন্য ধন্যবাদ! - ${settings.websiteTitle}`;
+    } else if (st === 'Cancelled') {
+      return `প্রিয় ${ord.customerName}, আপনার ${ord.orderNumber} অর্ডারটি বাতিল করা হয়েছে। অনুসন্ধানের জন্য কল করুন: ${settings.phone}। - ${settings.websiteTitle}`;
+    }
+    return `প্রিয় ${ord.customerName}, আপনার ${ord.orderNumber} অর্ডারটির স্ট্যাটাস পরিবর্তিত হয়ে '${st}' হয়েছে। মোট: ৳${ord.totalPrice}। - ${settings.websiteTitle}`;
+  };
 
   // Filter orders
   const filteredOrders = orders.filter((order) => {
@@ -61,14 +81,44 @@ export const AdminOrders: React.FC = () => {
     setNewStatus(order.status);
     setNewCallStatus(order.callStatus || 'Not Called');
     setAdminNote(order.notes || '');
+    setSendSmsOnUpdate(true);
+    setCustomSmsText(generateDefaultSms(order.status, order));
+    setSmsSentNotice(false);
+  };
+
+  const handleStatusChange = (st: OrderStatus) => {
+    setNewStatus(st);
+    if (editingOrder) {
+      setCustomSmsText(generateDefaultSms(st, editingOrder));
+    }
   };
 
   const handleSaveEdit = () => {
     if (editingOrder) {
-      updateOrderStatus(editingOrder.id, newStatus, newCallStatus);
-      // Update notes in order
+      updateOrderStatus(
+        editingOrder.id,
+        newStatus,
+        newCallStatus,
+        customSmsText,
+        sendSmsOnUpdate
+      );
       editingOrder.notes = adminNote;
       setEditingOrder(null);
+    }
+  };
+
+  const handleQuickSendSmsRow = (order: Order) => {
+    const msg = generateDefaultSms(order.status, order);
+    triggerMockSMS(order, msg);
+  };
+
+  const handleDirectSendSmsModal = () => {
+    if (editingOrder) {
+      const msg = customSmsText || generateDefaultSms(newStatus, editingOrder);
+      const updatedOrder = { ...editingOrder, status: newStatus };
+      triggerMockSMS(updatedOrder, msg);
+      setSmsSentNotice(true);
+      setTimeout(() => setSmsSentNotice(false), 3000);
     }
   };
 
@@ -256,6 +306,14 @@ export const AdminOrders: React.FC = () => {
                           title="Edit Order"
                         >
                           <Edit2 className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => handleQuickSendSmsRow(ord)}
+                          className="p-2 bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/40 rounded-xl transition-colors cursor-pointer flex items-center gap-1 text-[10px] font-bold"
+                          title="কাস্টমারকে SMS নিশ্চিতকরণ পাঠান"
+                        >
+                          <MessageSquare className="w-3.5 h-3.5" />
+                          <span className="hidden lg:inline">SMS</span>
                         </button>
                         <button
                           onClick={() => {
@@ -510,18 +568,22 @@ export const AdminOrders: React.FC = () => {
             {/* Order Status Selectors */}
             <div>
               <label className="block text-[#CBD5E1] font-bold mb-2 text-xs">Order Status:</label>
-              <div className="grid grid-cols-3 gap-2 text-xs">
-                {(['Pending', 'Confirmed', 'Cancelled'] as OrderStatus[]).map((st) => (
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-xs">
+                {(['Pending', 'Confirmed', 'Shipped', 'Delivered', 'Cancelled'] as OrderStatus[]).map((st) => (
                   <button
                     key={st}
                     type="button"
-                    onClick={() => setNewStatus(st)}
-                    className={`py-2.5 rounded-xl font-extrabold transition-all cursor-pointer ${
+                    onClick={() => handleStatusChange(st)}
+                    className={`py-2 rounded-xl font-extrabold transition-all cursor-pointer text-center text-[11px] ${
                       newStatus === st
                         ? st === 'Pending'
                           ? 'bg-amber-500 text-white shadow-md'
                           : st === 'Confirmed'
                           ? 'bg-emerald-500 text-white shadow-md'
+                          : st === 'Shipped'
+                          ? 'bg-blue-500 text-white shadow-md'
+                          : st === 'Delivered'
+                          ? 'bg-green-600 text-white shadow-md'
                           : 'bg-red-500 text-white shadow-md'
                         : 'bg-[#0B1329] border border-[#1E293B] text-[#94A3B8] hover:bg-[#1E293B]'
                     }`}
@@ -530,6 +592,55 @@ export const AdminOrders: React.FC = () => {
                   </button>
                 ))}
               </div>
+            </div>
+
+            {/* Mock SMS Notification Trigger Section */}
+            <div className="bg-[#07131B] border border-emerald-500/30 rounded-2xl p-3.5 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-emerald-400 font-bold text-xs">
+                  <Smartphone className="w-4 h-4 text-emerald-400" />
+                  <span>📱 SMS নোটিফিকেশন ট্রিগার (Mock SMS Gateway)</span>
+                </div>
+                <label className="flex items-center gap-1.5 cursor-pointer text-[11px] text-emerald-200">
+                  <input
+                    type="checkbox"
+                    checked={sendSmsOnUpdate}
+                    onChange={(e) => setSendSmsOnUpdate(e.target.checked)}
+                    className="accent-emerald-500 rounded cursor-pointer"
+                  />
+                  <span>সেভ করার সময় SMS পাঠান</span>
+                </label>
+              </div>
+
+              <div>
+                <textarea
+                  rows={2}
+                  value={customSmsText}
+                  onChange={(e) => setCustomSmsText(e.target.value)}
+                  placeholder="কাস্টমারের জন্য মেসেজ লিখুন..."
+                  className="w-full bg-[#03090F] border border-emerald-500/20 rounded-xl p-2.5 text-xs text-emerald-100 font-mono focus:outline-none focus:border-emerald-500/60 leading-relaxed"
+                />
+              </div>
+
+              <div className="flex items-center justify-between text-[11px]">
+                <div className="text-emerald-400/80 font-mono text-[10px]">
+                  Recipient: <strong className="text-emerald-300">{editingOrder.customerPhone}</strong> ({editingOrder.customerName})
+                </div>
+                <button
+                  type="button"
+                  onClick={handleDirectSendSmsModal}
+                  className="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-xl font-bold flex items-center gap-1.5 cursor-pointer transition-all text-xs"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  <span>এখনই SMS টেস্ট করুন</span>
+                </button>
+              </div>
+
+              {smsSentNotice && (
+                <div className="p-2 bg-emerald-500/20 border border-emerald-500/50 rounded-xl text-emerald-300 text-xs font-bold text-center animate-fadeIn">
+                  ✅ Mock SMS confirmation successfully sent to {editingOrder.customerPhone}!
+                </div>
+              )}
             </div>
 
             {/* Call Status Response Selectors */}

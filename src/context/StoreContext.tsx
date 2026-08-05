@@ -12,6 +12,7 @@ import {
   Category,
   Coupon,
   CustomerProfile,
+  MockSMSLog,
   Order,
   OrderItem,
   Product,
@@ -58,6 +59,13 @@ interface StoreContextType {
   team: TeamMember[];
   settings: StoreSettings;
 
+  // Mock SMS Notifications
+  mockSmsLogs: MockSMSLog[];
+  latestSmsToast: MockSMSLog | null;
+  dismissSmsToast: () => void;
+  triggerMockSMS: (order: Order, customMessage?: string) => MockSMSLog;
+  clearSmsLogs: () => void;
+
   // Admin Controls
   isAdminLoggedIn: boolean;
   isAdminAuthenticated: boolean;
@@ -70,7 +78,7 @@ interface StoreContextType {
 
   // Actions
   createOrder: (orderData: Omit<Order, 'id' | 'orderNumber' | 'createdAt' | 'status' | 'callStatus'>) => Order;
-  updateOrderStatus: (orderId: string, status: Order['status'], callStatus?: Order['callStatus']) => void;
+  updateOrderStatus: (orderId: string, status: Order['status'], callStatus?: Order['callStatus'], customSmsMsg?: string, sendSms?: boolean) => void;
   deleteOrder: (orderId: string) => void;
   
   saveProduct: (product: Product) => void;
@@ -97,6 +105,15 @@ const safeGetStorage = <T,>(key: string, fallback: T): T => {
   } catch (err) {
     console.error(`Error reading ${key} from localStorage:`, err);
     return fallback;
+  }
+};
+
+const safeSetStorage = (key: string, value: any): void => {
+  try {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch (err) {
+    console.warn(`Failed to write ${key} to localStorage:`, err);
   }
 };
 
@@ -164,16 +181,70 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return safeGetStorage('kinomart_settings', INITIAL_SETTINGS);
   });
 
+  // Mock SMS Notification State
+  const [mockSmsLogs, setMockSmsLogs] = useState<MockSMSLog[]>(() => {
+    return safeGetStorage('kinomart_mock_sms_logs', []);
+  });
+  const [latestSmsToast, setLatestSmsToast] = useState<MockSMSLog | null>(null);
+
+  useEffect(() => {
+    safeSetStorage('kinomart_mock_sms_logs', mockSmsLogs);
+  }, [mockSmsLogs]);
+
+  const dismissSmsToast = () => setLatestSmsToast(null);
+
+  const clearSmsLogs = () => setMockSmsLogs([]);
+
+  const triggerMockSMS = (order: Order, customMessage?: string): MockSMSLog => {
+    const statusText = order.status;
+    let defaultMsg = `প্রিয় ${order.customerName}, আপনার ${order.orderNumber} নম্বর অর্ডারটির স্ট্যাটাস পরিবর্তিত হয়ে '${statusText}' হয়েছে। মোট মূল্য: ৳${order.totalPrice}। ধন্যবাদ - ${settings.websiteTitle}`;
+
+    if (order.status === 'Confirmed') {
+      defaultMsg = `প্রিয় ${order.customerName}, আপনার ${order.orderNumber} নম্বর অর্ডারটি নিশ্চিত (Confirmed) করা হয়েছে। মোট মূল্য: ৳${order.totalPrice}। দ্রুত ডেলিভারি দেওয়া হবে। - ${settings.websiteTitle}`;
+    } else if (order.status === 'Shipped') {
+      defaultMsg = `প্রিয় ${order.customerName}, আপনার ${order.orderNumber} অর্ডারটি ডেলিভারির জন্য কুরিয়ারে পাঠানো হয়েছে। ডেলিভারিতে পরিশোধ করুন: ৳${order.totalPrice}। - ${settings.websiteTitle}`;
+    } else if (order.status === 'Delivered') {
+      defaultMsg = `প্রিয় ${order.customerName}, আপনার ${order.orderNumber} অর্ডারটি সফলভাবে ডেলিভারি হয়েছে। কেনাকাটার জন্য ধন্যবাদ! - ${settings.websiteTitle}`;
+    } else if (order.status === 'Cancelled') {
+      defaultMsg = `প্রিয় ${order.customerName}, আপনার ${order.orderNumber} অর্ডারটি বাতিল (Cancelled) করা হয়েছে। যেকোনো প্রয়োজনে কল করুন: ${settings.phone}। - ${settings.websiteTitle}`;
+    }
+
+    const finalMsg = customMessage || defaultMsg;
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+    const newLog: MockSMSLog = {
+      id: `sms-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      orderNumber: order.orderNumber,
+      customerName: order.customerName,
+      customerPhone: order.customerPhone,
+      message: finalMsg,
+      status: 'DELIVERED',
+      sentAt: timeStr,
+      gateway: 'GreenWeb BD SMS API (Simulated)',
+      messageId: `SMS-${Math.floor(100000 + Math.random() * 900000)}`
+    };
+
+    setMockSmsLogs((prev) => [newLog, ...prev]);
+    setLatestSmsToast(newLog);
+
+    return newLog;
+  };
+
   // Sync Customer Profiles to LocalStorage
   useEffect(() => {
-    localStorage.setItem('kinomart_customer_profiles', JSON.stringify(customerProfiles));
+    safeSetStorage('kinomart_customer_profiles', customerProfiles);
   }, [customerProfiles]);
 
   useEffect(() => {
     if (customerUser) {
-      localStorage.setItem('kinomart_current_customer', JSON.stringify(customerUser));
+      safeSetStorage('kinomart_current_customer', customerUser);
     } else {
-      localStorage.removeItem('kinomart_current_customer');
+      try {
+        localStorage.removeItem('kinomart_current_customer');
+      } catch (e) {
+        console.warn(e);
+      }
     }
   }, [customerUser]);
 
@@ -281,63 +352,29 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   }, []);
 
-  // Sync to LocalStorage & Supabase
+  // Sync state to LocalStorage safely
   useEffect(() => {
-    localStorage.setItem('kinomart_products', JSON.stringify(products));
-    if (isSupabaseConfigured() && supabase) {
-      products.forEach(p => {
-        supabase.from('products').upsert({ id: p.id, name: p.name, data: p }).then();
-      });
-    }
+    safeSetStorage('kinomart_products', products);
   }, [products]);
 
   useEffect(() => {
-    localStorage.setItem('kinomart_categories', JSON.stringify(categories));
-    if (isSupabaseConfigured() && supabase) {
-      categories.forEach(c => {
-        supabase.from('categories').upsert({ id: c.id, name: c.name, data: c }).then();
-      });
-    }
+    safeSetStorage('kinomart_categories', categories);
   }, [categories]);
 
   useEffect(() => {
-    localStorage.setItem('kinomart_orders', JSON.stringify(orders));
-    if (isSupabaseConfigured() && supabase) {
-      orders.forEach(o => {
-        supabase.from('orders').upsert({
-          id: o.id,
-          order_number: o.orderNumber,
-          customer_name: o.customerName,
-          customer_phone: o.customerPhone,
-          shipping_address: o.shippingAddress,
-          delivery_area: o.deliveryArea,
-          total_price: o.totalPrice,
-          status: o.status,
-          call_status: o.callStatus,
-          data: o
-        }).then();
-      });
-    }
+    safeSetStorage('kinomart_orders', orders);
   }, [orders]);
 
   useEffect(() => {
-    localStorage.setItem('kinomart_coupons', JSON.stringify(coupons));
-    if (isSupabaseConfigured() && supabase) {
-      coupons.forEach(c => {
-        supabase.from('coupons').upsert({ id: c.id, code: c.code, data: c }).then();
-      });
-    }
+    safeSetStorage('kinomart_coupons', coupons);
   }, [coupons]);
 
   useEffect(() => {
-    localStorage.setItem('kinomart_team', JSON.stringify(team));
+    safeSetStorage('kinomart_team', team);
   }, [team]);
 
   useEffect(() => {
-    localStorage.setItem('kinomart_settings', JSON.stringify(settings));
-    if (isSupabaseConfigured() && supabase) {
-      supabase.from('settings').upsert({ id: 'main_settings', data: settings }).then();
-    }
+    safeSetStorage('kinomart_settings', settings);
   }, [settings]);
 
   // Admin Auth
@@ -419,19 +456,32 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
 
-  const updateOrderStatus = (orderId: string, status: Order['status'], callStatus?: Order['callStatus']) => {
-    setOrders(prev =>
-      prev.map(o => {
+  const updateOrderStatus = (
+    orderId: string,
+    status: Order['status'],
+    callStatus?: Order['callStatus'],
+    customSmsMsg?: string,
+    sendSms: boolean = true
+  ) => {
+    let targetOrder: Order | null = null;
+    setOrders((prev) =>
+      prev.map((o) => {
         if (o.id === orderId) {
-          return {
+          const nextOrder = {
             ...o,
             status,
             callStatus: callStatus || o.callStatus
           };
+          targetOrder = nextOrder;
+          return nextOrder;
         }
         return o;
       })
     );
+
+    if (sendSms && targetOrder) {
+      triggerMockSMS(targetOrder, customSmsMsg);
+    }
   };
 
   const deleteOrder = (orderId: string) => {
@@ -555,6 +605,11 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         coupons,
         team,
         settings,
+        mockSmsLogs,
+        latestSmsToast,
+        dismissSmsToast,
+        triggerMockSMS,
+        clearSmsLogs,
         isAdminLoggedIn,
         isAdminAuthenticated,
         isAdminModalOpen,
