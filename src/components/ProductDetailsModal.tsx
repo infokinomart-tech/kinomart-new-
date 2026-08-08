@@ -27,6 +27,7 @@ import {
 import { ProductCard } from './ProductCard';
 import { BundleSelector } from './BundleSelector';
 import { getEffectiveBundles } from '../lib/bundleUtils';
+import { trackViewItem, trackAddToCart } from '../lib/dataLayer';
 
 interface ProductDetailsModalProps {
   product: Product;
@@ -73,6 +74,9 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
     const def = eff.find((b) => b.isPopular) || eff[0];
     setSelectedBundleId(def?.id || '');
     setQuantity(def?.quantity || 1);
+
+    // Track view_item event
+    trackViewItem(product, def?.quantity || 1, product.colors && product.colors.length > 0 ? product.colors[0] : undefined);
   }, [product]);
 
   const [reviewSlideIdx, setReviewSlideIdx] = useState<number>(0);
@@ -233,6 +237,7 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
 
   // Handle order now
   const handleOrderNow = () => {
+    trackAddToCart(product, quantity, selectedColor);
     setQuickOrderProduct({
       ...product,
       colors: [selectedColor]

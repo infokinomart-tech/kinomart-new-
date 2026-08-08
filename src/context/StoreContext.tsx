@@ -19,6 +19,7 @@ import {
   StoreSettings,
   TeamMember
 } from '../types';
+import { trackPurchase } from '../lib/dataLayer';
 
 interface StoreContextType {
   // Navigation & View
@@ -487,6 +488,9 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setQuickOrderProduct(null);
     setSelectedProduct(null);
     setActiveClientPage('order-success');
+
+    // Fire dataLayer purchase event
+    trackPurchase(newOrder);
 
     if (isSupabaseConfigured() && supabase) {
       supabase.from('orders').upsert({

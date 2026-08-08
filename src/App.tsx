@@ -17,6 +17,7 @@ import { FloatingContacts } from './components/FloatingContacts';
 import { Footer } from './components/Footer';
 import { AdminLayout } from './components/admin/AdminLayout';
 import { AdminLoginModal } from './components/admin/AdminLoginModal';
+import { trackPageView } from './lib/dataLayer';
 import { Filter, ShoppingBag, Phone, Mail, MapPin, Sparkles, Flame, ArrowRight } from 'lucide-react';
 
 const MainAppContent: React.FC = () => {
@@ -113,6 +114,9 @@ const MainAppContent: React.FC = () => {
     if (window.location.pathname !== targetPath) {
       window.history.pushState({}, '', targetPath);
     }
+
+    // Trigger GA4 page_view event
+    trackPageView(document.title, window.location.href, targetPath);
   }, [viewMode, activeClientPage, selectedProduct]);
 
   // Trigger Admin Login when user searches "admin"

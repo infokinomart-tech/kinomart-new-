@@ -2,6 +2,7 @@ import React from 'react';
 import { Product } from '../types';
 import { useStore } from '../context/StoreContext';
 import { Star, Zap, BellRing } from 'lucide-react';
+import { trackAddToCart } from '../lib/dataLayer';
 
 interface ProductCardProps {
   product: Product;
@@ -24,6 +25,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
       handleCardClick();
       return;
     }
+    trackAddToCart(product, 1);
     setQuickOrderProduct(product);
     setIsQuickOrderOpen(true);
   };

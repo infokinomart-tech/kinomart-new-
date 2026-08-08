@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Product } from '../types';
 import { useStore } from '../context/StoreContext';
 import { Truck, X, Plus, Minus, Check, Tag, ShieldCheck, Copy, Zap } from 'lucide-react';
 import { BundleSelector } from './BundleSelector';
 import { getEffectiveBundles } from '../lib/bundleUtils';
+import { trackBeginCheckout, trackPurchase } from '../lib/dataLayer';
 
 interface QuickOrderModalProps {
   product: Product;
@@ -72,6 +73,15 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({ product, onClo
   const deliveryFee = deliveryArea === 'Inside Dhaka' ? 60 : 120;
   const totalPrice = Math.max(0, subtotal - discountAmount + deliveryFee);
 
+  // Trigger begin_checkout event when modal opens
+  useEffect(() => {
+    trackBeginCheckout(
+      [{ product, quantity, selectedColor: selectedBundle ? selectedBundle.title : undefined }],
+      totalPrice,
+      appliedCoupon || undefined
+    );
+  }, []);
+
   const handleCopyNumber = (num: string) => {
     if (navigator.clipboard) {
       navigator.clipboard.writeText(num);
@@ -122,7 +132,7 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({ product, onClo
     setIsSubmitting(true);
 
     try {
-      createOrder({
+      const createdOrder = createOrder({
         customerName: customerName.trim(),
         customerPhone: customerPhone.trim(),
         shippingAddress: `[বিভাগ: ${selectedDivision}] ${shippingAddress.trim()}`,
@@ -142,6 +152,11 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({ product, onClo
         couponCode: appliedCoupon || undefined,
         totalPrice
       });
+
+      // Fire purchase event
+      if (createdOrder) {
+        trackPurchase(createdOrder);
+      }
     } catch (err) {
       console.error(err);
       setErrorMsg('অর্ডার সম্পন্ন করতে সমস্যা হয়েছে। আবার চেষ্টা করুন।');
