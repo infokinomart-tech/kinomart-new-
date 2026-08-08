@@ -1,9 +1,21 @@
 @import url('https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@300;400;500;600;700&display=swap');
 @import "tailwindcss";
 
+/* Custom @font-face specifically targeting all numbers (ASCII 0-9 & Bengali ০-৯) with Hind Siliguri Bold (700) */
+@font-face {
+  font-family: 'Hind Siliguri Bold Digits';
+  src: url("https://fonts.gstatic.com/s/hindsiliguri/v14/ijwOs5juQtsyLLR5jN4cxBEoRCf_4uE.ttf") format("truetype"),
+       local("Hind Siliguri Bold"),
+       local("HindSiliguri-Bold");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0030-0039, U+09E6-09EF;
+}
+
 @layer base {
   * {
-    font-family: 'Hind Siliguri', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+    font-family: 'Hind Siliguri Bold Digits', 'Hind Siliguri', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
     -webkit-tap-highlight-color: transparent;
   }
 
@@ -123,6 +135,12 @@
 
 .animate-zap-pop {
   animation: zapIconPop 1.5s infinite ease-in-out;
+}
+
+/* Explicit Li Ador Noirrit font classes */
+.font-ador, .font-norit, .font-ador-norit {
+  font-family: 'Li Ador Noirrit', 'Li Ador Noirrit Digits', 'Hind Siliguri', sans-serif !important;
+  font-weight: 600 !important;
 }
 
 

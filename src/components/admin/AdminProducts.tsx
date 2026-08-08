@@ -557,6 +557,210 @@ export const AdminProducts: React.FC = () => {
                 </p>
               </div>
 
+              {/* Customer Review Cards Manager for Slideshow */}
+              <div className="space-y-4 border-t border-[#1E293B] pt-4">
+                <div className="flex items-center justify-between">
+                  <label className="block text-[#CBD5E1] font-bold">
+                    কাস্টমার রিভিউ স্লাইডশো (Customer Review Cards)
+                  </label>
+                  <span className="text-xs text-amber-400 font-bold">
+                    {(editingProduct.reviews || []).length} টি রিভিউ কার্ড
+                  </span>
+                </div>
+                <p className="text-[11px] text-[#94A3B8]">
+                  প্রোডাক্ট পেজে ভিডিও এবং অর্ডারের মাঝখানে ডার্ক কার্ডের সুন্দর স্লাইডশো আকারে দেখাবে।
+                </p>
+
+                {/* Existing Review Cards */}
+                {(editingProduct.reviews || []).length > 0 && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {(editingProduct.reviews || []).map((rev, idx) => (
+                      <div key={rev.id || idx} className="bg-[#050B18] border border-[#1E293B] rounded-xl p-3 space-y-2 relative group">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const updated = (editingProduct.reviews || []).filter((_, i) => i !== idx);
+                            setEditingProduct({ ...editingProduct, reviews: updated });
+                          }}
+                          className="absolute top-2 right-2 text-red-400 hover:text-red-300 bg-red-950/60 p-1 rounded-lg cursor-pointer"
+                          title="মুছে ফেলুন"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                        <div className="flex items-center gap-1 text-amber-400">
+                          {[1, 2, 3, 4, 5].map((s) => (
+                            <Star key={s} className={`w-3 h-3 ${s <= rev.rating ? 'fill-amber-400' : 'text-slate-600'}`} />
+                          ))}
+                        </div>
+                        <p className="text-xs text-slate-200 italic line-clamp-2">
+                          "{rev.comment}"
+                        </p>
+                        <div className="flex items-center gap-2 pt-1 border-t border-slate-800 text-[11px]">
+                          {rev.image ? (
+                            <img src={rev.image} alt={rev.userName} className="w-6 h-6 rounded-full object-cover" />
+                          ) : (
+                            <div className="w-6 h-6 rounded-full bg-emerald-700 text-white font-bold flex items-center justify-center text-[10px]">
+                              {rev.userName.charAt(0)}
+                            </div>
+                          )}
+                          <div className="truncate">
+                            <span className="font-bold text-white block truncate">{rev.userName}</span>
+                            {rev.userRole && <span className="text-[9px] text-slate-400 block truncate">{rev.userRole}</span>}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Add New Review Card Form */}
+                <div className="bg-[#050B18] border border-[#1E293B] rounded-2xl p-4 space-y-3">
+                  <h4 className="text-xs font-extrabold text-amber-400 flex items-center gap-1">
+                    <Plus className="w-4 h-4" />
+                    <span>নতুন কাস্টমার রিভিউ যুক্ত করুন</span>
+                  </h4>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[10px] text-[#CBD5E1] font-bold mb-1">কাস্টমারের নাম</label>
+                      <input
+                        type="text"
+                        id="new-rev-name"
+                        placeholder="যেমন: Rahat Islam / তানভীর"
+                        className="w-full bg-[#0F172A] border border-[#1E293B] rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] text-[#CBD5E1] font-bold mb-1">পদবী/সাবটাইটেল (Optional)</label>
+                      <input
+                        type="text"
+                        id="new-rev-role"
+                        placeholder="যেমন: CEO, AURORA TECH বা VERIFIED BUYER"
+                        className="w-full bg-[#0F172A] border border-[#1E293B] rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] text-[#CBD5E1] font-bold mb-1">রিভিউ কোট / বক্তব্য</label>
+                    <textarea
+                      id="new-rev-comment"
+                      rows={2}
+                      placeholder="যেমন: প্রোডাক্টটি পেয়ে আমি খুব সন্তুষ্ট। ফাস্ট ডেলিভারি ও প্যাকেজিং চমৎকার ছিল!"
+                      className="w-full bg-[#0F172A] border border-[#1E293B] rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-1">
+                    <div className="flex items-center gap-2">
+                      <label className="text-[10px] text-[#CBD5E1] font-bold">রেটিং:</label>
+                      <select
+                        id="new-rev-rating"
+                        defaultValue="5"
+                        className="bg-[#0F172A] border border-[#1E293B] text-amber-400 text-xs font-bold rounded-lg px-2 py-1"
+                      >
+                        <option value="5">⭐⭐⭐⭐⭐ (5 Star)</option>
+                        <option value="4">⭐⭐⭐⭐ (4 Star)</option>
+                        <option value="3">⭐⭐⭐ (3 Star)</option>
+                      </select>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const nameEl = document.getElementById('new-rev-name') as HTMLInputElement;
+                        const roleEl = document.getElementById('new-rev-role') as HTMLInputElement;
+                        const commentEl = document.getElementById('new-rev-comment') as HTMLTextAreaElement;
+                        const ratingEl = document.getElementById('new-rev-rating') as HTMLSelectElement;
+
+                        if (!nameEl?.value.trim() || !commentEl?.value.trim()) {
+                          alert('দয়া করে নাম এবং বক্তব্য লিখুন');
+                          return;
+                        }
+
+                        const newRev = {
+                          id: `rev-${Date.now()}`,
+                          userName: nameEl.value.trim(),
+                          userRole: roleEl?.value.trim() || 'VERIFIED BUYER',
+                          comment: commentEl.value.trim(),
+                          rating: Number(ratingEl?.value || 5),
+                          date: new Date().toLocaleDateString('bn-BD'),
+                          isVerifiedPurchase: true
+                        };
+
+                        setEditingProduct({
+                          ...editingProduct,
+                          reviews: [...(editingProduct.reviews || []), newRev]
+                        });
+
+                        nameEl.value = '';
+                        if (roleEl) roleEl.value = '';
+                        commentEl.value = '';
+                      }}
+                      className="bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs px-4 py-2 rounded-xl transition-all shadow-md cursor-pointer flex items-center gap-1.5"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>রিভিউ কার্ড যোগ করুন</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Also General Review Image Upload */}
+                <div className="pt-2">
+                  <label className="block text-xs text-[#CBD5E1] font-bold mb-1">
+                    অথবা কাস্টমার মেসেজ/রিভিউ এর স্ক্রিনশট ছবি আপলোড করুন:
+                  </label>
+                  <div className="border border-dashed border-[#1E293B] rounded-xl p-3 text-center bg-[#050B18]/50">
+                    <label className="cursor-pointer flex items-center justify-center gap-2 text-xs text-emerald-400 font-bold hover:underline">
+                      <Upload className="w-4 h-4" />
+                      <span>রিভিউ স্ক্রিনশট আপলোড</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        className="hidden"
+                        onChange={(e) => {
+                          const fileList = e.target.files;
+                          if (!fileList) return;
+                          Array.from(fileList).forEach((file) => {
+                            const reader = new FileReader();
+                            reader.onload = (evt) => {
+                              if (evt.target?.result) {
+                                const newImg = evt.target.result as string;
+                                setEditingProduct((prev) => {
+                                  if (!prev) return prev;
+                                  return { ...prev, reviewImages: [...(prev.reviewImages || []), newImg] };
+                                });
+                              }
+                            };
+                            reader.readAsDataURL(file);
+                          });
+                        }}
+                      />
+                    </label>
+                  </div>
+                  {(editingProduct.reviewImages || []).length > 0 && (
+                    <div className="flex flex-wrap gap-2 pt-2">
+                      {(editingProduct.reviewImages || []).map((img, idx) => (
+                        <div key={idx} className="relative w-16 h-16 rounded-xl overflow-hidden border border-emerald-500/40 bg-black">
+                          <img src={img} alt={`Review ${idx}`} className="w-full h-full object-cover" />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const newImgs = (editingProduct.reviewImages || []).filter((_, i) => i !== idx);
+                              setEditingProduct({ ...editingProduct, reviewImages: newImgs });
+                            }}
+                            className="absolute top-0.5 right-0.5 bg-red-600 text-white rounded-full p-0.5"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
               {/* Short Description */}
               <div>
                 <label className="block text-[#CBD5E1] font-bold mb-1">
@@ -669,18 +873,51 @@ export const AdminProducts: React.FC = () => {
 
                 {/* Bundle Rows */}
                 {(!editingProduct.bundles || editingProduct.bundles.length === 0) ? (
-                  <div className="text-center py-4 bg-[#050B18] rounded-xl border border-dashed border-[#1E293B] text-gray-400 text-xs">
-                    <p className="font-medium text-gray-300 mb-1">কোনো কাস্টম প্যাকেজ নেই (Standard 1, 2, 4 Pc ডায়নামিকালী জেনারেট হবে)</p>
-                    <button
-                      type="button"
-                      onClick={handleGenerateDefaultBundles}
-                      className="text-blue-400 font-bold hover:underline text-xs mt-1"
-                    >
-                      👉 এখানে ক্লিক করে ১-ক্লিকে ৩টি প্যাকেজ তৈরি করুন
-                    </button>
+                  <div className="text-center py-5 px-4 bg-[#050B18] rounded-xl border border-dashed border-[#1E293B] text-gray-400 text-xs space-y-2">
+                    <div className="inline-flex items-center gap-2 bg-gray-800/80 text-gray-300 text-xs px-3 py-1 rounded-full font-bold">
+                      ⚪ প্যাকেজ অফার: বন্ধ (Regular Order Flow)
+                    </div>
+                    <p className="font-medium text-gray-300">
+                      এই প্রোডাক্টে কোনো প্যাকেজ যোগ করা নেই। কাস্টমার সাধারণ প্রোডাক্ট হিসেবে অর্ডার করবে।
+                    </p>
+                    <p className="text-gray-400 text-[11px]">
+                      যদি আপনি ওয়েবসাইট বা মডালে প্যাকেজ অফার (যেমন: ১ পিস, ২ পিস, ৪ পিস) দেখাতে চান, তবে নিচের যেকোনো একটি বাটনে ক্লিক করুন:
+                    </p>
+                    <div className="pt-1 flex items-center justify-center gap-3">
+                      <button
+                        type="button"
+                        onClick={handleGenerateDefaultBundles}
+                        className="bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs px-3.5 py-2 rounded-xl transition-all cursor-pointer shadow-md flex items-center gap-1.5"
+                      >
+                        <Zap className="w-3.5 h-3.5" />
+                        <span>১-ক্লিকে ৩টি প্যাকেজ জেনারেট করুন</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleAddBundleRow}
+                        className="bg-[#2563EB] hover:bg-blue-600 text-white font-bold text-xs px-3.5 py-2 rounded-xl transition-all cursor-pointer shadow-md flex items-center gap-1.5"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>ম্যানুয়ালি প্যাকেজ যোগ করুন</span>
+                      </button>
+                    </div>
                   </div>
                 ) : (
                   <div className="space-y-3">
+                    <div className="flex items-center justify-between text-xs bg-emerald-950/40 border border-emerald-800/50 p-2.5 rounded-xl text-emerald-300 font-bold">
+                      <span className="flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                        🟢 প্যাকেজ অফার: চালু রয়েছে ({editingProduct.bundles.length} টি প্যাকেজ সক্রিয়)
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setEditingProduct({ ...editingProduct, bundles: [] })}
+                        className="text-red-400 hover:text-red-300 hover:underline flex items-center gap-1 cursor-pointer font-bold"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>সব মুছে প্যাকেজ অফ করুন</span>
+                      </button>
+                    </div>
                     {editingProduct.bundles.map((bundle, idx) => (
                       <div
                         key={bundle.id || idx}

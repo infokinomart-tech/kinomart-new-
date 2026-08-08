@@ -46,11 +46,11 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   return (
     <div
       onClick={handleCardClick}
-      className="bg-white rounded-2xl border border-[#E8E3D9] p-2.5 sm:p-3 flex flex-col justify-between hover:shadow-lg transition-all duration-300 cursor-pointer group relative overflow-hidden"
+      className="bg-[#FAF9F5] rounded-2xl border-2 border-[#D5DCBF] hover:border-[#627048] p-2.5 sm:p-3 flex flex-col justify-between hover:shadow-xl transition-all duration-300 cursor-pointer group relative overflow-hidden"
     >
       {/* Image Area */}
       <div>
-        <div className="relative w-full aspect-square bg-[#F5F2EA] rounded-xl overflow-hidden flex items-center justify-center mb-3">
+        <div className="relative w-full aspect-square bg-white rounded-xl overflow-hidden flex items-center justify-center mb-3 border border-[#E8E3D9]">
           <img
             src={product.thumbnail || product.gallery?.[0] || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500'}
             alt={product.name || 'প্রোডাক্ট'}
@@ -64,26 +64,32 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           />
 
           {/* Left Corner Badge */}
-          <div className="absolute top-1.5 left-1.5 z-10 pointer-events-none">
+          <div className="absolute top-1.5 left-1.5 z-10 pointer-events-none flex flex-col gap-1">
             {isOutOfStock ? (
-              <span className="bg-red-600 text-white text-[8.5px] sm:text-[10px] font-black px-1.5 py-0.5 rounded-full shadow-xs whitespace-nowrap inline-flex items-center">
+              <span className="bg-red-600 text-white text-[8.5px] sm:text-[10px] font-black px-2 py-0.5 rounded-full shadow-xs whitespace-nowrap inline-flex items-center">
                 আউট অব স্টক
               </span>
             ) : discountPercent > 0 ? (
-              <span className="bg-[#CB6532] text-white text-[8.5px] sm:text-[10px] font-black px-1.5 py-0.5 rounded-full shadow-xs whitespace-nowrap inline-flex items-center">
+              <span className="bg-[#CB6532] text-white text-[8.5px] sm:text-[10px] font-black px-2 py-0.5 rounded-full shadow-xs whitespace-nowrap inline-flex items-center">
                 {discountPercent}% ছাড়
               </span>
             ) : null}
           </div>
 
-          {/* Right Corner Badge */}
-          {product.isBestSeller && !isOutOfStock && (
-            <div className="absolute top-1.5 right-1.5 z-10 pointer-events-none">
-              <span className="bg-[#5E6A45] text-white text-[8.5px] sm:text-[10px] font-black px-1.5 py-0.5 rounded-full shadow-xs whitespace-nowrap inline-flex items-center">
+          {/* Right Corner Stock Badge in Light Website Color */}
+          <div className="absolute top-1.5 right-1.5 z-10 pointer-events-none flex flex-col items-end gap-1">
+            {!isOutOfStock && (
+              <span className="bg-[#627048]/90 text-white backdrop-blur-xs text-[8.5px] sm:text-[10px] font-extrabold px-2 py-0.5 rounded-full shadow-xs whitespace-nowrap inline-flex items-center gap-1 border border-white/20">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-300 animate-pulse" />
+                ইন স্টক
+              </span>
+            )}
+            {product.isBestSeller && !isOutOfStock && (
+              <span className="bg-[#1F241E]/80 text-amber-300 text-[8px] sm:text-[9px] font-black px-1.5 py-0.5 rounded-full shadow-xs whitespace-nowrap inline-flex items-center">
                 বেস্ট সেলার
               </span>
-            </div>
-          )}
+            )}
+          </div>
         </div>
 
         {/* Content */}

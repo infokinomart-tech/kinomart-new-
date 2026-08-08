@@ -84,9 +84,6 @@ export const Header: React.FC = () => {
             <h1 className="text-lg sm:text-2xl font-black text-[#1F241E] tracking-tight leading-none">
               {settings.websiteTitle || 'KinoMart'}
             </h1>
-            <p className="text-[10px] sm:text-xs text-[#6B7264] font-semibold mt-0.5 leading-none hidden sm:block">
-              সেরা গ্যাজেট ও প্রিমিয়াম ইলেকট্রনিক্স
-            </p>
           </div>
         </div>
 

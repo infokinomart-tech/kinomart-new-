@@ -51,6 +51,30 @@ const MainAppContent: React.FC = () => {
         setViewMode('admin');
       } else {
         setViewMode('client');
+        if (path.startsWith('/product/')) {
+          const prodId = decodeURIComponent(path.replace('/product/', '')).trim();
+          const found = products.find(p => p.id === prodId || p.name.toLowerCase() === prodId.toLowerCase());
+          if (found) {
+            setSelectedProduct(found);
+            setActiveClientPage('product-detail');
+          } else if (products.length > 0) {
+            setActiveClientPage('home');
+          }
+        } else if (path === '/products') {
+          setActiveClientPage('products');
+        } else if (path === '/about') {
+          setActiveClientPage('about');
+        } else if (path === '/contact') {
+          setActiveClientPage('contact');
+        } else if (path === '/order-track') {
+          setActiveClientPage('order-track');
+        } else if (path === '/order-success') {
+          setActiveClientPage('order-success');
+        } else if (path === '/customer-profile') {
+          setActiveClientPage('customer-profile');
+        } else if (path === '/' || path === '') {
+          setActiveClientPage('home');
+        }
       }
     };
 
@@ -61,7 +85,35 @@ const MainAppContent: React.FC = () => {
       window.removeEventListener('popstate', handleUrlChange);
       window.removeEventListener('hashchange', handleUrlChange);
     };
-  }, [setViewMode]);
+  }, [products, setViewMode, setSelectedProduct, setActiveClientPage]);
+
+  // Push state to browser address bar when active view changes
+  React.useEffect(() => {
+    let targetPath = '/';
+    if (viewMode === 'admin') {
+      targetPath = '/admin';
+    } else if (activeClientPage === 'product-detail' && selectedProduct) {
+      targetPath = `/product/${selectedProduct.id}`;
+    } else if (activeClientPage === 'products') {
+      targetPath = '/products';
+    } else if (activeClientPage === 'about') {
+      targetPath = '/about';
+    } else if (activeClientPage === 'contact') {
+      targetPath = '/contact';
+    } else if (activeClientPage === 'order-track') {
+      targetPath = '/order-track';
+    } else if (activeClientPage === 'order-success') {
+      targetPath = '/order-success';
+    } else if (activeClientPage === 'customer-profile') {
+      targetPath = '/customer-profile';
+    } else {
+      targetPath = '/';
+    }
+
+    if (window.location.pathname !== targetPath) {
+      window.history.pushState({}, '', targetPath);
+    }
+  }, [viewMode, activeClientPage, selectedProduct]);
 
   // Trigger Admin Login when user searches "admin"
   React.useEffect(() => {
@@ -258,7 +310,10 @@ const MainAppContent: React.FC = () => {
 
         {/* PRODUCT DETAIL PAGE */}
         {activeClientPage === 'product-detail' && (selectedProduct || displayedProducts[0]) && (
-          <ProductDetailsModal product={selectedProduct || displayedProducts[0]} />
+          <ProductDetailsModal
+            key={(selectedProduct || displayedProducts[0]).id}
+            product={selectedProduct || displayedProducts[0]}
+          />
         )}
 
         {/* PRODUCTS PAGE */}

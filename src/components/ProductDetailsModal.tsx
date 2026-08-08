@@ -19,7 +19,10 @@ import {
   Bell,
   BellRing,
   AlertCircle,
-  FileText
+  FileText,
+  Maximize2,
+  MessageSquareQuote,
+  X
 } from 'lucide-react';
 import { ProductCard } from './ProductCard';
 import { BundleSelector } from './BundleSelector';
@@ -61,8 +64,27 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
     product.colors && product.colors.length > 0 ? product.colors[0] : 'MINT'
   );
   const [quantity, setQuantity] = useState<number>(selectedBundle?.quantity || 1);
-  const [activeTab, setActiveTab] = useState<'desc' | 'spec' | 'delivery' | 'reviews' | 'guarantee'>('desc');
-  const [isZoomOpen, setIsZoomOpen] = useState<boolean>(false);
+
+  // Sync state whenever product changes
+  useEffect(() => {
+    setSelectedImage(product.thumbnail || product.gallery?.[0] || '');
+    setSelectedColor(product.colors && product.colors.length > 0 ? product.colors[0] : 'MINT');
+    const eff = getEffectiveBundles(product);
+    const def = eff.find((b) => b.isPopular) || eff[0];
+    setSelectedBundleId(def?.id || '');
+    setQuantity(def?.quantity || 1);
+  }, [product]);
+
+  const [reviewSlideIdx, setReviewSlideIdx] = useState<number>(0);
+
+  const reviewImagesList = (product.reviewImages && product.reviewImages.length > 0)
+    ? product.reviewImages
+    : [
+        'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=800&auto=format&fit=crop&q=80',
+        'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=800&auto=format&fit=crop&q=80',
+        'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=800&auto=format&fit=crop&q=80',
+        'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=800&auto=format&fit=crop&q=80'
+      ];
 
   // Hover Zoom State
   const [isHovered, setIsHovered] = useState(false);
@@ -76,11 +98,40 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
   };
 
   // Reviews State
-  const [reviewsList, setReviewsList] = useState<Review[]>(product.reviews || []);
-  const [reviewerName, setReviewerName] = useState('');
-  const [reviewerRating, setReviewerRating] = useState(5);
-  const [reviewerComment, setReviewerComment] = useState('');
-  const [reviewSubmitted, setReviewSubmitted] = useState(false);
+  const defaultReviewsList: Review[] = [
+    {
+      id: 'demo-rev-1',
+      userName: 'Rahat Islam',
+      userRole: 'CEO, AURORA TECH',
+      rating: 5,
+      comment: 'PixelCraft did an exceptional job rebuilding our marketing website and brand guides. Our conversion rate increased by 40% in the first month! Highly recommended.'
+    },
+    {
+      id: 'demo-rev-2',
+      userName: 'Nusrat Jahan',
+      userRole: 'COURSE STUDENT',
+      rating: 5,
+      comment: 'The Web Development course is unbelievably structured. The manual bKash enrollment process was approved within 15 minutes, and I immediately got access to the Google Drive full of high-quality lessons. Best decision ever!'
+    },
+    {
+      id: 'demo-rev-3',
+      userName: 'Mahmudul Hasan',
+      userRole: 'INDEPENDENT CONTENT CREATOR',
+      rating: 5,
+      comment: 'I bought their UI/UX secrets ebook. The design templates and spacing guidelines inside are gold. Totally worth every single taka!'
+    },
+    {
+      id: 'demo-rev-4',
+      userName: 'Tanvir Ahmed',
+      userRole: 'VERIFIED BUYER',
+      rating: 5,
+      comment: 'কীনোমার্ট থেকে প্রোডাক্টটি অর্ডার করেছিলাম। প্রিমিয়াম কোয়ালিটি, আসল গ্যাজেট এবং অসাধারণ ফাস্ট সার্ভিস পেয়ে আমি খুবই সন্তুষ্ট!'
+    }
+  ];
+
+  const activeReviewsList = (product.reviews && product.reviews.length > 0)
+    ? product.reviews
+    : defaultReviewsList;
 
   // Notify Me State for Out-of-Stock Products
   const [notifyContact, setNotifyContact] = useState('');
@@ -109,27 +160,6 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
     }
 
     setNotifySubmitted(true);
-  };
-
-  const handleAddReview = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!reviewerName.trim() || !reviewerComment.trim()) return;
-
-    const newRev: Review = {
-      id: Date.now().toString(),
-      userName: reviewerName.trim(),
-      rating: reviewerRating,
-      comment: reviewerComment.trim(),
-      date: new Date().toLocaleDateString('bn-BD', { year: 'numeric', month: 'long', day: 'numeric' }),
-      isVerifiedPurchase: true
-    };
-
-    setReviewsList([newRev, ...reviewsList]);
-    setReviewerName('');
-    setReviewerComment('');
-    setReviewerRating(5);
-    setReviewSubmitted(true);
-    setTimeout(() => setReviewSubmitted(false), 3000);
   };
 
   // Timer state
@@ -296,11 +326,10 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
         {/* Left Column: Image Showcase & Gallery Slider */}
         <div className="space-y-4">
           <div
-            className="relative aspect-square w-full bg-[#FFDC33] rounded-2xl overflow-hidden border border-[#E8E3D9] shadow-inner group cursor-zoom-in"
+            className="relative aspect-square w-full bg-[#FFDC33] rounded-2xl overflow-hidden border border-[#E8E3D9] shadow-inner group cursor-crosshair"
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
             onMouseMove={handleMouseMove}
-            onClick={() => setIsZoomOpen(true)}
           >
             <img
               src={selectedImage}
@@ -376,12 +405,13 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
                   আউট অব স্টক
                 </span>
               ) : isLowStock ? (
-                <span className="bg-[#FEF3C7] text-[#B45309] text-xs font-black px-3.5 py-1 rounded-full border border-[#FDE68A] flex items-center gap-1">
-                  <AlertCircle className="w-3.5 h-3.5 text-[#D97706]" />
+                <span className="bg-[#D97706]/10 text-[#92400E] text-xs font-black px-3.5 py-1 rounded-full border border-[#D97706]/30 flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-[#D97706] animate-pulse" />
                   লিমিটেড স্টক ({toBnNum(product.stock)} টি বাকি)
                 </span>
               ) : (
-                <span className="bg-[#DCFCE7] text-[#15803D] text-xs font-black px-3.5 py-1 rounded-full border border-[#BBF7D0]">
+                <span className="bg-[#627048]/12 text-[#3D472B] text-xs font-black px-3.5 py-1 rounded-full border border-[#627048]/30 flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-[#627048] animate-pulse" />
                   ইন স্টক ({toBnNum(product.stock || 50)} টি এভেলেবল)
                 </span>
               )}
@@ -591,15 +621,65 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
                   }}
                 />
 
+                {/* Quantity Selector & Total Price matching demo image */}
+                <div className="space-y-1.5 pt-2 pb-1">
+                  <label className="block text-xs sm:text-sm font-extrabold text-[#1F241E]">
+                    পরিমাণ (Quantity):
+                  </label>
+                  <div className="flex items-center gap-4 flex-wrap">
+                    {/* Quantity Pill Box */}
+                    <div className="flex items-center justify-between w-32 sm:w-36 bg-[#F5F4EE] border-2 border-[#D5DCBF] rounded-full px-3.5 py-1.5 sm:py-2 shadow-2xs">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const newQty = Math.max(1, quantity - 1);
+                          setQuantity(newQty);
+                          const matched = effectiveBundles.find(b => b.quantity === newQty);
+                          if (matched) setSelectedBundleId(matched.id);
+                          else setSelectedBundleId('');
+                        }}
+                        disabled={quantity <= 1}
+                        className="w-7 h-7 flex items-center justify-center text-[#3D472B] hover:text-black font-black text-xl transition-all active:scale-90 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer select-none"
+                      >
+                        −
+                      </button>
+                      <span className="font-black text-[#1F241E] text-base sm:text-lg select-none min-w-[20px] text-center">
+                        {toBnNum(quantity)}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const newQty = quantity + 1;
+                          setQuantity(newQty);
+                          const matched = effectiveBundles.find(b => b.quantity === newQty);
+                          if (matched) setSelectedBundleId(matched.id);
+                          else setSelectedBundleId('');
+                        }}
+                        className="w-7 h-7 flex items-center justify-center text-[#3D472B] hover:text-black font-black text-xl transition-all active:scale-90 cursor-pointer select-none"
+                      >
+                        +
+                      </button>
+                    </div>
+
+                    {/* Total Price Right Beside */}
+                    <div className="text-sm sm:text-base text-[#1F241E] flex items-center gap-1.5">
+                      <span className="font-bold text-gray-700">মোট দাম:</span>
+                      <span className="font-black text-[#1F241E] text-base sm:text-lg">
+                        ৳{displayPrice.toLocaleString('bn-BD')}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
                 {/* Main Order Button */}
                 <button
                   onClick={handleOrderNow}
-                  className="relative overflow-hidden w-full bg-[#5E6A45] hover:bg-[#485333] active:scale-[0.98] text-white text-base sm:text-lg font-black py-3.5 px-6 rounded-2xl flex items-center justify-center gap-2.5 shadow-xl hover:shadow-2xl transition-all cursor-pointer mt-2 animate-order-btn"
+                  className="relative overflow-hidden w-full bg-[#627048] hover:bg-[#4E5B37] active:scale-[0.98] text-white text-base sm:text-lg font-black py-3.5 sm:py-4 px-6 rounded-2xl flex items-center justify-center gap-2.5 shadow-lg shadow-[#627048]/25 hover:shadow-xl transition-all cursor-pointer mt-2 animate-order-btn"
                 >
                   {/* Shimmer Light Bar */}
                   <span className="absolute inset-0 w-1/2 h-full bg-gradient-to-r from-transparent via-white/35 to-transparent pointer-events-none animate-order-shimmer" />
 
-                  <Zap className="w-5 h-5 sm:w-6 sm:h-6 fill-amber-300 text-amber-300 animate-zap-pop shrink-0" />
+                  <Zap className="w-5 h-5 sm:w-6 sm:h-6 fill-white text-white animate-zap-pop shrink-0" />
                   <span className="relative z-10 tracking-wide">এখনই অর্ডার করুন</span>
                 </button>
               </>
@@ -626,39 +706,16 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
 
       {/* Product Details Tabs Container */}
       <div className="bg-white border border-[#E8E3D9] rounded-3xl p-4 sm:p-8 shadow-xs space-y-6">
-        {/* Navigation Tabs Header */}
-        <div className="flex border-b border-[#E8E3D9] overflow-x-auto gap-4 sm:gap-8 text-xs sm:text-sm font-bold text-[#6B7264] pb-2">
-          <button
-            onClick={() => setActiveTab('desc')}
-            className={`pb-2.5 transition-colors relative whitespace-nowrap cursor-pointer ${
-              activeTab === 'desc'
-                ? 'text-[#5E6A45] font-black border-b-2 border-[#5E6A45]'
-                : 'hover:text-[#1F241E]'
-            }`}
-          >
-            প্রোডাক্ট বিবরণ
-          </button>
-
-          <button
-            onClick={() => setActiveTab('reviews')}
-            className={`pb-2.5 transition-colors relative whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
-              activeTab === 'reviews'
-                ? 'text-[#5E6A45] font-black border-b-2 border-[#5E6A45]'
-                : 'hover:text-[#1F241E]'
-            }`}
-          >
-            <span>কাস্টমার রিভিউ</span>
-            <span className="inline-flex items-center justify-center bg-[#EAE8E1] text-[#3D4738] text-[11px] font-bold px-2 py-0.5 rounded-full min-w-[20px]">
-              {reviewsList.length}
-            </span>
-          </button>
-
+        {/* Section Header */}
+        <div className="border-b border-[#E8E3D9] pb-3">
+          <h2 className="text-base sm:text-xl font-black text-[#1F241E] flex items-center gap-2">
+            <FileText className="w-5 h-5 text-[#5E6A45]" />
+            <span>প্রোডাক্টের বিস্তারিত তথ্য ও বিবরণ</span>
+          </h2>
         </div>
 
-        {/* Tab Content */}
-        <div>
-          {activeTab === 'desc' && (
-            <div className="space-y-8">
+        {/* Details Content */}
+        <div className="space-y-8">
               {/* Main Description Text */}
               <div className="text-xs sm:text-sm text-[#3D4738] leading-relaxed whitespace-pre-line font-medium space-y-2">
                 <p>{product.shortDescription}</p>
@@ -727,200 +784,10 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
                   />
                 </div>
               </div>
+
+
             </div>
-          )}
-
-
-
-          {activeTab === 'reviews' && (
-            <div className="space-y-6">
-              {/* Rating Summary Header */}
-              <div className="bg-[#FAF8F5] border border-[#E8E3D9] rounded-2xl p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
-                <div className="flex items-center gap-4">
-                  <div className="text-center sm:text-left">
-                    <span className="text-3xl sm:text-4xl font-black text-[#1F241E]">
-                      {reviewsList.length > 0
-                        ? (
-                            reviewsList.reduce((sum, r) => sum + r.rating, 0) / reviewsList.length
-                          ).toFixed(1)
-                        : (product.rating || 5.0).toFixed(1)}
-                    </span>
-                    <span className="text-xs text-gray-500 font-bold block">/ ৫.০</span>
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-1 text-amber-500 mb-1">
-                      {[1, 2, 3, 4, 5].map((s) => (
-                        <Star key={s} className="w-4 h-4 fill-amber-400 text-amber-400" />
-                      ))}
-                    </div>
-                    <span className="text-xs font-bold text-[#4A5343]">
-                      মোট {reviewsList.length}টি কাস্টমার রিভিউ
-                    </span>
-                  </div>
-                </div>
-                <button
-                  onClick={() => {
-                    const el = document.getElementById('review-form-section');
-                    el?.scrollIntoView({ behavior: 'smooth' });
-                  }}
-                  className="bg-[#5E6A45] hover:bg-[#485333] text-white text-xs sm:text-sm font-bold px-4 py-2.5 rounded-xl transition-all shadow-2xs cursor-pointer"
-                >
-                  + রিভিউ লিখুন
-                </button>
-              </div>
-
-              {/* Submit Review Form */}
-              <div
-                id="review-form-section"
-                className="bg-white border border-[#E8E3D9] rounded-2xl p-5 space-y-4 shadow-2xs"
-              >
-                <h3 className="font-extrabold text-[#1F241E] text-sm sm:text-base">
-                  আপনার রিভিউ লিখুন
-                </h3>
-
-                {reviewSubmitted && (
-                  <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs sm:text-sm p-3.5 rounded-xl font-bold flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <span>আপনার রিভিউটি সফলভাবে যুক্ত হয়েছে! ধন্যবাদ।</span>
-                  </div>
-                )}
-
-                <form onSubmit={handleAddReview} className="space-y-3">
-                  <div>
-                    <label className="block text-xs font-bold text-[#1F241E] mb-1">
-                      আপনার নাম <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={reviewerName}
-                      onChange={(e) => setReviewerName(e.target.value)}
-                      placeholder="যেমন: তানভীর আহমেদ"
-                      className="w-full bg-[#FAF8F5] border border-[#D5CEBF] rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-[#1F241E] focus:outline-none focus:ring-2 focus:ring-[#5E6A45]/30 focus:border-[#5E6A45]"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-[#1F241E] mb-1">
-                      রেটিং দিন <span className="text-red-500">*</span>
-                    </label>
-                    <div className="flex items-center gap-1.5 cursor-pointer">
-                      {[1, 2, 3, 4, 5].map((starVal) => (
-                        <button
-                          key={starVal}
-                          type="button"
-                          onClick={() => setReviewerRating(starVal)}
-                          className="p-1 hover:scale-110 transition-transform cursor-pointer"
-                        >
-                          <Star
-                            className={`w-6 h-6 ${
-                              starVal <= reviewerRating
-                                ? 'fill-amber-400 text-amber-400'
-                                : 'text-gray-300'
-                            }`}
-                          />
-                        </button>
-                      ))}
-                      <span className="text-xs font-bold text-gray-600 ml-2">
-                        ({reviewerRating} Star)
-                      </span>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-[#1F241E] mb-1">
-                      আপনার মতামত বা অভিজ্ঞতা <span className="text-red-500">*</span>
-                    </label>
-                    <textarea
-                      required
-                      rows={3}
-                      value={reviewerComment}
-                      onChange={(e) => setReviewerComment(e.target.value)}
-                      placeholder="প্রোডাক্টের কোয়ালিটি ও সার্ভিস সম্পর্কে বিস্তারিত লিখুন..."
-                      className="w-full bg-[#FAF8F5] border border-[#D5CEBF] rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-[#1F241E] focus:outline-none focus:ring-2 focus:ring-[#5E6A45]/30 focus:border-[#5E6A45]"
-                    />
-                  </div>
-
-                  <button
-                    type="submit"
-                    className="bg-[#5E6A45] hover:bg-[#485333] text-white font-bold text-xs sm:text-sm px-5 py-2.5 rounded-xl transition-all cursor-pointer shadow-2xs"
-                  >
-                    রিভিউ পোস্ট করুন
-                  </button>
-                </form>
-              </div>
-
-              {/* Reviews List */}
-              <div className="space-y-3">
-                <h3 className="font-extrabold text-[#1F241E] text-sm sm:text-base border-b border-[#E8E3D9] pb-2">
-                  সকল রিভিউ ({reviewsList.length})
-                </h3>
-
-                {reviewsList.length === 0 ? (
-                  <div className="text-center py-8 bg-[#FAF8F5] border border-dashed border-[#D5CEBF] rounded-2xl space-y-1">
-                    <p className="text-xs sm:text-sm font-bold text-[#6B7264]">
-                      এখনো কোনো কাস্টমার রিভিউ নেই।
-                    </p>
-                    <p className="text-xs text-[#909886]">
-                      আপনার মতামত শেয়ার করতে ওপরের ফর্মে প্রথম রিভিউ লিখুন!
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {reviewsList.map((rev) => (
-                      <div
-                        key={rev.id}
-                        className="bg-[#FAF8F5] border border-[#E8E3D9] rounded-2xl p-4 space-y-2"
-                      >
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 rounded-full bg-[#5E6A45]/15 text-[#5E6A45] font-black text-xs flex items-center justify-center">
-                              {rev.userName.charAt(0)}
-                            </div>
-                            <div>
-                              <span className="font-extrabold text-[#1F241E] text-xs sm:text-sm block">
-                                {rev.userName}
-                              </span>
-                              {rev.isVerifiedPurchase && (
-                                <span className="text-[10px] text-emerald-700 font-bold flex items-center gap-1">
-                                  <CheckCircle2 className="w-3 h-3 text-emerald-600 inline" />
-                                  ভেরিফাইড ক্রেতা
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                          <span className="text-[10px] font-bold text-[#889280]">
-                            {rev.date}
-                          </span>
-                        </div>
-
-                        <div className="flex items-center gap-1 text-amber-500">
-                          {[1, 2, 3, 4, 5].map((s) => (
-                            <Star
-                              key={s}
-                              className={`w-3.5 h-3.5 ${
-                                s <= rev.rating
-                                  ? 'fill-amber-400 text-amber-400'
-                                  : 'text-gray-300'
-                              }`}
-                            />
-                          ))}
-                        </div>
-
-                        <p className="text-xs sm:text-sm text-[#3D4738] font-medium leading-relaxed">
-                          {rev.comment}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-
-        </div>
-      </div>
+          </div>
 
       {/* High-Converting Animated CTA Banner matching KinoMart Theme */}
       <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#1F241E] via-[#2A3324] to-[#121611] p-8 sm:p-12 text-center text-white shadow-2xl border border-[#3E4935]/50 my-6">
@@ -999,26 +866,6 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
           </button>
         )}
       </div>
-
-      {/* Fullscreen Image Zoom Modal */}
-      {isZoomOpen && (
-        <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4 backdrop-blur-xs">
-          <div className="relative max-w-4xl w-full">
-            <button
-              onClick={() => setIsZoomOpen(false)}
-              className="absolute -top-12 right-0 text-white font-bold text-xs sm:text-sm bg-white/20 hover:bg-white/30 px-4 py-1.5 rounded-full cursor-pointer"
-            >
-              ✕ বন্ধ করুন
-            </button>
-            <img
-              src={selectedImage}
-              alt={product.name}
-              className="w-full max-h-[82vh] object-contain rounded-2xl"
-              referrerPolicy="no-referrer"
-            />
-          </div>
-        </div>
-      )}
     </div>
   );
 };

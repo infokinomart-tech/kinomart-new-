@@ -17,10 +17,13 @@ export interface Specification {
 export interface Review {
   id: string;
   userName: string;
+  userRole?: string;
   rating: number;
   comment: string;
-  date: string;
+  date?: string;
   isVerifiedPurchase?: boolean;
+  image?: string;
+  avatarColor?: string;
 }
 
 export interface Product {
@@ -48,6 +51,7 @@ export interface Product {
   rating: number;
   reviewsCount: number;
   reviews?: Review[];
+  reviewImages?: string[];
   status: 'ACTIVE' | 'INACTIVE';
 }
 

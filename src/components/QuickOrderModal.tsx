@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Product } from '../types';
 import { useStore } from '../context/StoreContext';
-import { Truck, X, Plus, Minus, Check, Tag, ShieldCheck, Copy } from 'lucide-react';
+import { Truck, X, Plus, Minus, Check, Tag, ShieldCheck, Copy, Zap } from 'lucide-react';
 import { BundleSelector } from './BundleSelector';
 import { getEffectiveBundles } from '../lib/bundleUtils';
 
@@ -30,7 +30,7 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({ product, onClo
   const [selectedBundleId, setSelectedBundleId] = useState<string>(defaultBundle?.id || '');
   const selectedBundle = effectiveBundles.find((b) => b.id === selectedBundleId) || defaultBundle;
 
-  const quantity = selectedBundle?.quantity || 1;
+  const [quantity, setQuantity] = useState<number>(selectedBundle?.quantity || 1);
   const customerNameInitial = '';
   const [customerName, setCustomerName] = useState<string>(customerNameInitial);
   const [customerPhone, setCustomerPhone] = useState<string>('');
@@ -66,7 +66,9 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({ product, onClo
   const [errorMsg, setErrorMsg] = useState<string>('');
 
   const unitPrice = product.discountPrice || product.price;
-  const subtotal = selectedBundle ? selectedBundle.price : (unitPrice * quantity);
+  const subtotal = (selectedBundle && selectedBundle.quantity === quantity)
+    ? selectedBundle.price
+    : (unitPrice * quantity);
   const deliveryFee = deliveryArea === 'Inside Dhaka' ? 60 : 120;
   const totalPrice = Math.max(0, subtotal - discountAmount + deliveryFee);
 
@@ -201,8 +203,61 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({ product, onClo
           <BundleSelector
             bundles={effectiveBundles}
             selectedBundleId={selectedBundleId}
-            onSelectBundle={(b) => setSelectedBundleId(b.id)}
+            onSelectBundle={(b) => {
+              setSelectedBundleId(b.id);
+              setQuantity(b.quantity);
+            }}
           />
+
+          {/* Quantity Selector & Total Price matching demo image */}
+          <div className="space-y-1.5 py-1">
+            <label className="block text-xs sm:text-sm font-extrabold text-[#1F241E]">
+              পরিমাণ (Quantity):
+            </label>
+            <div className="flex items-center gap-4 flex-wrap">
+              {/* Quantity Pill Box */}
+              <div className="flex items-center justify-between w-32 sm:w-36 bg-[#F5F4EE] border-2 border-[#D5DCBF] rounded-full px-3.5 py-1.5 sm:py-2 shadow-2xs">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const newQty = Math.max(1, quantity - 1);
+                    setQuantity(newQty);
+                    const matched = effectiveBundles.find(b => b.quantity === newQty);
+                    if (matched) setSelectedBundleId(matched.id);
+                    else setSelectedBundleId('');
+                  }}
+                  disabled={quantity <= 1}
+                  className="w-7 h-7 flex items-center justify-center text-[#3D472B] hover:text-black font-black text-xl transition-all active:scale-90 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer select-none"
+                >
+                  −
+                </button>
+                <span className="font-black text-[#1F241E] text-base sm:text-lg select-none min-w-[20px] text-center">
+                  {quantity.toLocaleString('bn-BD')}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const newQty = quantity + 1;
+                    setQuantity(newQty);
+                    const matched = effectiveBundles.find(b => b.quantity === newQty);
+                    if (matched) setSelectedBundleId(matched.id);
+                    else setSelectedBundleId('');
+                  }}
+                  className="w-7 h-7 flex items-center justify-center text-[#3D472B] hover:text-black font-black text-xl transition-all active:scale-90 cursor-pointer select-none"
+                >
+                  +
+                </button>
+              </div>
+
+              {/* Total Price Right Beside */}
+              <div className="text-sm sm:text-base text-[#1F241E] flex items-center gap-1.5">
+                <span className="font-bold text-gray-700">মোট দাম:</span>
+                <span className="font-black text-[#1F241E] text-base sm:text-lg">
+                  ৳{subtotal.toLocaleString('bn-BD')}
+                </span>
+              </div>
+            </div>
+          </div>
 
           {/* Form Fields */}
           <div className="space-y-3.5 text-xs sm:text-sm">
@@ -526,16 +581,16 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({ product, onClo
           <button
             type="submit"
             disabled={isSubmitting}
-            className="relative overflow-hidden w-full bg-[#5E6A45] hover:bg-[#485333] active:scale-[0.98] text-white text-base sm:text-lg font-black py-3.5 px-6 rounded-2xl flex items-center justify-center gap-2 shadow-xl hover:shadow-2xl transition-all disabled:opacity-50 cursor-pointer animate-order-btn"
+            className="relative overflow-hidden w-full bg-[#627048] hover:bg-[#4E5B37] active:scale-[0.98] text-white text-base sm:text-lg font-black py-3.5 sm:py-4 px-6 rounded-2xl flex items-center justify-center gap-2.5 shadow-lg shadow-[#627048]/25 hover:shadow-xl transition-all disabled:opacity-50 cursor-pointer animate-order-btn"
           >
             {/* Shimmer Light Bar */}
             <span className="absolute inset-0 w-1/2 h-full bg-gradient-to-r from-transparent via-white/35 to-transparent pointer-events-none animate-order-shimmer" />
 
-            <Check className="w-5 h-5 text-amber-300 stroke-[3] animate-zap-pop shrink-0" />
+            <Zap className="w-5 h-5 sm:w-6 sm:h-6 fill-white text-white animate-zap-pop shrink-0" />
             <span className="relative z-10 tracking-wide">
               {isSubmitting
                 ? 'অর্ডার প্রসেস হচ্ছে...'
-                : `অর্ডার কনফার্ম করুন (৳${totalPrice.toLocaleString('bn-BD')})`}
+                : `এখনই অর্ডার কনফার্ম করুন (৳${totalPrice.toLocaleString('bn-BD')})`}
             </span>
           </button>
 

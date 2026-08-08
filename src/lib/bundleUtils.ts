@@ -49,6 +49,5 @@ export function getEffectiveBundles(product: Product): ProductBundle[] {
   if (product.bundles && product.bundles.length > 0) {
     return product.bundles;
   }
-  const unitPrice = product.discountPrice || product.price;
-  return getDefaultBundles(unitPrice);
+  return [];
 }
