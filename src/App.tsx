@@ -74,6 +74,32 @@ const MainAppContent: React.FC = () => {
     }
   }, [searchQuery, setViewMode, setSearchQuery]);
 
+  // Dynamically update site title & browser favicon when settings change
+  React.useEffect(() => {
+    if (settings.websiteTitle) {
+      document.title = settings.websiteTitle;
+    }
+
+    if (settings.faviconUrl) {
+      let iconLink: HTMLLinkElement | null = document.querySelector("link[rel*='icon']");
+      if (!iconLink) {
+        iconLink = document.createElement('link');
+        iconLink.type = 'image/x-icon';
+        iconLink.rel = 'shortcut icon';
+        document.head.appendChild(iconLink);
+      }
+      iconLink.href = settings.faviconUrl;
+
+      let appleIconLink: HTMLLinkElement | null = document.querySelector("link[rel='apple-touch-icon']");
+      if (!appleIconLink) {
+        appleIconLink = document.createElement('link');
+        appleIconLink.rel = 'apple-touch-icon';
+        document.head.appendChild(appleIconLink);
+      }
+      appleIconLink.href = settings.faviconUrl;
+    }
+  }, [settings.faviconUrl, settings.websiteTitle]);
+
   // Find parent category object if selectedCategory is set (either as category name or subcategory name)
   const activeParentCategory = categories.find((c) => {
     const catName = c.name.trim().toLowerCase();

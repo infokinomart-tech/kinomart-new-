@@ -75,7 +75,11 @@ export const Header: React.FC = () => {
           }}
           className="flex items-center gap-2.5 sm:gap-3 cursor-pointer group select-none shrink-0"
         >
-          <KinoMartLogo className="w-9 h-9 sm:w-10 sm:h-10 transition-transform group-hover:scale-105" />
+          {settings.logoUrl ? (
+            <img src={settings.logoUrl} alt="Logo" className="w-9 h-9 sm:w-10 sm:h-10 object-contain transition-transform group-hover:scale-105" />
+          ) : (
+            <KinoMartLogo className="w-9 h-9 sm:w-10 sm:h-10 transition-transform group-hover:scale-105" />
+          )}
           <div>
             <h1 className="text-lg sm:text-2xl font-black text-[#1F241E] tracking-tight leading-none">
               {settings.websiteTitle || 'KinoMart'}

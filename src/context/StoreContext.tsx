@@ -330,8 +330,14 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           if (cats && cats.length > 0) {
             setCategories(cats.map(r => {
               const item = r.data || r;
-              const rawSub = item.subCategories ?? r.subCategories ?? r.sub_categories ?? r.subcategories ?? (item.data?.subCategories);
+              const dataSub = r.data?.subCategories;
+              const topSub = r.subCategories ?? r.sub_categories ?? r.subcategories ?? item.subCategories;
               let parsedSub: string[] = [];
+
+              const rawSub = (Array.isArray(topSub) && topSub.length > 0) ? topSub :
+                             (Array.isArray(dataSub) && dataSub.length > 0) ? dataSub :
+                             topSub ?? dataSub;
+
               if (Array.isArray(rawSub)) {
                 parsedSub = rawSub;
               } else if (typeof rawSub === 'string') {
@@ -341,6 +347,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                   parsedSub = [];
                 }
               }
+
               return {
                 id: String(item.id || r.id),
                 name: String(item.name || r.name || ''),
@@ -355,6 +362,14 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           const { data: cpn } = await supabase.from('coupons').select('*');
           if (cpn && cpn.length > 0) {
             setCoupons(cpn.map(r => r.data || r));
+          }
+
+          const { data: stg } = await supabase.from('settings').select('*');
+          if (stg && stg.length > 0) {
+            const fetchedStg = stg[0].data || stg[0];
+            if (fetchedStg) {
+              setSettings(prev => ({ ...prev, ...fetchedStg }));
+            }
           }
 
           const { data: profs } = await supabase.from('customer_profiles').select('*');
@@ -566,29 +581,38 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // Category CRUD
   const saveCategory = (category: Category) => {
+    const subList = Array.isArray(category.subCategories) ? category.subCategories : [];
+    const cleanCategory: Category = {
+      ...category,
+      subCategories: subList
+    };
+
     setCategories(prev => {
-      const exists = prev.some(c => c.id === category.id);
+      const exists = prev.some(c => c.id === cleanCategory.id);
       if (exists) {
-        return prev.map(c => (c.id === category.id ? category : c));
+        return prev.map(c => (c.id === cleanCategory.id ? cleanCategory : c));
       } else {
-        return [...prev, category];
+        return [...prev, cleanCategory];
       }
     });
 
     if (isSupabaseConfigured() && supabase) {
-      const subList = category.subCategories || [];
       supabase.from('categories').upsert({
-        id: category.id,
-        name: category.name,
-        image: category.image || '',
-        position: category.position,
-        isVisibleOnHome: category.isVisibleOnHome ?? true,
-        is_visible_on_home: category.isVisibleOnHome ?? true,
-        subCategories: subList,
-        sub_categories: subList,
-        subcategories: subList,
-        data: category
-      }).then(null, err => console.warn('Supabase category save error:', err));
+        id: cleanCategory.id,
+        name: cleanCategory.name,
+        image: cleanCategory.image || '',
+        position: cleanCategory.position,
+        isVisibleOnHome: cleanCategory.isVisibleOnHome ?? true,
+        data: cleanCategory
+      }).then(null, async (err) => {
+        console.warn('Category upsert primary notice, trying minimal payload:', err);
+        if (supabase) {
+          await supabase.from('categories').upsert({
+            id: cleanCategory.id,
+            data: cleanCategory
+          }).then(null, e => console.warn('Category minimal upsert error:', e));
+        }
+      });
     }
   };
 
@@ -629,6 +653,12 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   // Settings
   const saveSettings = (newSettings: StoreSettings) => {
     setSettings(newSettings);
+    if (isSupabaseConfigured() && supabase) {
+      supabase.from('settings').upsert({
+        id: 'site_settings',
+        data: newSettings
+      }).then(null, err => console.warn('Supabase settings save error:', err));
+    }
   };
 
   // Validate Coupon
