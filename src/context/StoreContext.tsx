@@ -580,13 +580,16 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   // Category CRUD
-  const saveCategory = (category: Category) => {
-    const subList = Array.isArray(category.subCategories) ? category.subCategories : [];
+  const saveCategory = async (category: Category) => {
+    const rawSubs = Array.isArray(category.subCategories) ? category.subCategories : [];
+    const subList = Array.from(new Set(rawSubs.map(s => String(s).trim()).filter(Boolean)));
+    
     const cleanCategory: Category = {
       ...category,
       subCategories: subList
     };
 
+    // Update local React state immediately
     setCategories(prev => {
       const exists = prev.some(c => c.id === cleanCategory.id);
       if (exists) {
@@ -597,22 +600,67 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     });
 
     if (isSupabaseConfigured() && supabase) {
-      supabase.from('categories').upsert({
-        id: cleanCategory.id,
-        name: cleanCategory.name,
-        image: cleanCategory.image || '',
-        position: cleanCategory.position,
-        isVisibleOnHome: cleanCategory.isVisibleOnHome ?? true,
-        data: cleanCategory
-      }).then(null, async (err) => {
-        console.warn('Category upsert primary notice, trying minimal payload:', err);
-        if (supabase) {
+      try {
+        const payload = {
+          id: cleanCategory.id,
+          name: cleanCategory.name,
+          image: cleanCategory.image || '',
+          position: cleanCategory.position,
+          isVisibleOnHome: cleanCategory.isVisibleOnHome ?? true,
+          is_visible_on_home: cleanCategory.isVisibleOnHome ?? true,
+          subCategories: subList,
+          sub_categories: subList,
+          subcategories: subList,
+          data: cleanCategory
+        };
+
+        const { error } = await supabase.from('categories').upsert(payload);
+
+        if (error) {
+          console.warn('Category upsert primary error, retrying with fallback data payload:', error);
           await supabase.from('categories').upsert({
             id: cleanCategory.id,
+            name: cleanCategory.name,
             data: cleanCategory
-          }).then(null, e => console.warn('Category minimal upsert error:', e));
+          });
         }
-      });
+
+        // Refresh state from Supabase after save completes to ensure full synchronization
+        const { data: freshCats } = await supabase.from('categories').select('*');
+        if (freshCats && freshCats.length > 0) {
+          setCategories(freshCats.map(r => {
+            const item = r.data || r;
+            const dataSub = r.data?.subCategories;
+            const topSub = r.subCategories ?? r.sub_categories ?? r.subcategories ?? item.subCategories;
+            
+            let parsedSub: string[] = [];
+            const rawSub = (Array.isArray(topSub) && topSub.length > 0) ? topSub :
+                           (Array.isArray(dataSub) && dataSub.length > 0) ? dataSub :
+                           topSub ?? dataSub;
+
+            if (Array.isArray(rawSub)) {
+              parsedSub = rawSub;
+            } else if (typeof rawSub === 'string') {
+              try {
+                parsedSub = JSON.parse(rawSub);
+              } catch {
+                parsedSub = [];
+              }
+            }
+
+            return {
+              id: String(item.id || r.id),
+              name: String(item.name || r.name || ''),
+              image: item.image || r.image || '',
+              position: Number(item.position ?? r.position ?? 1),
+              isVisibleOnHome: Boolean(item.isVisibleOnHome ?? r.is_visible_on_home ?? r.isVisibleOnHome ?? true),
+              subCategories: Array.isArray(parsedSub) ? parsedSub.map(s => String(s).trim()).filter(Boolean) : []
+            };
+          }));
+        }
+      } catch (err) {
+        console.warn('Supabase category save error:', err);
+      }
     }
   };
 
