@@ -27,23 +27,35 @@ export const initDataLayer = (): Record<string, any>[] => {
  * Helper to safely push events to window.dataLayer
  */
 export const pushToDataLayer = (data: Record<string, any>): void => {
-  if (typeof window === 'undefined') return;
-  const dl = initDataLayer();
-  dl.push(data);
+  try {
+    if (typeof window === 'undefined') return;
+    const dl = initDataLayer();
+    dl.push(data);
+  } catch (err) {
+    console.warn('[DataLayer Warning] Failed to push event:', err);
+  }
 };
 
 /**
  * Helper to format product into standard GA4 item structure
  */
 export const formatGA4Item = (
-  product: Product,
+  product?: Product,
   quantity: number = 1,
   selectedColor?: string
 ) => {
+  if (!product) {
+    return {
+      item_id: '',
+      item_name: '',
+      price: 0,
+      quantity: quantity,
+    };
+  }
   const price = product.discountPrice || product.price || 0;
   return {
-    item_id: product.id,
-    item_name: product.name,
+    item_id: product.id || '',
+    item_name: product.name || '',
     price: price,
     quantity: quantity,
     item_category: product.category || undefined,
@@ -60,12 +72,16 @@ export const trackPageView = (
   pageLocation?: string,
   pagePath?: string
 ): void => {
-  pushToDataLayer({
-    event: 'page_view',
-    page_title: pageTitle || (typeof document !== 'undefined' ? document.title : ''),
-    page_location: pageLocation || (typeof window !== 'undefined' ? window.location.href : ''),
-    page_path: pagePath || (typeof window !== 'undefined' ? window.location.pathname : ''),
-  });
+  try {
+    pushToDataLayer({
+      event: 'page_view',
+      page_title: pageTitle || (typeof document !== 'undefined' ? document.title : ''),
+      page_location: pageLocation || (typeof window !== 'undefined' ? window.location.href : ''),
+      page_path: pagePath || (typeof window !== 'undefined' ? window.location.pathname : ''),
+    });
+  } catch (err) {
+    console.warn('[DataLayer Warning] trackPageView error:', err);
+  }
 };
 
 /**
@@ -76,15 +92,20 @@ export const trackViewItem = (
   quantity: number = 1,
   selectedColor?: string
 ): void => {
-  const item = formatGA4Item(product, quantity, selectedColor);
-  pushToDataLayer({
-    event: 'view_item',
-    ecommerce: {
-      currency: 'BDT',
-      value: item.price * quantity,
-      items: [item],
-    },
-  });
+  try {
+    if (!product) return;
+    const item = formatGA4Item(product, quantity, selectedColor);
+    pushToDataLayer({
+      event: 'view_item',
+      ecommerce: {
+        currency: 'BDT',
+        value: item.price * quantity,
+        items: [item],
+      },
+    });
+  } catch (err) {
+    console.warn('[DataLayer Warning] trackViewItem error:', err);
+  }
 };
 
 /**
@@ -95,15 +116,20 @@ export const trackAddToCart = (
   quantity: number = 1,
   selectedColor?: string
 ): void => {
-  const item = formatGA4Item(product, quantity, selectedColor);
-  pushToDataLayer({
-    event: 'add_to_cart',
-    ecommerce: {
-      currency: 'BDT',
-      value: item.price * quantity,
-      items: [item],
-    },
-  });
+  try {
+    if (!product) return;
+    const item = formatGA4Item(product, quantity, selectedColor);
+    pushToDataLayer({
+      event: 'add_to_cart',
+      ecommerce: {
+        currency: 'BDT',
+        value: item.price * quantity,
+        items: [item],
+      },
+    });
+  } catch (err) {
+    console.warn('[DataLayer Warning] trackAddToCart error:', err);
+  }
 };
 
 /**
@@ -114,15 +140,20 @@ export const trackRemoveFromCart = (
   quantity: number = 1,
   selectedColor?: string
 ): void => {
-  const item = formatGA4Item(product, quantity, selectedColor);
-  pushToDataLayer({
-    event: 'remove_from_cart',
-    ecommerce: {
-      currency: 'BDT',
-      value: item.price * quantity,
-      items: [item],
-    },
-  });
+  try {
+    if (!product) return;
+    const item = formatGA4Item(product, quantity, selectedColor);
+    pushToDataLayer({
+      event: 'remove_from_cart',
+      ecommerce: {
+        currency: 'BDT',
+        value: item.price * quantity,
+        items: [item],
+      },
+    });
+  } catch (err) {
+    console.warn('[DataLayer Warning] trackRemoveFromCart error:', err);
+  }
 };
 
 /**
@@ -133,19 +164,23 @@ export const trackBeginCheckout = (
   value: number,
   couponCode?: string
 ): void => {
-  const formattedItems = items.map((i) =>
-    formatGA4Item(i.product, i.quantity, i.selectedColor)
-  );
+  try {
+    const formattedItems = (items || []).map((i) =>
+      formatGA4Item(i.product, i.quantity, i.selectedColor)
+    );
 
-  pushToDataLayer({
-    event: 'begin_checkout',
-    ecommerce: {
-      currency: 'BDT',
-      value: value,
-      coupon: couponCode || undefined,
-      items: formattedItems,
-    },
-  });
+    pushToDataLayer({
+      event: 'begin_checkout',
+      ecommerce: {
+        currency: 'BDT',
+        value: value,
+        coupon: couponCode || undefined,
+        items: formattedItems,
+      },
+    });
+  } catch (err) {
+    console.warn('[DataLayer Warning] trackBeginCheckout error:', err);
+  }
 };
 
 /**
@@ -153,36 +188,41 @@ export const trackBeginCheckout = (
  * Deduplicated by transaction_id to ensure it fires only once per order.
  */
 export const trackPurchase = (order: Order): void => {
-  const transactionId = order.orderNumber || order.id;
+  try {
+    if (!order) return;
+    const transactionId = order.orderNumber || order.id;
 
-  if (!transactionId) return;
+    if (!transactionId) return;
 
-  // Prevent duplicate purchase events
-  if (trackedTransactions.has(transactionId)) {
-    console.log(`[DataLayer] Purchase event for order ${transactionId} already tracked. Skipping duplicate.`);
-    return;
+    // Prevent duplicate purchase events
+    if (trackedTransactions.has(transactionId)) {
+      console.log(`[DataLayer] Purchase event for order ${transactionId} already tracked. Skipping duplicate.`);
+      return;
+    }
+
+    trackedTransactions.add(transactionId);
+
+    const formattedItems = (order.items || []).map((orderItem: OrderItem) =>
+      formatGA4Item(
+        orderItem.product,
+        orderItem.quantity,
+        orderItem.selectedColor
+      )
+    );
+
+    pushToDataLayer({
+      event: 'purchase',
+      ecommerce: {
+        transaction_id: transactionId,
+        value: order.totalPrice,
+        tax: 0,
+        shipping: order.deliveryFee || 0,
+        currency: 'BDT',
+        coupon: order.couponCode || undefined,
+        items: formattedItems,
+      },
+    });
+  } catch (err) {
+    console.warn('[DataLayer Warning] trackPurchase error:', err);
   }
-
-  trackedTransactions.add(transactionId);
-
-  const formattedItems = (order.items || []).map((orderItem: OrderItem) =>
-    formatGA4Item(
-      orderItem.product,
-      orderItem.quantity,
-      orderItem.selectedColor
-    )
-  );
-
-  pushToDataLayer({
-    event: 'purchase',
-    ecommerce: {
-      transaction_id: transactionId,
-      value: order.totalPrice,
-      tax: 0,
-      shipping: order.deliveryFee || 0,
-      currency: 'BDT',
-      coupon: order.couponCode || undefined,
-      items: formattedItems,
-    },
-  });
 };

@@ -18,6 +18,7 @@ import { Footer } from './components/Footer';
 import { AdminLayout } from './components/admin/AdminLayout';
 import { AdminLoginModal } from './components/admin/AdminLoginModal';
 import { trackPageView } from './lib/dataLayer';
+import { getProductSlug, findProductBySlugOrId } from './lib/slugUtils';
 import { Filter, ShoppingBag, Phone, Mail, MapPin, Sparkles, Flame, ArrowRight } from 'lucide-react';
 
 const MainAppContent: React.FC = () => {
@@ -44,6 +45,8 @@ const MainAppContent: React.FC = () => {
     settings
   } = useStore();
 
+  const isInitialRouteRef = React.useRef(true);
+
   React.useEffect(() => {
     const handleUrlChange = () => {
       const path = window.location.pathname;
@@ -53,12 +56,12 @@ const MainAppContent: React.FC = () => {
       } else {
         setViewMode('client');
         if (path.startsWith('/product/')) {
-          const prodId = decodeURIComponent(path.replace('/product/', '')).trim();
-          const found = products.find(p => p.id === prodId || p.name.toLowerCase() === prodId.toLowerCase());
+          const param = path.replace('/product/', '').trim();
+          const found = findProductBySlugOrId(products, param);
           if (found) {
             setSelectedProduct(found);
             setActiveClientPage('product-detail');
-          } else if (products.length > 0) {
+          } else if (products.length > 0 && activeClientPage === 'product-detail') {
             setActiveClientPage('home');
           }
         } else if (path === '/products') {
@@ -79,14 +82,21 @@ const MainAppContent: React.FC = () => {
       }
     };
 
-    handleUrlChange();
-    window.addEventListener('popstate', handleUrlChange);
-    window.addEventListener('hashchange', handleUrlChange);
+    if (isInitialRouteRef.current) {
+      isInitialRouteRef.current = false;
+      handleUrlChange();
+    } else if (activeClientPage === 'product-detail' && !selectedProduct && window.location.pathname.startsWith('/product/')) {
+      handleUrlChange();
+    }
+
+    const onPopState = () => handleUrlChange();
+    window.addEventListener('popstate', onPopState);
+    window.addEventListener('hashchange', onPopState);
     return () => {
-      window.removeEventListener('popstate', handleUrlChange);
-      window.removeEventListener('hashchange', handleUrlChange);
+      window.removeEventListener('popstate', onPopState);
+      window.removeEventListener('hashchange', onPopState);
     };
-  }, [products, setViewMode, setSelectedProduct, setActiveClientPage]);
+  }, [products, setViewMode, setSelectedProduct, setActiveClientPage, activeClientPage, selectedProduct]);
 
   // Push state to browser address bar when active view changes
   React.useEffect(() => {
@@ -94,7 +104,8 @@ const MainAppContent: React.FC = () => {
     if (viewMode === 'admin') {
       targetPath = '/admin';
     } else if (activeClientPage === 'product-detail' && selectedProduct) {
-      targetPath = `/product/${selectedProduct.id}`;
+      const slug = getProductSlug(selectedProduct);
+      targetPath = `/product/${encodeURIComponent(slug)}`;
     } else if (activeClientPage === 'products') {
       targetPath = '/products';
     } else if (activeClientPage === 'about') {
