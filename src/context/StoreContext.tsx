@@ -236,10 +236,14 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return newLog;
   };
 
-  // Sync Customer Profiles to LocalStorage
-  useEffect(() => {
-    safeSetStorage('kinomart_customer_profiles', customerProfiles);
-  }, [customerProfiles]);
+  // Sync LocalStorage for all core state collections
+  useEffect(() => { safeSetStorage('kinomart_products', products); }, [products]);
+  useEffect(() => { safeSetStorage('kinomart_categories', categories); }, [categories]);
+  useEffect(() => { safeSetStorage('kinomart_orders', orders); }, [orders]);
+  useEffect(() => { safeSetStorage('kinomart_coupons', coupons); }, [coupons]);
+  useEffect(() => { safeSetStorage('kinomart_team', team); }, [team]);
+  useEffect(() => { safeSetStorage('kinomart_settings', settings); }, [settings]);
+  useEffect(() => { safeSetStorage('kinomart_customer_profiles', customerProfiles); }, [customerProfiles]);
 
   useEffect(() => {
     if (customerUser) {
@@ -252,6 +256,34 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }
     }
   }, [customerUser]);
+
+  // Resilient Smart Upsert Helper for Supabase
+  const smartUpsert = async (
+    tableName: string,
+    primaryPayload: Record<string, any>,
+    fallbackPayloads: Record<string, any>[] = []
+  ): Promise<boolean> => {
+    const supabase = getSupabaseClient();
+    if (!supabase) return false;
+
+    try {
+      const { error: primaryErr } = await supabase.from(tableName).upsert(primaryPayload);
+      if (!primaryErr) return true;
+
+      console.warn(`Primary upsert failed on ${tableName}:`, primaryErr.message || primaryErr);
+
+      for (const fallback of fallbackPayloads) {
+        const { error: fbErr } = await supabase.from(tableName).upsert(fallback);
+        if (!fbErr) {
+          console.log(`Fallback upsert succeeded on ${tableName}`);
+          return true;
+        }
+      }
+    } catch (err) {
+      console.warn(`Exception during smartUpsert on ${tableName}:`, err);
+    }
+    return false;
+  };
 
   // Customer Actions
   const loginCustomer = (phone: string, name?: string): boolean => {
@@ -330,109 +362,152 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       // 1. Orders
       const { data: ords } = await supabase.from('orders').select('*');
       if (ords && ords.length > 0) {
-        setOrders(ords.map(r => {
-          const item = typeof r.data === 'string' ? JSON.parse(r.data) : (r.data || r);
-          return {
-            ...item,
-            id: String(item.id || r.id),
-            orderNumber: String(item.orderNumber || r.orderNumber || r.order_number || item.id || r.id),
-            customerName: String(item.customerName || r.customer_name || r.customerName || ''),
-            customerPhone: String(item.customerPhone || r.customer_phone || r.customerPhone || ''),
-            shippingAddress: String(item.shippingAddress || r.shipping_address || ''),
-            deliveryArea: item.deliveryArea || 'Inside Dhaka',
-            deliveryFee: Number(item.deliveryFee ?? 0),
-            paymentMethod: item.paymentMethod || 'COD',
-            items: Array.isArray(item.items) ? item.items : [],
-            subtotal: Number(item.subtotal ?? 0),
-            discount: Number(item.discount ?? 0),
-            totalPrice: Number(item.totalPrice ?? r.total_price ?? r.totalPrice ?? 0),
-            status: item.status || r.status || 'Pending',
-            callStatus: item.callStatus || r.call_status || r.callStatus || 'Not Called',
-            createdAt: item.createdAt || r.created_at || new Date().toISOString()
-          };
-        }));
+        setOrders(prev => {
+          const fetchedOrders = ords.map(r => {
+            const dataObj = typeof r.data === 'string' ? JSON.parse(r.data) : (r.data || {});
+            const localMatch = prev.find(o => o.id === String(r.id || dataObj.id));
+            const base: Partial<Order> = localMatch || {};
+
+            return {
+              ...base,
+              ...dataObj,
+              id: String(r.id || dataObj.id || base.id),
+              orderNumber: String(dataObj.orderNumber || r.order_number || r.orderNumber || base.orderNumber || r.id),
+              customerName: String(dataObj.customerName || r.customer_name || r.customerName || base.customerName || ''),
+              customerPhone: String(dataObj.customerPhone || r.customer_phone || r.customerPhone || base.customerPhone || ''),
+              shippingAddress: String(dataObj.shippingAddress || r.shipping_address || base.shippingAddress || ''),
+              deliveryArea: dataObj.deliveryArea || base.deliveryArea || 'Inside Dhaka',
+              deliveryFee: Number(dataObj.deliveryFee ?? base.deliveryFee ?? 0),
+              paymentMethod: dataObj.paymentMethod || base.paymentMethod || 'COD',
+              items: Array.isArray(dataObj.items) ? dataObj.items : (Array.isArray(base.items) ? base.items : []),
+              subtotal: Number(dataObj.subtotal ?? base.subtotal ?? 0),
+              discount: Number(dataObj.discount ?? base.discount ?? 0),
+              totalPrice: Number(dataObj.totalPrice ?? r.total_price ?? base.totalPrice ?? 0),
+              status: dataObj.status || r.status || base.status || 'Pending',
+              callStatus: dataObj.callStatus || r.call_status || base.callStatus || 'Not Called',
+              createdAt: dataObj.createdAt || r.created_at || base.createdAt || new Date().toISOString()
+            } as Order;
+          });
+
+          const map = new Map<string, Order>();
+          fetchedOrders.forEach(o => map.set(o.id, o));
+          prev.forEach(o => { if (!map.has(o.id)) map.set(o.id, o); });
+          return Array.from(map.values());
+        });
       }
 
       // 2. Products
       const { data: prods } = await supabase.from('products').select('*');
       if (prods && prods.length > 0) {
-        setProducts(prods.map(r => {
-          const item = typeof r.data === 'string' ? JSON.parse(r.data) : (r.data || r);
-          return {
-            id: String(item.id || r.id),
-            name: String(item.name || r.name || ''),
-            price: Number(item.price ?? r.price ?? 0),
-            discountPrice: item.discountPrice !== undefined && item.discountPrice !== null ? Number(item.discountPrice) : undefined,
-            category: String(item.category || r.category || 'গ্যাজেট'),
-            subCategory: String(item.subCategory || r.sub_category || r.subCategory || ''),
-            stock: Number(item.stock ?? r.stock ?? 10),
-            limitedStockThreshold: Number(item.limitedStockThreshold ?? 10),
-            colors: Array.isArray(item.colors) ? item.colors : ['BLACK'],
-            thumbnail: item.thumbnail || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800&auto=format&fit=crop&q=80',
-            gallery: Array.isArray(item.gallery) ? item.gallery : [],
-            videoUrl: item.videoUrl || '',
-            shortDescription: item.shortDescription || '',
-            longDescription: item.longDescription || '',
-            specifications: Array.isArray(item.specifications) ? item.specifications : [],
-            bundles: Array.isArray(item.bundles) ? item.bundles : [],
-            hasTimer: Boolean(item.hasTimer),
-            isBestSeller: Boolean(item.isBestSeller),
-            isFeatured: Boolean(item.isFeatured),
-            rating: Number(item.rating ?? 5.0),
-            reviewsCount: Number(item.reviewsCount ?? 1),
-            status: (item.status === 'INACTIVE' ? 'INACTIVE' : 'ACTIVE')
-          };
-        }));
+        setProducts(prev => {
+          const fetchedProducts = prods.map(r => {
+            const dataObj = typeof r.data === 'string' ? JSON.parse(r.data) : (r.data || {});
+            const localMatch = prev.find(p => p.id === String(r.id || dataObj.id));
+            const base: Partial<Product> = localMatch || {};
+
+            return {
+              ...base,
+              ...dataObj,
+              id: String(r.id || dataObj.id || base.id),
+              name: String(dataObj.name || r.name || base.name || ''),
+              price: Number(dataObj.price ?? r.price ?? base.price ?? 0),
+              discountPrice: dataObj.discountPrice !== undefined ? Number(dataObj.discountPrice) : (base.discountPrice !== undefined ? base.discountPrice : undefined),
+              category: String(dataObj.category || r.category || base.category || 'গ্যাজেট'),
+              subCategory: String(dataObj.subCategory || r.sub_category || r.subCategory || base.subCategory || ''),
+              stock: Number(dataObj.stock ?? r.stock ?? base.stock ?? 10),
+              limitedStockThreshold: Number(dataObj.limitedStockThreshold ?? base.limitedStockThreshold ?? 10),
+              colors: Array.isArray(dataObj.colors) ? dataObj.colors : (Array.isArray(base.colors) ? base.colors : ['BLACK']),
+              thumbnail: dataObj.thumbnail || base.thumbnail || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800&auto=format&fit=crop&q=80',
+              gallery: Array.isArray(dataObj.gallery) ? dataObj.gallery : (Array.isArray(base.gallery) ? base.gallery : []),
+              videoUrl: dataObj.videoUrl || base.videoUrl || '',
+              shortDescription: dataObj.shortDescription || base.shortDescription || '',
+              longDescription: dataObj.longDescription || base.longDescription || '',
+              specifications: Array.isArray(dataObj.specifications) ? dataObj.specifications : (Array.isArray(base.specifications) ? base.specifications : []),
+              bundles: Array.isArray(dataObj.bundles) ? dataObj.bundles : (Array.isArray(base.bundles) ? base.bundles : []),
+              hasTimer: Boolean(dataObj.hasTimer ?? base.hasTimer ?? false),
+              isBestSeller: Boolean(dataObj.isBestSeller ?? base.isBestSeller ?? false),
+              isFeatured: Boolean(dataObj.isFeatured ?? base.isFeatured ?? false),
+              rating: Number(dataObj.rating ?? base.rating ?? 5.0),
+              reviewsCount: Number(dataObj.reviewsCount ?? base.reviewsCount ?? 1),
+              status: (dataObj.status || base.status === 'INACTIVE' ? 'INACTIVE' : 'ACTIVE') as 'ACTIVE' | 'INACTIVE'
+            } as Product;
+          });
+
+          const map = new Map<string, Product>();
+          fetchedProducts.forEach(p => map.set(p.id, p));
+          prev.forEach(p => { if (!map.has(p.id)) map.set(p.id, p); });
+          return Array.from(map.values());
+        });
       }
 
       // 3. Categories
       const { data: cats } = await supabase.from('categories').select('*');
       if (cats && cats.length > 0) {
-        setCategories(cats.map(r => {
-          const item = typeof r.data === 'string' ? JSON.parse(r.data) : (r.data || r);
-          const dataSub = item?.subCategories;
-          const topSub = r.subCategories ?? r.sub_categories ?? r.subcategories ?? item.subCategories;
-          let parsedSub: string[] = [];
+        setCategories(prev => {
+          const fetchedCats = cats.map(r => {
+            const dataObj = typeof r.data === 'string' ? JSON.parse(r.data) : (r.data || {});
+            const localMatch = prev.find(c => c.id === String(r.id || dataObj.id));
+            const base: Partial<Category> = localMatch || {};
 
-          const rawSub = (Array.isArray(topSub) && topSub.length > 0) ? topSub :
-                         (Array.isArray(dataSub) && dataSub.length > 0) ? dataSub :
-                         topSub ?? dataSub;
+            const dataSub = dataObj.subCategories;
+            const topSub = r.subCategories ?? r.sub_categories ?? r.subcategories ?? dataSub ?? base.subCategories;
+            let parsedSub: string[] = [];
 
-          if (Array.isArray(rawSub)) {
-            parsedSub = rawSub;
-          } else if (typeof rawSub === 'string') {
-            try {
-              parsedSub = JSON.parse(rawSub);
-            } catch {
-              parsedSub = [];
+            const rawSub = (Array.isArray(topSub) && topSub.length > 0) ? topSub :
+                           (Array.isArray(dataSub) && dataSub.length > 0) ? dataSub :
+                           topSub ?? dataSub;
+
+            if (Array.isArray(rawSub)) {
+              parsedSub = rawSub;
+            } else if (typeof rawSub === 'string') {
+              try { parsedSub = JSON.parse(rawSub); } catch { parsedSub = []; }
             }
-          }
 
-          return {
-            id: String(item.id || r.id),
-            name: String(item.name || r.name || ''),
-            image: item.image || r.image || '',
-            position: Number(item.position ?? r.position ?? 1),
-            isVisibleOnHome: Boolean(item.isVisibleOnHome ?? r.is_visible_on_home ?? r.isVisibleOnHome ?? true),
-            subCategories: Array.isArray(parsedSub) ? parsedSub.map(s => String(s).trim()).filter(Boolean) : []
-          };
-        }));
+            return {
+              ...base,
+              ...dataObj,
+              id: String(r.id || dataObj.id || base.id),
+              name: String(dataObj.name || r.name || base.name || ''),
+              image: dataObj.image || r.image || base.image || '',
+              position: Number(dataObj.position ?? r.position ?? base.position ?? 1),
+              isVisibleOnHome: Boolean(dataObj.isVisibleOnHome ?? r.is_visible_on_home ?? base.isVisibleOnHome ?? true),
+              subCategories: Array.isArray(parsedSub) ? parsedSub.map(s => String(s).trim()).filter(Boolean) : []
+            } as Category;
+          });
+
+          const map = new Map<string, Category>();
+          fetchedCats.forEach(c => map.set(c.id, c));
+          prev.forEach(c => { if (!map.has(c.id)) map.set(c.id, c); });
+          return Array.from(map.values());
+        });
       }
 
       // 4. Coupons
       const { data: cpn } = await supabase.from('coupons').select('*');
       if (cpn && cpn.length > 0) {
-        setCoupons(cpn.map(r => {
-          const item = typeof r.data === 'string' ? JSON.parse(r.data) : (r.data || r);
-          return {
-            id: String(item.id || r.id),
-            code: String(item.code || r.code || ''),
-            type: (item.type || r.discount_type || 'FIXED') as 'PERCENTAGE' | 'FIXED',
-            value: Number(item.value ?? r.discount_amount ?? 0),
-            minOrderAmount: item.minOrderAmount ? Number(item.minOrderAmount) : undefined,
-            isActive: Boolean(item.isActive ?? true)
-          };
-        }));
+        setCoupons(prev => {
+          const fetchedCoupons = cpn.map(r => {
+            const dataObj = typeof r.data === 'string' ? JSON.parse(r.data) : (r.data || {});
+            const localMatch = prev.find(c => c.id === String(r.id || dataObj.id));
+            const base: Partial<Coupon> = localMatch || {};
+
+            return {
+              ...base,
+              ...dataObj,
+              id: String(r.id || dataObj.id || base.id),
+              code: String(dataObj.code || r.code || base.code || ''),
+              type: (dataObj.type || r.discount_type || base.type || 'FIXED') as 'PERCENTAGE' | 'FIXED',
+              value: Number(dataObj.value ?? r.discount_amount ?? base.value ?? 0),
+              minOrderAmount: dataObj.minOrderAmount ?? base.minOrderAmount,
+              isActive: Boolean(dataObj.isActive ?? base.isActive ?? true)
+            } as Coupon;
+          });
+
+          const map = new Map<string, Coupon>();
+          fetchedCoupons.forEach(c => map.set(c.id, c));
+          prev.forEach(c => { if (!map.has(c.id)) map.set(c.id, c); });
+          return Array.from(map.values());
+        });
       }
 
       // 5. Settings
@@ -447,34 +522,49 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       // 6. Customer Profiles
       const { data: profs } = await supabase.from('customer_profiles').select('*');
       if (profs && profs.length > 0) {
-        const map: Record<string, CustomerProfile> = {};
-        profs.forEach(p => {
-          const item = typeof p.data === 'string' ? JSON.parse(p.data) : (p.data || p);
-          if (p.phone) {
-            map[p.phone] = {
-              name: item.name || p.name || '',
-              phone: String(p.phone),
-              address: item.address || p.address || ''
-            };
-          }
+        setCustomerProfiles(prev => {
+          const map: Record<string, CustomerProfile> = { ...prev };
+          profs.forEach(p => {
+            const dataObj = typeof p.data === 'string' ? JSON.parse(p.data) : (p.data || {});
+            const phone = String(p.phone || dataObj.phone || '');
+            if (phone) {
+              map[phone] = {
+                name: dataObj.name || p.name || prev[phone]?.name || '',
+                phone: phone,
+                address: dataObj.address || p.address || prev[phone]?.address || ''
+              };
+            }
+          });
+          return map;
         });
-        setCustomerProfiles(map);
       }
 
       // 7. Team
       const { data: tm } = await supabase.from('team').select('*');
       if (tm && tm.length > 0) {
-        setTeam(tm.map(r => {
-          const item = typeof r.data === 'string' ? JSON.parse(r.data) : (r.data || r);
-          return {
-            id: String(item.id || r.id),
-            name: String(item.name || r.name || ''),
-            role: String(item.role || r.role || ''),
-            image: item.image || r.image || '',
-            phone: item.phone || r.phone || '',
-            email: item.email || r.email || ''
-          };
-        }));
+        setTeam(prev => {
+          const fetchedTeam = tm.map(r => {
+            const dataObj = typeof r.data === 'string' ? JSON.parse(r.data) : (r.data || {});
+            const localMatch = prev.find(t => t.id === String(r.id || dataObj.id));
+            const base: Partial<TeamMember> = localMatch || {};
+
+            return {
+              ...base,
+              ...dataObj,
+              id: String(r.id || dataObj.id || base.id),
+              name: String(dataObj.name || r.name || base.name || ''),
+              role: String(dataObj.role || r.role || base.role || ''),
+              image: dataObj.image || base.image || '',
+              phone: dataObj.phone || base.phone || '',
+              email: dataObj.email || base.email || ''
+            } as TeamMember;
+          });
+
+          const map = new Map<string, TeamMember>();
+          fetchedTeam.forEach(t => map.set(t.id, t));
+          prev.forEach(t => { if (!map.has(t.id)) map.set(t.id, t); });
+          return Array.from(map.values());
+        });
       }
     } catch (e) {
       console.warn('Supabase fetch notice:', e);
@@ -602,22 +692,19 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         prev.map(p => {
           if (p.id === item.product.id) {
             const updatedP = { ...p, stock: Math.max(0, p.stock - item.quantity) };
-            const supabase = getSupabaseClient();
-            if (supabase) {
-              supabase.from('products').upsert({
-                id: updatedP.id,
-                name: updatedP.name,
-                category: updatedP.category,
-                sub_category: updatedP.subCategory,
-                price: updatedP.price,
-                stock: updatedP.stock,
-                data: updatedP
-              }).then(({ error }) => {
-                if (error && supabase) {
-                  supabase.from('products').upsert({ id: updatedP.id, data: updatedP }).then();
-                }
-              });
-            }
+            smartUpsert('products', {
+              id: updatedP.id,
+              name: updatedP.name,
+              category: updatedP.category,
+              sub_category: updatedP.subCategory,
+              price: updatedP.price,
+              stock: updatedP.stock,
+              data: updatedP
+            }, [
+              { id: updatedP.id, name: updatedP.name, category: updatedP.category, price: updatedP.price, stock: updatedP.stock, data: updatedP },
+              { id: updatedP.id, data: updatedP },
+              { id: updatedP.id, name: updatedP.name, price: updatedP.price, stock: updatedP.stock }
+            ]);
             return updatedP;
           }
           return p;
@@ -635,19 +722,15 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       };
       setCustomerUser(autoProfile);
       setCustomerProfiles((prev) => ({ ...prev, [phoneKey]: autoProfile }));
-      const supabase = getSupabaseClient();
-      if (supabase) {
-        supabase.from('customer_profiles').upsert({
-          phone: autoProfile.phone,
-          name: autoProfile.name,
-          address: autoProfile.address,
-          data: autoProfile
-        }).then(({ error }) => {
-          if (error && supabase) {
-            supabase.from('customer_profiles').upsert({ phone: autoProfile.phone, data: autoProfile }).then();
-          }
-        });
-      }
+      smartUpsert('customer_profiles', {
+        phone: autoProfile.phone,
+        name: autoProfile.name,
+        address: autoProfile.address,
+        data: autoProfile
+      }, [
+        { phone: autoProfile.phone, data: autoProfile },
+        { phone: autoProfile.phone, name: autoProfile.name, address: autoProfile.address }
+      ]);
     }
 
     setOrders(prev => [newOrder, ...prev]);
@@ -663,33 +746,41 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     // Fire dataLayer purchase event
     trackPurchase(newOrder);
 
-    const supabase = getSupabaseClient();
-    if (supabase) {
-      (async () => {
-        try {
-          const cleanOrder: Order = JSON.parse(JSON.stringify(newOrder));
-          const payload = {
-            id: cleanOrder.id,
-            order_number: cleanOrder.orderNumber || '',
-            customer_name: cleanOrder.customerName || '',
-            customer_phone: cleanOrder.customerPhone || '',
-            total_price: Number(cleanOrder.totalPrice || 0),
-            status: cleanOrder.status || 'Pending',
-            call_status: cleanOrder.callStatus || 'Not Called',
-            data: cleanOrder
-          };
-
-          const { error } = await supabase.from('orders').upsert(payload);
-          if (error) {
-            console.warn('Order primary upsert error, falling back:', error);
-            await supabase.from('orders').upsert({ id: cleanOrder.id, data: cleanOrder });
-          }
-          await refreshSupabaseData();
-        } catch (err) {
-          console.warn('Supabase order save exception:', err);
+    // Save order to Supabase asynchronously
+    (async () => {
+      const cleanOrder: Order = JSON.parse(JSON.stringify(newOrder));
+      const primary = {
+        id: cleanOrder.id,
+        order_number: cleanOrder.orderNumber || '',
+        customer_name: cleanOrder.customerName || '',
+        customer_phone: cleanOrder.customerPhone || '',
+        total_price: Number(cleanOrder.totalPrice || 0),
+        status: cleanOrder.status || 'Pending',
+        call_status: cleanOrder.callStatus || 'Not Called',
+        data: cleanOrder
+      };
+      const fallbacks = [
+        {
+          id: cleanOrder.id,
+          customer_name: cleanOrder.customerName || '',
+          customer_phone: cleanOrder.customerPhone || '',
+          total_price: Number(cleanOrder.totalPrice || 0),
+          status: cleanOrder.status || 'Pending',
+          data: cleanOrder
+        },
+        { id: cleanOrder.id, data: cleanOrder },
+        {
+          id: cleanOrder.id,
+          order_number: cleanOrder.orderNumber || '',
+          customer_name: cleanOrder.customerName || '',
+          customer_phone: cleanOrder.customerPhone || '',
+          total_price: Number(cleanOrder.totalPrice || 0)
         }
-      })();
-    }
+      ];
+
+      await smartUpsert('orders', primary, fallbacks);
+      await refreshSupabaseData();
+    })();
 
     window.scrollTo({ top: 0, behavior: 'smooth' });
     return newOrder;
@@ -724,32 +815,34 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       triggerMockSMS(targetOrder, customSmsMsg);
     }
 
-    const supabase = getSupabaseClient();
-    if (supabase && targetOrder) {
+    if (targetOrder) {
       const ordToSave = targetOrder as Order;
       (async () => {
-        try {
-          const cleanOrd: Order = JSON.parse(JSON.stringify(ordToSave));
-          const payload = {
+        const cleanOrd: Order = JSON.parse(JSON.stringify(ordToSave));
+        const primary = {
+          id: cleanOrd.id,
+          order_number: cleanOrd.orderNumber || '',
+          customer_name: cleanOrd.customerName || '',
+          customer_phone: cleanOrd.customerPhone || '',
+          total_price: Number(cleanOrd.totalPrice || 0),
+          status: cleanOrd.status || 'Pending',
+          call_status: cleanOrd.callStatus || 'Not Called',
+          data: cleanOrd
+        };
+        const fallbacks = [
+          {
             id: cleanOrd.id,
-            order_number: cleanOrd.orderNumber || '',
             customer_name: cleanOrd.customerName || '',
             customer_phone: cleanOrd.customerPhone || '',
             total_price: Number(cleanOrd.totalPrice || 0),
             status: cleanOrd.status || 'Pending',
-            call_status: cleanOrd.callStatus || 'Not Called',
             data: cleanOrd
-          };
+          },
+          { id: cleanOrd.id, data: cleanOrd }
+        ];
 
-          const { error } = await supabase.from('orders').upsert(payload);
-          if (error) {
-            console.warn('Order status update primary error, falling back:', error);
-            await supabase.from('orders').upsert({ id: cleanOrd.id, data: cleanOrd });
-          }
-          await refreshSupabaseData();
-        } catch (err) {
-          console.warn('Supabase order status update exception:', err);
-        }
+        await smartUpsert('orders', primary, fallbacks);
+        await refreshSupabaseData();
       })();
     }
   };
@@ -775,35 +868,39 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }
     });
 
-    const supabase = getSupabaseClient();
-    if (supabase) {
-      (async () => {
-        try {
-          const payload = {
-            id: cleanProduct.id,
-            name: cleanProduct.name || '',
-            category: cleanProduct.category || '',
-            sub_category: cleanProduct.subCategory || '',
-            price: Number(cleanProduct.price || 0),
-            stock: Number(cleanProduct.stock || 0),
-            data: cleanProduct
-          };
+    (async () => {
+      const primary = {
+        id: cleanProduct.id,
+        name: cleanProduct.name || '',
+        category: cleanProduct.category || '',
+        sub_category: cleanProduct.subCategory || '',
+        price: Number(cleanProduct.price || 0),
+        stock: Number(cleanProduct.stock || 0),
+        data: cleanProduct
+      };
 
-          const { error } = await supabase.from('products').upsert(payload);
-          if (error) {
-            console.warn('Product save primary error, falling back:', error);
-            await supabase.from('products').upsert({
-              id: cleanProduct.id,
-              name: cleanProduct.name || '',
-              data: cleanProduct
-            });
-          }
-          await refreshSupabaseData();
-        } catch (err) {
-          console.warn('Supabase product save exception:', err);
+      const fallbacks = [
+        {
+          id: cleanProduct.id,
+          name: cleanProduct.name || '',
+          category: cleanProduct.category || '',
+          price: Number(cleanProduct.price || 0),
+          stock: Number(cleanProduct.stock || 0),
+          data: cleanProduct
+        },
+        { id: cleanProduct.id, data: cleanProduct },
+        {
+          id: cleanProduct.id,
+          name: cleanProduct.name || '',
+          category: cleanProduct.category || '',
+          price: Number(cleanProduct.price || 0),
+          stock: Number(cleanProduct.stock || 0)
         }
-      })();
-    }
+      ];
+
+      await smartUpsert('products', primary, fallbacks);
+      await refreshSupabaseData();
+    })();
   };
 
   const deleteProduct = (productId: string) => {
@@ -824,7 +921,6 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       subCategories: subList
     };
 
-    // Update local React state immediately
     setCategories(prev => {
       const exists = prev.some(c => c.id === cleanCategory.id);
       if (exists) {
@@ -834,67 +930,24 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }
     });
 
-    const supabase = getSupabaseClient();
-    if (supabase) {
-      try {
-        const payload = {
-          id: cleanCategory.id,
-          name: cleanCategory.name,
-          image: cleanCategory.image || '',
-          position: cleanCategory.position,
-          is_visible_on_home: cleanCategory.isVisibleOnHome ?? true,
-          sub_categories: subList,
-          data: cleanCategory
-        };
+    const primary = {
+      id: cleanCategory.id,
+      name: cleanCategory.name,
+      image: cleanCategory.image || '',
+      position: cleanCategory.position ?? 1,
+      is_visible_on_home: cleanCategory.isVisibleOnHome ?? true,
+      sub_categories: subList,
+      data: cleanCategory
+    };
 
-        const { error } = await supabase.from('categories').upsert(payload);
+    const fallbacks = [
+      { id: cleanCategory.id, name: cleanCategory.name, image: cleanCategory.image || '', data: cleanCategory },
+      { id: cleanCategory.id, data: cleanCategory },
+      { id: cleanCategory.id, name: cleanCategory.name }
+    ];
 
-        if (error) {
-          console.warn('Category upsert primary error, retrying with fallback data payload:', error);
-          await supabase.from('categories').upsert({
-            id: cleanCategory.id,
-            name: cleanCategory.name,
-            data: cleanCategory
-          });
-        }
-
-        // Refresh state from Supabase after save completes to ensure full synchronization
-        const { data: freshCats } = await supabase.from('categories').select('*');
-        if (freshCats && freshCats.length > 0) {
-          setCategories(freshCats.map(r => {
-            const item = r.data || r;
-            const dataSub = r.data?.subCategories;
-            const topSub = r.subCategories ?? r.sub_categories ?? r.subcategories ?? item.subCategories;
-            
-            let parsedSub: string[] = [];
-            const rawSub = (Array.isArray(topSub) && topSub.length > 0) ? topSub :
-                           (Array.isArray(dataSub) && dataSub.length > 0) ? dataSub :
-                           topSub ?? dataSub;
-
-            if (Array.isArray(rawSub)) {
-              parsedSub = rawSub;
-            } else if (typeof rawSub === 'string') {
-              try {
-                parsedSub = JSON.parse(rawSub);
-              } catch {
-                parsedSub = [];
-              }
-            }
-
-            return {
-              id: String(item.id || r.id),
-              name: String(item.name || r.name || ''),
-              image: item.image || r.image || '',
-              position: Number(item.position ?? r.position ?? 1),
-              isVisibleOnHome: Boolean(item.isVisibleOnHome ?? r.is_visible_on_home ?? r.isVisibleOnHome ?? true),
-              subCategories: Array.isArray(parsedSub) ? parsedSub.map(s => String(s).trim()).filter(Boolean) : []
-            };
-          }));
-        }
-      } catch (err) {
-        console.warn('Supabase category save error:', err);
-      }
-    }
+    await smartUpsert('categories', primary, fallbacks);
+    await refreshSupabaseData();
   };
 
   const deleteCategory = (categoryId: string) => {
@@ -918,29 +971,23 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }
     });
 
-    const supabase = getSupabaseClient();
-    if (supabase) {
-      (async () => {
-        try {
-          const payload = {
-            id: cleanCoupon.id,
-            code: cleanCoupon.code || '',
-            discount_amount: Number(cleanCoupon.value || 0),
-            discount_type: cleanCoupon.type || 'FIXED',
-            data: cleanCoupon
-          };
+    (async () => {
+      const primary = {
+        id: cleanCoupon.id,
+        code: cleanCoupon.code || '',
+        discount_amount: Number(cleanCoupon.value || 0),
+        discount_type: cleanCoupon.type || 'FIXED',
+        data: cleanCoupon
+      };
+      const fallbacks = [
+        { id: cleanCoupon.id, code: cleanCoupon.code || '', data: cleanCoupon },
+        { id: cleanCoupon.id, data: cleanCoupon },
+        { id: cleanCoupon.id, code: cleanCoupon.code || '', discount_amount: Number(cleanCoupon.value || 0) }
+      ];
 
-          const { error } = await supabase.from('coupons').upsert(payload);
-          if (error) {
-            console.warn('Coupon save primary error, falling back:', error);
-            await supabase.from('coupons').upsert({ id: cleanCoupon.id, data: cleanCoupon });
-          }
-          await refreshSupabaseData();
-        } catch (err) {
-          console.warn('Supabase coupon save exception:', err);
-        }
-      })();
-    }
+      await smartUpsert('coupons', primary, fallbacks);
+      await refreshSupabaseData();
+    })();
   };
 
   const deleteCoupon = (couponId: string) => {
@@ -964,28 +1011,21 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }
     });
 
-    const supabase = getSupabaseClient();
-    if (supabase) {
-      (async () => {
-        try {
-          const payload = {
-            id: cleanMember.id,
-            name: cleanMember.name || '',
-            role: cleanMember.role || '',
-            data: cleanMember
-          };
+    (async () => {
+      const primary = {
+        id: cleanMember.id,
+        name: cleanMember.name || '',
+        role: cleanMember.role || '',
+        data: cleanMember
+      };
+      const fallbacks = [
+        { id: cleanMember.id, data: cleanMember },
+        { id: cleanMember.id, name: cleanMember.name || '', role: cleanMember.role || '' }
+      ];
 
-          const { error } = await supabase.from('team').upsert(payload);
-          if (error) {
-            console.warn('Team save primary error, falling back:', error);
-            await supabase.from('team').upsert({ id: cleanMember.id, data: cleanMember });
-          }
-          await refreshSupabaseData();
-        } catch (err) {
-          console.warn('Supabase team save exception:', err);
-        }
-      })();
-    }
+      await smartUpsert('team', primary, fallbacks);
+      await refreshSupabaseData();
+    })();
   };
 
   const deleteTeamMember = (memberId: string) => {
@@ -1005,25 +1045,18 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       setSupabaseCredentials(cleanSettings.supabaseUrl || '', cleanSettings.supabaseKey || '');
     }
 
-    const supabase = getSupabaseClient();
-    if (supabase) {
-      (async () => {
-        try {
-          const payload = {
-            id: 'site_settings',
-            data: cleanSettings
-          };
+    (async () => {
+      const primary = {
+        id: 'site_settings',
+        data: cleanSettings
+      };
+      const fallbacks = [
+        { id: 'site_settings', data: JSON.stringify(cleanSettings) }
+      ];
 
-          const { error } = await supabase.from('settings').upsert(payload);
-          if (error) {
-            console.warn('Settings save error:', error);
-          }
-          await refreshSupabaseData();
-        } catch (err) {
-          console.warn('Supabase settings save exception:', err);
-        }
-      })();
-    }
+      await smartUpsert('settings', primary, fallbacks);
+      await refreshSupabaseData();
+    })();
   };
 
   // Validate Coupon

@@ -134,6 +134,7 @@ export interface TeamMember {
   role: string;
   phone: string;
   email: string;
+  image?: string;
 }
 
 export interface CustomerProfile {
