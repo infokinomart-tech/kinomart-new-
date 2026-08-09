@@ -79,7 +79,7 @@ interface StoreContextType {
 
   // Actions
   createOrder: (orderData: Omit<Order, 'id' | 'orderNumber' | 'createdAt' | 'status' | 'callStatus'>) => Order;
-  updateOrderStatus: (orderId: string, status: Order['status'], callStatus?: Order['callStatus'], customSmsMsg?: string, sendSms?: boolean) => void;
+  updateOrderStatus: (orderId: string, status: Order['status'], callStatus?: Order['callStatus'], customSmsMsg?: string, sendSms?: boolean, notes?: string) => void;
   deleteOrder: (orderId: string) => void;
   
   saveProduct: (product: Product) => void;
@@ -91,9 +91,13 @@ interface StoreContextType {
   saveCoupon: (coupon: Coupon) => void;
   deleteCoupon: (couponId: string) => void;
 
+  saveTeamMember: (member: TeamMember) => void;
+  deleteTeamMember: (memberId: string) => void;
+
   saveSettings: (settings: StoreSettings) => void;
   validateCoupon: (code: string, subtotal: number) => { valid: boolean; discount: number; message: string };
   
+  refreshSupabaseData: () => Promise<void>;
   resetToDefaults: () => void;
 }
 
@@ -312,81 +316,136 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   };
 
-  // Initial Fetch from Supabase if configured
-  useEffect(() => {
-    if (isSupabaseConfigured() && supabase) {
-      const loadSupabaseData = async () => {
-        try {
-          const { data: ords } = await supabase.from('orders').select('*');
-          if (ords && ords.length > 0) {
-            setOrders(ords.map(r => r.data || r));
-          }
+  // Supabase Data Refresh Function
+  const refreshSupabaseData = async () => {
+    if (!isSupabaseConfigured() || !supabase) return;
+    try {
+      // 1. Orders
+      const { data: ords } = await supabase.from('orders').select('*');
+      if (ords && ords.length > 0) {
+        setOrders(ords.map(r => {
+          const item = r.data || r;
+          return {
+            ...item,
+            id: String(item.id || r.id),
+            orderNumber: String(item.orderNumber || r.orderNumber || r.order_number || item.id || r.id),
+            status: item.status || r.status || 'Pending',
+            callStatus: item.callStatus || r.callStatus || 'Not Called'
+          };
+        }));
+      }
 
-          const { data: prods } = await supabase.from('products').select('*');
-          if (prods && prods.length > 0) {
-            setProducts(prods.map(r => r.data || r));
-          }
+      // 2. Products
+      const { data: prods } = await supabase.from('products').select('*');
+      if (prods && prods.length > 0) {
+        setProducts(prods.map(r => r.data || r));
+      }
 
-          const { data: cats } = await supabase.from('categories').select('*');
-          if (cats && cats.length > 0) {
-            setCategories(cats.map(r => {
-              const item = r.data || r;
-              const dataSub = r.data?.subCategories;
-              const topSub = r.subCategories ?? r.sub_categories ?? r.subcategories ?? item.subCategories;
-              let parsedSub: string[] = [];
+      // 3. Categories
+      const { data: cats } = await supabase.from('categories').select('*');
+      if (cats && cats.length > 0) {
+        setCategories(cats.map(r => {
+          const item = r.data || r;
+          const dataSub = r.data?.subCategories;
+          const topSub = r.subCategories ?? r.sub_categories ?? r.subcategories ?? item.subCategories;
+          let parsedSub: string[] = [];
 
-              const rawSub = (Array.isArray(topSub) && topSub.length > 0) ? topSub :
-                             (Array.isArray(dataSub) && dataSub.length > 0) ? dataSub :
-                             topSub ?? dataSub;
+          const rawSub = (Array.isArray(topSub) && topSub.length > 0) ? topSub :
+                         (Array.isArray(dataSub) && dataSub.length > 0) ? dataSub :
+                         topSub ?? dataSub;
 
-              if (Array.isArray(rawSub)) {
-                parsedSub = rawSub;
-              } else if (typeof rawSub === 'string') {
-                try {
-                  parsedSub = JSON.parse(rawSub);
-                } catch {
-                  parsedSub = [];
-                }
-              }
-
-              return {
-                id: String(item.id || r.id),
-                name: String(item.name || r.name || ''),
-                image: item.image || r.image || '',
-                position: Number(item.position ?? r.position ?? 1),
-                isVisibleOnHome: Boolean(item.isVisibleOnHome ?? r.is_visible_on_home ?? r.isVisibleOnHome ?? true),
-                subCategories: Array.isArray(parsedSub) ? parsedSub : []
-              };
-            }));
-          }
-
-          const { data: cpn } = await supabase.from('coupons').select('*');
-          if (cpn && cpn.length > 0) {
-            setCoupons(cpn.map(r => r.data || r));
-          }
-
-          const { data: stg } = await supabase.from('settings').select('*');
-          if (stg && stg.length > 0) {
-            const fetchedStg = stg[0].data || stg[0];
-            if (fetchedStg) {
-              setSettings(prev => ({ ...prev, ...fetchedStg }));
+          if (Array.isArray(rawSub)) {
+            parsedSub = rawSub;
+          } else if (typeof rawSub === 'string') {
+            try {
+              parsedSub = JSON.parse(rawSub);
+            } catch {
+              parsedSub = [];
             }
           }
 
-          const { data: profs } = await supabase.from('customer_profiles').select('*');
-          if (profs && profs.length > 0) {
-            const map: Record<string, CustomerProfile> = {};
-            profs.forEach(p => {
-              map[p.phone] = { name: p.name, phone: p.phone, address: p.address };
-            });
-            setCustomerProfiles(map);
-          }
-        } catch (e) {
-          console.warn('Supabase fetch notice:', e);
+          return {
+            id: String(item.id || r.id),
+            name: String(item.name || r.name || ''),
+            image: item.image || r.image || '',
+            position: Number(item.position ?? r.position ?? 1),
+            isVisibleOnHome: Boolean(item.isVisibleOnHome ?? r.is_visible_on_home ?? r.isVisibleOnHome ?? true),
+            subCategories: Array.isArray(parsedSub) ? parsedSub.map(s => String(s).trim()).filter(Boolean) : []
+          };
+        }));
+      }
+
+      // 4. Coupons
+      const { data: cpn } = await supabase.from('coupons').select('*');
+      if (cpn && cpn.length > 0) {
+        setCoupons(cpn.map(r => r.data || r));
+      }
+
+      // 5. Settings
+      const { data: stg } = await supabase.from('settings').select('*');
+      if (stg && stg.length > 0) {
+        const fetchedStg = stg[0].data || stg[0];
+        if (fetchedStg) {
+          setSettings(prev => ({ ...prev, ...fetchedStg }));
         }
-      };
-      loadSupabaseData();
+      }
+
+      // 6. Customer Profiles
+      const { data: profs } = await supabase.from('customer_profiles').select('*');
+      if (profs && profs.length > 0) {
+        const map: Record<string, CustomerProfile> = {};
+        profs.forEach(p => {
+          map[p.phone] = { name: p.name, phone: p.phone, address: p.address };
+        });
+        setCustomerProfiles(map);
+      }
+
+      // 7. Team
+      const { data: tm } = await supabase.from('team').select('*');
+      if (tm && tm.length > 0) {
+        setTeam(tm.map(r => r.data || r));
+      }
+    } catch (e) {
+      console.warn('Supabase fetch notice:', e);
     }
+  };
+
+  // Initial Fetch & Real-time Auto-Sync across devices
+  useEffect(() => {
+    refreshSupabaseData();
+
+    if (!isSupabaseConfigured() || !supabase) return;
+
+    // Periodic polling every 8 seconds for multi-device synchronization
+    const interval = setInterval(() => {
+      refreshSupabaseData();
+    }, 8000);
+
+    // Refetch when browser window regains focus
+    const handleFocus = () => {
+      refreshSupabaseData();
+    };
+    window.addEventListener('focus', handleFocus);
+
+    // Subscribe to Postgres Changes via Supabase Realtime
+    let channel: any;
+    try {
+      channel = supabase.channel('store-all-changes')
+        .on('postgres_changes', { event: '*', schema: 'public' }, () => {
+          refreshSupabaseData();
+        })
+        .subscribe();
+    } catch (err) {
+      console.warn('Realtime channel notice:', err);
+    }
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', handleFocus);
+      if (channel && supabase) {
+        supabase.removeChannel(channel);
+      }
+    };
   }, []);
 
   // Sync state to LocalStorage safely
@@ -428,6 +487,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       if (typeof window !== 'undefined' && !window.location.pathname.includes('/admin')) {
         window.history.pushState({}, '', '/admin');
       }
+      // Immediately fetch latest DB records upon admin login
+      refreshSupabaseData();
       return true;
     }
     return false;
@@ -463,10 +524,27 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       createdAt: dateStr
     };
 
-    // Update stock levels
+    // Update stock levels locally & in Supabase
     orderData.items.forEach((item: OrderItem) => {
       setProducts(prev =>
-        prev.map(p => (p.id === item.product.id ? { ...p, stock: Math.max(0, p.stock - item.quantity) } : p))
+        prev.map(p => {
+          if (p.id === item.product.id) {
+            const updatedP = { ...p, stock: Math.max(0, p.stock - item.quantity) };
+            if (isSupabaseConfigured() && supabase) {
+              supabase.from('products').upsert({
+                id: updatedP.id,
+                name: updatedP.name,
+                category: updatedP.category,
+                subCategory: updatedP.subCategory,
+                price: updatedP.price,
+                stock: updatedP.stock,
+                data: updatedP
+              }).then(null, err => console.warn('Supabase product stock update error:', err));
+            }
+            return updatedP;
+          }
+          return p;
+        })
       );
     });
 
@@ -480,6 +558,13 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       };
       setCustomerUser(autoProfile);
       setCustomerProfiles((prev) => ({ ...prev, [phoneKey]: autoProfile }));
+      if (isSupabaseConfigured() && supabase) {
+        supabase.from('customer_profiles').upsert({
+          phone: autoProfile.phone,
+          name: autoProfile.name,
+          address: autoProfile.address
+        }).then();
+      }
     }
 
     setOrders(prev => [newOrder, ...prev]);
@@ -487,7 +572,10 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setIsQuickOrderOpen(false);
     setQuickOrderProduct(null);
     setSelectedProduct(null);
-    setActiveClientPage('order-success');
+    
+    if (viewMode === 'client') {
+      setActiveClientPage('order-success');
+    }
 
     // Fire dataLayer purchase event
     trackPurchase(newOrder);
@@ -500,6 +588,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         customerPhone: newOrder.customerPhone,
         totalPrice: newOrder.totalPrice,
         status: newOrder.status,
+        callStatus: newOrder.callStatus,
         data: newOrder
       }).then(null, err => console.warn('Supabase order save error:', err));
     }
@@ -508,22 +597,23 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return newOrder;
   };
 
-
   const updateOrderStatus = (
     orderId: string,
     status: Order['status'],
     callStatus?: Order['callStatus'],
     customSmsMsg?: string,
-    sendSms: boolean = true
+    sendSms: boolean = true,
+    notes?: string
   ) => {
     let targetOrder: Order | null = null;
     setOrders((prev) =>
       prev.map((o) => {
         if (o.id === orderId) {
-          const nextOrder = {
+          const nextOrder: Order = {
             ...o,
             status,
-            callStatus: callStatus || o.callStatus
+            callStatus: callStatus || o.callStatus,
+            notes: notes !== undefined ? notes : o.notes
           };
           targetOrder = nextOrder;
           return nextOrder;
@@ -539,6 +629,10 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     if (isSupabaseConfigured() && supabase && targetOrder) {
       supabase.from('orders').upsert({
         id: (targetOrder as Order).id,
+        orderNumber: (targetOrder as Order).orderNumber,
+        customerName: (targetOrder as Order).customerName,
+        customerPhone: (targetOrder as Order).customerPhone,
+        totalPrice: (targetOrder as Order).totalPrice,
         status: (targetOrder as Order).status,
         callStatus: (targetOrder as Order).callStatus,
         data: targetOrder
@@ -702,6 +796,34 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   };
 
+  // Team Member CRUD
+  const saveTeamMember = (member: TeamMember) => {
+    setTeam(prev => {
+      const exists = prev.some(t => t.id === member.id);
+      if (exists) {
+        return prev.map(t => (t.id === member.id ? member : t));
+      } else {
+        return [...prev, member];
+      }
+    });
+
+    if (isSupabaseConfigured() && supabase) {
+      supabase.from('team').upsert({
+        id: member.id,
+        name: member.name,
+        role: member.role,
+        data: member
+      }).then(null, err => console.warn('Supabase team save error:', err));
+    }
+  };
+
+  const deleteTeamMember = (memberId: string) => {
+    setTeam(prev => prev.filter(t => t.id !== memberId));
+    if (isSupabaseConfigured() && supabase) {
+      supabase.from('team').delete().eq('id', memberId).then(null, err => console.warn('Supabase team delete error:', err));
+    }
+  };
+
   // Settings
   const saveSettings = (newSettings: StoreSettings) => {
     setSettings(newSettings);
@@ -799,8 +921,11 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         deleteCategory,
         saveCoupon,
         deleteCoupon,
+        saveTeamMember,
+        deleteTeamMember,
         saveSettings,
         validateCoupon,
+        refreshSupabaseData,
         resetToDefaults
       }}
     >

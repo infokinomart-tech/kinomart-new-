@@ -16,17 +16,45 @@ import {
   Save,
   MessageSquare,
   Send,
-  Smartphone
+  Smartphone,
+  Plus,
+  RefreshCw,
+  Database,
+  Package
 } from 'lucide-react';
 
 export const AdminOrders: React.FC = () => {
-  const { orders, updateOrderStatus, deleteOrder, triggerMockSMS, settings } = useStore();
+  const {
+    orders,
+    products,
+    createOrder,
+    updateOrderStatus,
+    deleteOrder,
+    triggerMockSMS,
+    settings,
+    refreshSupabaseData
+  } = useStore();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStatus, setSelectedStatus] = useState<string>('All');
   const [selectedCallStatus, setSelectedCallStatus] = useState<string>('All');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+
+  // Manual Add Order Modal State
+  const [isAddOrderOpen, setIsAddOrderOpen] = useState(false);
+  const [newCustName, setNewCustName] = useState('');
+  const [newCustPhone, setNewCustPhone] = useState('');
+  const [newCustAddress, setNewCustAddress] = useState('');
+  const [newDeliveryArea, setNewDeliveryArea] = useState<'Inside Dhaka' | 'Outside Dhaka'>('Inside Dhaka');
+  const [newPayMethod, setNewPayMethod] = useState<'COD' | 'bKash' | 'Nagad'>('COD');
+  const [newSenderPhone, setNewSenderPhone] = useState('');
+  const [newTrxId, setNewTrxId] = useState('');
+  const [selectedProdId, setSelectedProdId] = useState('');
+  const [orderQty, setOrderQty] = useState(1);
+  const [selectedColor, setSelectedColor] = useState('');
+  const [newOrderNotes, setNewOrderNotes] = useState('');
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Order status edit modal
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
@@ -39,6 +67,60 @@ export const AdminOrders: React.FC = () => {
   const [sendSmsOnUpdate, setSendSmsOnUpdate] = useState(true);
   const [customSmsText, setCustomSmsText] = useState('');
   const [smsSentNotice, setSmsSentNotice] = useState(false);
+
+  const handleManualRefresh = async () => {
+    setIsRefreshing(true);
+    await refreshSupabaseData();
+    setTimeout(() => setIsRefreshing(false), 500);
+  };
+
+  const handleCreateOrder = (e: React.FormEvent) => {
+    e.preventDefault();
+    const prod = products.find(p => p.id === selectedProdId) || products[0];
+    if (!prod) {
+      alert('অনুগ্রহ করে একটি প্রোডাক্ট সিলেক্ট করুন');
+      return;
+    }
+    if (!newCustName.trim() || !newCustPhone.trim() || !newCustAddress.trim()) {
+      alert('কাস্টমারের নাম, ফোন নম্বর এবং ঠিকানা পূরণ করুন');
+      return;
+    }
+
+    const itemPrice = prod.discountPrice || prod.price;
+    const subtotal = itemPrice * orderQty;
+    const deliveryFee = newDeliveryArea === 'Inside Dhaka' ? (settings.deliveryFeeInside || 60) : (settings.deliveryFeeOutside || 120);
+    const totalPrice = subtotal + deliveryFee;
+
+    createOrder({
+      customerName: newCustName.trim(),
+      customerPhone: newCustPhone.trim(),
+      shippingAddress: newCustAddress.trim(),
+      deliveryArea: newDeliveryArea,
+      deliveryFee,
+      paymentMethod: newPayMethod,
+      senderPhone: newSenderPhone.trim() || undefined,
+      trxId: newTrxId.trim() || undefined,
+      items: [
+        {
+          product: prod,
+          quantity: orderQty,
+          selectedColor: selectedColor || prod.colors?.[0]
+        }
+      ],
+      subtotal,
+      discount: 0,
+      totalPrice,
+      notes: newOrderNotes.trim() || undefined
+    });
+
+    setIsAddOrderOpen(false);
+    setNewCustName('');
+    setNewCustPhone('');
+    setNewCustAddress('');
+    setNewSenderPhone('');
+    setNewTrxId('');
+    setNewOrderNotes('');
+  };
 
   // Calculate metrics
   const todayOrders = orders.length;
@@ -145,6 +227,34 @@ export const AdminOrders: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {/* Header Bar with Live Database Sync Status and Create Order Button */}
+      <div className="bg-[#0F172A] border border-[#1E293B] p-4 rounded-2xl flex flex-wrap items-center justify-between gap-3 shadow-lg">
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 bg-emerald-500/10 text-emerald-400 rounded-xl border border-emerald-500/20 flex items-center gap-2 text-xs font-extrabold">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+            <Database className="w-4 h-4 text-emerald-400" />
+            <span>Supabase Database Syncing (All Devices)</span>
+          </div>
+          <button
+            onClick={handleManualRefresh}
+            disabled={isRefreshing}
+            className="px-3 py-2 bg-[#1E293B] hover:bg-[#334155] text-xs text-[#CBD5E1] hover:text-white rounded-xl font-bold flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+            title="লাইভ ডাটা রিফ্রেশ করুন"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 text-blue-400 ${isRefreshing ? 'animate-spin' : ''}`} />
+            <span>{isRefreshing ? 'রিফ্রেশ হচ্ছে...' : 'রিফ্রেশ ডাটা'}</span>
+          </button>
+        </div>
+
+        <button
+          onClick={() => setIsAddOrderOpen(true)}
+          className="px-4 py-2.5 bg-[#2563EB] hover:bg-blue-600 text-white text-xs font-black rounded-xl flex items-center gap-2 shadow-lg hover:shadow-blue-500/20 transition-all cursor-pointer"
+        >
+          <Plus className="w-4 h-4" />
+          <span>+ নতুন ম্যানুয়াল অর্ডার তৈরি করুন</span>
+        </button>
+      </div>
+
       {/* Metric Cards Top Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {/* Today's Orders */}
@@ -709,6 +819,204 @@ export const AdminOrders: React.FC = () => {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+      {/* Create Manual Order Modal */}
+      {isAddOrderOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-xs p-4 overflow-y-auto">
+          <div className="bg-[#0F172A] border border-[#1E293B] rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl my-8">
+            <div className="flex justify-between items-center border-b border-[#1E293B] pb-3">
+              <div>
+                <h2 className="text-base font-extrabold text-white flex items-center gap-2">
+                  <Plus className="w-5 h-5 text-[#2563EB]" />
+                  <span>নতুন ম্যানুয়াল অর্ডার প্লেস করুন</span>
+                </h2>
+                <p className="text-[11px] text-[#94A3B8]">অর্ডারটি ডাটাবেজে সেভ হয়ে সাথে সাথে সকল ডিভাইসে সিঙ্ক হবে</p>
+              </div>
+              <button
+                onClick={() => setIsAddOrderOpen(false)}
+                className="p-1.5 hover:bg-[#1E293B] text-[#94A3B8] hover:text-white rounded-xl transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateOrder} className="space-y-4 text-xs">
+              {/* Product Selection */}
+              <div>
+                <label className="block text-[#CBD5E1] font-bold mb-1">প্রোডাক্ট সিলেক্ট করুন *</label>
+                <select
+                  value={selectedProdId}
+                  onChange={(e) => {
+                    setSelectedProdId(e.target.value);
+                    const found = products.find(p => p.id === e.target.value);
+                    if (found && found.colors && found.colors.length > 0) {
+                      setSelectedColor(found.colors[0]);
+                    }
+                  }}
+                  required
+                  className="w-full bg-[#0B1329] border border-[#1E293B] rounded-xl p-2.5 text-white font-medium focus:outline-none focus:border-[#2563EB]"
+                >
+                  <option value="">-- প্রোডাক্ট বেছে নিন --</option>
+                  {products.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name} - ৳{p.discountPrice || p.price} (Stock: {p.stock})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Quantity & Color */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[#CBD5E1] font-bold mb-1">পরিমাণ (Quantity)</label>
+                  <input
+                    type="number"
+                    min={1}
+                    value={orderQty}
+                    onChange={(e) => setOrderQty(Math.max(1, parseInt(e.target.value) || 1))}
+                    className="w-full bg-[#0B1329] border border-[#1E293B] rounded-xl p-2.5 text-white font-medium focus:outline-none focus:border-[#2563EB]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[#CBD5E1] font-bold mb-1">কালার (Optional)</label>
+                  <input
+                    type="text"
+                    value={selectedColor}
+                    onChange={(e) => setSelectedColor(e.target.value)}
+                    placeholder="e.g. Black / Blue"
+                    className="w-full bg-[#0B1329] border border-[#1E293B] rounded-xl p-2.5 text-white font-medium focus:outline-none focus:border-[#2563EB]"
+                  />
+                </div>
+              </div>
+
+              {/* Customer Info */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[#CBD5E1] font-bold mb-1">কাস্টমারের নাম *</label>
+                  <input
+                    type="text"
+                    required
+                    value={newCustName}
+                    onChange={(e) => setNewCustName(e.target.value)}
+                    placeholder="কাস্টমারের পূর্ণ নাম"
+                    className="w-full bg-[#0B1329] border border-[#1E293B] rounded-xl p-2.5 text-white font-medium focus:outline-none focus:border-[#2563EB]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[#CBD5E1] font-bold mb-1">মোবাইল নম্বর *</label>
+                  <input
+                    type="tel"
+                    required
+                    value={newCustPhone}
+                    onChange={(e) => setNewCustPhone(e.target.value)}
+                    placeholder="01XXXXXXXXX"
+                    className="w-full bg-[#0B1329] border border-[#1E293B] rounded-xl p-2.5 text-white font-medium focus:outline-none focus:border-[#2563EB]"
+                  />
+                </div>
+              </div>
+
+              {/* Shipping Address */}
+              <div>
+                <label className="block text-[#CBD5E1] font-bold mb-1">পূর্ণাঙ্গ ডেলিভারি ঠিকানা *</label>
+                <textarea
+                  rows={2}
+                  required
+                  value={newCustAddress}
+                  onChange={(e) => setNewCustAddress(e.target.value)}
+                  placeholder="বাড়ির নম্বর, রোড, এলাকা, জেলা..."
+                  className="w-full bg-[#0B1329] border border-[#1E293B] rounded-xl p-2.5 text-white font-medium focus:outline-none focus:border-[#2563EB]"
+                />
+              </div>
+
+              {/* Delivery Area & Payment Method */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[#CBD5E1] font-bold mb-1">ডেলিভারি এরিয়া</label>
+                  <select
+                    value={newDeliveryArea}
+                    onChange={(e) => setNewDeliveryArea(e.target.value as any)}
+                    className="w-full bg-[#0B1329] border border-[#1E293B] rounded-xl p-2.5 text-white font-medium focus:outline-none focus:border-[#2563EB]"
+                  >
+                    <option value="Inside Dhaka">ঢাকার ভেতরে (৳{settings.deliveryFeeInside || 60})</option>
+                    <option value="Outside Dhaka">ঢাকার বাইরে (৳{settings.deliveryFeeOutside || 120})</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[#CBD5E1] font-bold mb-1">পেমেন্ট মেথড</label>
+                  <select
+                    value={newPayMethod}
+                    onChange={(e) => setNewPayMethod(e.target.value as any)}
+                    className="w-full bg-[#0B1329] border border-[#1E293B] rounded-xl p-2.5 text-white font-medium focus:outline-none focus:border-[#2563EB]"
+                  >
+                    <option value="COD">Cash on Delivery</option>
+                    <option value="bKash">bKash Personal</option>
+                    <option value="Nagad">Nagad Personal</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Sender Phone & TrxID if bKash / Nagad */}
+              {newPayMethod !== 'COD' && (
+                <div className="grid grid-cols-2 gap-3 bg-[#071320] border border-pink-500/30 p-3 rounded-2xl">
+                  <div>
+                    <label className="block text-pink-300 font-bold mb-1 text-[11px]">সেন্ডার নম্বর</label>
+                    <input
+                      type="text"
+                      value={newSenderPhone}
+                      onChange={(e) => setNewSenderPhone(e.target.value)}
+                      placeholder="01XXXXXXXXX"
+                      className="w-full bg-[#0B1329] border border-[#1E293B] rounded-xl p-2 text-white text-xs font-mono"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-pink-300 font-bold mb-1 text-[11px]">ট্রানজেকশন ID (TrxID)</label>
+                    <input
+                      type="text"
+                      value={newTrxId}
+                      onChange={(e) => setNewTrxId(e.target.value)}
+                      placeholder="e.g. 9J28XKL9"
+                      className="w-full bg-[#0B1329] border border-[#1E293B] rounded-xl p-2 text-white text-xs font-mono"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Admin Note */}
+              <div>
+                <label className="block text-[#CBD5E1] font-bold mb-1">অর্ডার নোট / রিমার্কস (Optional)</label>
+                <input
+                  type="text"
+                  value={newOrderNotes}
+                  onChange={(e) => setNewOrderNotes(e.target.value)}
+                  placeholder="কাস্টমারের সাথে আলোচনার বিশেষ নোট..."
+                  className="w-full bg-[#0B1329] border border-[#1E293B] rounded-xl p-2.5 text-white font-medium focus:outline-none focus:border-[#2563EB]"
+                />
+              </div>
+
+              {/* Submit Buttons */}
+              <div className="flex justify-end gap-2 pt-3 border-t border-[#1E293B]">
+                <button
+                  type="button"
+                  onClick={() => setIsAddOrderOpen(false)}
+                  className="px-4 py-2 bg-[#0B1329] hover:bg-[#1E293B] text-[#CBD5E1] font-bold rounded-xl"
+                >
+                  বাতিল
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-[#2563EB] hover:bg-blue-600 text-white font-black rounded-xl shadow-lg flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Save className="w-4 h-4" />
+                  <span>অর্ডারটি সেভ করুন</span>
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
