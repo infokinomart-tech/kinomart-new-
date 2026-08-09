@@ -427,85 +427,111 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
       // 2. Products
       const { data: prods } = await supabase.from('products').select('*');
-      if (prods && prods.length > 0) {
+      if (prods) {
         setProducts(prev => {
-          const fetchedProducts = prods.map(r => {
-            const dataObj = safeParseJson(r.data);
-            const localMatch = prev.find(p => p.id === String(r.id || dataObj.id));
-            const base: Partial<Product> = localMatch || {};
-            const rawStatus = dataObj.status || r.status || base.status;
-
-            return {
-              ...base,
-              ...dataObj,
-              id: String(r.id || dataObj.id || base.id),
-              name: String(dataObj.name || r.name || base.name || ''),
-              price: Number(dataObj.price ?? r.price ?? base.price ?? 0),
-              discountPrice: dataObj.discountPrice !== undefined ? Number(dataObj.discountPrice) : (base.discountPrice !== undefined ? base.discountPrice : undefined),
-              category: String(dataObj.category || r.category || base.category || 'গ্যাজেট'),
-              subCategory: String(dataObj.subCategory || r.sub_category || r.subCategory || base.subCategory || ''),
-              stock: Number(dataObj.stock ?? r.stock ?? base.stock ?? 10),
-              limitedStockThreshold: Number(dataObj.limitedStockThreshold ?? base.limitedStockThreshold ?? 10),
-              colors: Array.isArray(dataObj.colors) ? dataObj.colors : (Array.isArray(base.colors) ? base.colors : ['BLACK']),
-              thumbnail: dataObj.thumbnail || base.thumbnail || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800&auto=format&fit=crop&q=80',
-              gallery: Array.isArray(dataObj.gallery) ? dataObj.gallery : (Array.isArray(base.gallery) ? base.gallery : []),
-              videoUrl: dataObj.videoUrl || base.videoUrl || '',
-              shortDescription: dataObj.shortDescription || base.shortDescription || '',
-              longDescription: dataObj.longDescription || base.longDescription || '',
-              specifications: Array.isArray(dataObj.specifications) ? dataObj.specifications : (Array.isArray(base.specifications) ? base.specifications : []),
-              bundles: Array.isArray(dataObj.bundles) ? dataObj.bundles : (Array.isArray(base.bundles) ? base.bundles : []),
-              hasTimer: Boolean(dataObj.hasTimer ?? base.hasTimer ?? false),
-              isBestSeller: Boolean(dataObj.isBestSeller ?? base.isBestSeller ?? false),
-              isFeatured: Boolean(dataObj.isFeatured ?? base.isFeatured ?? false),
-              rating: Number(dataObj.rating ?? base.rating ?? 5.0),
-              reviewsCount: Number(dataObj.reviewsCount ?? base.reviewsCount ?? 1),
-              status: (rawStatus === 'INACTIVE' ? 'INACTIVE' : 'ACTIVE') as 'ACTIVE' | 'INACTIVE'
-            } as Product;
-          });
-
           const map = new Map<string, Product>();
-          fetchedProducts.forEach(p => map.set(p.id, p));
+          prev.forEach(p => map.set(p.id, p));
+
+          if (prods.length > 0) {
+            prods.forEach(r => {
+              const dataObj = safeParseJson(r.data);
+              const localMatch = prev.find(p => p.id === String(r.id || dataObj.id));
+              const base: Partial<Product> = localMatch || {};
+              const rawStatus = dataObj.status || r.status || base.status;
+
+              const mergedProduct: Product = {
+                ...base,
+                ...dataObj,
+                id: String(r.id || dataObj.id || base.id),
+                name: String(dataObj.name || r.name || base.name || ''),
+                price: Number(dataObj.price ?? r.price ?? base.price ?? 0),
+                discountPrice: dataObj.discountPrice !== undefined ? Number(dataObj.discountPrice) : (base.discountPrice !== undefined ? base.discountPrice : undefined),
+                category: String(dataObj.category || r.category || base.category || 'গ্যাজেট'),
+                subCategory: String(dataObj.subCategory || r.sub_category || r.subCategory || r.subcategory || base.subCategory || ''),
+                stock: Number(dataObj.stock ?? r.stock ?? base.stock ?? 10),
+                limitedStockThreshold: Number(dataObj.limitedStockThreshold ?? base.limitedStockThreshold ?? 10),
+                colors: Array.isArray(dataObj.colors) ? dataObj.colors : (Array.isArray(base.colors) ? base.colors : ['BLACK']),
+                thumbnail: dataObj.thumbnail || base.thumbnail || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800&auto=format&fit=crop&q=80',
+                gallery: Array.isArray(dataObj.gallery) ? dataObj.gallery : (Array.isArray(base.gallery) ? base.gallery : []),
+                videoUrl: dataObj.videoUrl || base.videoUrl || '',
+                shortDescription: dataObj.shortDescription || base.shortDescription || '',
+                longDescription: dataObj.longDescription || base.longDescription || '',
+                specifications: Array.isArray(dataObj.specifications) ? dataObj.specifications : (Array.isArray(base.specifications) ? base.specifications : []),
+                bundles: Array.isArray(dataObj.bundles) ? dataObj.bundles : (Array.isArray(base.bundles) ? base.bundles : []),
+                hasTimer: Boolean(dataObj.hasTimer ?? base.hasTimer ?? false),
+                isBestSeller: Boolean(dataObj.isBestSeller ?? base.isBestSeller ?? false),
+                isFeatured: Boolean(dataObj.isFeatured ?? base.isFeatured ?? false),
+                rating: Number(dataObj.rating ?? base.rating ?? 5.0),
+                reviewsCount: Number(dataObj.reviewsCount ?? base.reviewsCount ?? 1),
+                status: (rawStatus === 'INACTIVE' ? 'INACTIVE' : 'ACTIVE') as 'ACTIVE' | 'INACTIVE'
+              };
+
+              if (mergedProduct.id) map.set(mergedProduct.id, mergedProduct);
+            });
+          }
+
           return Array.from(map.values());
         });
       }
 
       // 3. Categories
       const { data: cats } = await supabase.from('categories').select('*');
-      if (cats && cats.length > 0) {
+      if (cats) {
         setCategories(prev => {
-          const fetchedCats = cats.map(r => {
-            const dataObj = safeParseJson(r.data);
-            const localMatch = prev.find(c => c.id === String(r.id || dataObj.id));
-            const base: Partial<Category> = localMatch || {};
-
-            const dataSub = dataObj.subCategories;
-            const topSub = r.subCategories ?? r.sub_categories ?? r.subcategories ?? dataSub ?? base.subCategories;
-            let parsedSub: string[] = [];
-
-            const rawSub = (Array.isArray(topSub) && topSub.length > 0) ? topSub :
-                           (Array.isArray(dataSub) && dataSub.length > 0) ? dataSub :
-                           topSub ?? dataSub;
-
-            if (Array.isArray(rawSub)) {
-              parsedSub = rawSub;
-            } else if (typeof rawSub === 'string') {
-              try { parsedSub = JSON.parse(rawSub); } catch { parsedSub = []; }
-            }
-
-            return {
-              ...base,
-              ...dataObj,
-              id: String(r.id || dataObj.id || base.id),
-              name: String(dataObj.name || r.name || base.name || ''),
-              image: dataObj.image || r.image || base.image || '',
-              position: Number(dataObj.position ?? r.position ?? base.position ?? 1),
-              isVisibleOnHome: Boolean(dataObj.isVisibleOnHome ?? r.is_visible_on_home ?? base.isVisibleOnHome ?? true),
-              subCategories: Array.isArray(parsedSub) ? parsedSub.map(s => String(s).trim()).filter(Boolean) : []
-            } as Category;
-          });
-
           const map = new Map<string, Category>();
-          fetchedCats.forEach(c => map.set(c.id, c));
+          prev.forEach(c => map.set(c.id, c));
+
+          if (cats.length > 0) {
+            cats.forEach(r => {
+              const dataObj = safeParseJson(r.data);
+              const localMatch = prev.find(c => c.id === String(r.id || dataObj.id));
+              const base: Partial<Category> = localMatch || {};
+
+              const dataSub = dataObj.subCategories;
+              const colSub = r.sub_categories ?? r.subCategories ?? r.subcategories;
+
+              let rawSub: any = null;
+              if (Array.isArray(dataSub) && dataSub.length > 0) {
+                rawSub = dataSub;
+              } else if (Array.isArray(colSub) && colSub.length > 0) {
+                rawSub = colSub;
+              } else if (colSub) {
+                rawSub = colSub;
+              } else if (dataSub) {
+                rawSub = dataSub;
+              } else if (base.subCategories) {
+                rawSub = base.subCategories;
+              }
+
+              let parsedSub: string[] = [];
+              if (Array.isArray(rawSub)) {
+                parsedSub = rawSub.map(s => String(s).trim()).filter(Boolean);
+              } else if (typeof rawSub === 'string') {
+                try {
+                  const p = JSON.parse(rawSub);
+                  if (Array.isArray(p)) {
+                    parsedSub = p.map(s => String(s).trim()).filter(Boolean);
+                  }
+                } catch {
+                  parsedSub = [];
+                }
+              }
+
+              const mergedCat: Category = {
+                ...base,
+                ...dataObj,
+                id: String(r.id || dataObj.id || base.id),
+                name: String(dataObj.name || r.name || base.name || ''),
+                image: dataObj.image || r.image || base.image || '',
+                position: Number(dataObj.position ?? r.position ?? base.position ?? 1),
+                isVisibleOnHome: Boolean(dataObj.isVisibleOnHome ?? r.is_visible_on_home ?? base.isVisibleOnHome ?? true),
+                subCategories: parsedSub
+              };
+
+              if (mergedCat.id) map.set(mergedCat.id, mergedCat);
+            });
+          }
+
           return Array.from(map.values());
         });
       }
@@ -940,6 +966,16 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           stock: Number(cleanProduct.stock || 0),
           data: JSON.stringify(cleanProduct)
         },
+        {
+          id: cleanProduct.id,
+          name: cleanProduct.name || '',
+          data: cleanProduct
+        },
+        {
+          id: cleanProduct.id,
+          name: cleanProduct.name || '',
+          data: JSON.stringify(cleanProduct)
+        },
         { id: cleanProduct.id, data: cleanProduct },
         { id: cleanProduct.id, data: JSON.stringify(cleanProduct) },
         {
@@ -996,8 +1032,14 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     };
 
     const fallbacks = [
+      { id: cleanCategory.id, name: cleanCategory.name, image: cleanCategory.image || '', position: cleanCategory.position ?? 1, is_visible_on_home: cleanCategory.isVisibleOnHome ?? true, sub_categories: subList, data: JSON.stringify(cleanCategory) },
+      { id: cleanCategory.id, name: cleanCategory.name, image: cleanCategory.image || '', position: cleanCategory.position ?? 1, is_visible_on_home: cleanCategory.isVisibleOnHome ?? true, sub_categories: JSON.stringify(subList), data: cleanCategory },
+      { id: cleanCategory.id, name: cleanCategory.name, image: cleanCategory.image || '', position: cleanCategory.position ?? 1, sub_categories: subList, data: cleanCategory },
+      { id: cleanCategory.id, name: cleanCategory.name, image: cleanCategory.image || '', position: cleanCategory.position ?? 1, sub_categories: JSON.stringify(subList), data: JSON.stringify(cleanCategory) },
       { id: cleanCategory.id, name: cleanCategory.name, image: cleanCategory.image || '', data: cleanCategory },
       { id: cleanCategory.id, name: cleanCategory.name, image: cleanCategory.image || '', data: JSON.stringify(cleanCategory) },
+      { id: cleanCategory.id, name: cleanCategory.name, data: cleanCategory },
+      { id: cleanCategory.id, name: cleanCategory.name, data: JSON.stringify(cleanCategory) },
       { id: cleanCategory.id, data: cleanCategory },
       { id: cleanCategory.id, data: JSON.stringify(cleanCategory) },
       { id: cleanCategory.id, name: cleanCategory.name }
