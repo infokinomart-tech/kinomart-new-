@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useStore } from '../../context/StoreContext';
-import { getSupabaseConfig, isSupabaseConfigured } from '../../lib/supabase';
+import { getSupabaseConfig, isSupabaseConfigured, getSupabaseClient, setSupabaseCredentials } from '../../lib/supabase';
 import {
   Settings,
   Save,
@@ -12,7 +12,13 @@ import {
   Building,
   KeyRound,
   RotateCcw,
-  Database
+  Database,
+  Copy,
+  Code,
+  AlertTriangle,
+  CheckCircle2,
+  XCircle,
+  RefreshCw
 } from 'lucide-react';
 
 export const AdminSettings: React.FC = () => {
@@ -29,6 +35,136 @@ export const AdminSettings: React.FC = () => {
   const [newPass, setNewPass] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
   const [passMsg, setPassMsg] = useState('');
+
+  // Supabase Testing & Diagnostic State
+  const [isTesting, setIsTesting] = useState(false);
+  const [testResults, setTestResults] = useState<Record<string, { status: 'ok' | 'error' | 'missing'; msg: string }> | null>(null);
+  const [copiedSql, setCopiedSql] = useState(false);
+
+  const sqlSetupScript = `-- ============================================================
+-- KINOMART E-COMMERCE SUPABASE COMPLETE DATABASE SETUP SCRIPT
+-- ============================================================
+-- Copy and paste this script into Supabase -> SQL Editor -> Run
+
+CREATE TABLE IF NOT EXISTS public.orders (
+    id text PRIMARY KEY,
+    order_number text,
+    customer_name text,
+    customer_phone text,
+    total_price numeric,
+    status text,
+    call_status text,
+    data jsonb NOT NULL,
+    created_at timestamp with time zone DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS public.products (
+    id text PRIMARY KEY,
+    name text,
+    category text,
+    sub_category text,
+    price numeric,
+    stock integer,
+    data jsonb NOT NULL,
+    created_at timestamp with time zone DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS public.categories (
+    id text PRIMARY KEY,
+    name text,
+    image text,
+    position integer DEFAULT 1,
+    is_visible_on_home boolean DEFAULT true,
+    sub_categories jsonb,
+    data jsonb NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS public.coupons (
+    id text PRIMARY KEY,
+    code text,
+    discount_amount numeric,
+    discount_type text,
+    data jsonb NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS public.settings (
+    id text PRIMARY KEY,
+    data jsonb NOT NULL,
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS public.team (
+    id text PRIMARY KEY,
+    name text,
+    role text,
+    data jsonb NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS public.customer_profiles (
+    phone text PRIMARY KEY,
+    name text,
+    address text,
+    data jsonb NOT NULL
+);
+
+-- Disable Row Level Security (RLS) so Client App can read & write freely
+ALTER TABLE public.orders DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.products DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.categories DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.coupons DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.settings DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.team DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.customer_profiles DISABLE ROW LEVEL SECURITY;
+
+-- Grant permissions to public anon role
+GRANT ALL ON ALL TABLES IN SCHEMA public TO anon, authenticated, postgres, service_role;`;
+
+  const copySqlToClipboard = () => {
+    navigator.clipboard.writeText(sqlSetupScript);
+    setCopiedSql(true);
+    setTimeout(() => setCopiedSql(false), 3000);
+  };
+
+  const runDatabaseTest = async () => {
+    setIsTesting(true);
+    if (formData.supabaseUrl || formData.supabaseKey) {
+      setSupabaseCredentials(formData.supabaseUrl || '', formData.supabaseKey || '');
+    }
+    const client = getSupabaseClient();
+    if (!client) {
+      setIsTesting(false);
+      setTestResults({
+        config: { status: 'error', msg: 'Supabase URL অথবা Key সঠিকভাবে দেওয়া হয়নি!' }
+      });
+      return;
+    }
+
+    const tables = ['orders', 'products', 'categories', 'coupons', 'settings', 'team', 'customer_profiles'];
+    const res: Record<string, { status: 'ok' | 'error' | 'missing'; msg: string }> = {};
+
+    for (const t of tables) {
+      try {
+        const { error } = await client.from(t).select('*').limit(1);
+        if (!error) {
+          res[t] = { status: 'ok', msg: 'টেবিল পাওয়া গেছে ও এক্সেসযোগ্য' };
+        } else {
+          const errStr = (error.message || JSON.stringify(error)).toLowerCase();
+          if (errStr.includes('does not exist') || errStr.includes('42p01') || errStr.includes('relation')) {
+            res[t] = { status: 'missing', msg: 'টেবিল তৈরি করা হয়নি' };
+          } else if (errStr.includes('row-level security') || errStr.includes('42501') || errStr.includes('policy')) {
+            res[t] = { status: 'error', msg: 'RLS এনাবল থাকায় ব্লকড' };
+          } else {
+            res[t] = { status: 'error', msg: error.message || 'Error querying table' };
+          }
+        }
+      } catch (e: any) {
+        res[t] = { status: 'error', msg: e?.message || 'Connection error' };
+      }
+    }
+
+    setTestResults(res);
+    setIsTesting(false);
+  };
 
   const handleSaveAll = (e: React.FormEvent) => {
     e.preventDefault();
@@ -393,6 +529,95 @@ export const AdminSettings: React.FC = () => {
                 placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6..."
                 className="w-full bg-[#11131A] border border-[#33384B] rounded-xl p-3 text-white font-mono text-xs"
               />
+            </div>
+          </div>
+
+          {/* Test & SQL Setup Tools */}
+          <div className="pt-2 border-t border-[#2B3042] space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <button
+                type="button"
+                onClick={runDatabaseTest}
+                disabled={isTesting}
+                className="bg-[#2563EB]/20 hover:bg-[#2563EB]/30 text-blue-400 border border-[#2563EB]/40 text-xs font-bold px-4 py-2 rounded-xl flex items-center gap-2 transition-all disabled:opacity-50"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isTesting ? 'animate-spin' : ''}`} />
+                <span>{isTesting ? 'টেস্ট করা হচ্ছে...' : '🧪 টেস্ট ডাটাবেস টেবিল ও কানেকশন (Test All Tables)'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={copySqlToClipboard}
+                className="bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 text-xs font-bold px-4 py-2 rounded-xl flex items-center gap-2 transition-all"
+              >
+                {copiedSql ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                <span>{copiedSql ? '✓ কপি হয়েছে!' : '📋 Supabase SQL সেটআপ কোড কপি করুন'}</span>
+              </button>
+            </div>
+
+            {/* Test Results Banner */}
+            {testResults && (
+              <div className="bg-[#11131A] border border-[#33384B] p-4 rounded-xl space-y-2 text-xs">
+                <h4 className="font-bold text-white flex items-center gap-1.5">
+                  <Database className="w-4 h-4 text-cyan-400" />
+                  ডাটাবেস টেবিল স্ট্যাটাস রিপোর্ট (Database Test Report):
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {Object.entries(testResults).map(([tbl, info]) => (
+                    <div
+                      key={tbl}
+                      className={`p-2.5 rounded-lg border flex items-center justify-between ${
+                        info.status === 'ok'
+                          ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
+                          : info.status === 'missing'
+                          ? 'bg-amber-500/10 border-amber-500/30 text-amber-300'
+                          : 'bg-red-500/10 border-red-500/30 text-red-300'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 font-mono font-bold">
+                        {info.status === 'ok' && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />}
+                        {info.status === 'missing' && <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0" />}
+                        {info.status === 'error' && <XCircle className="w-3.5 h-3.5 text-red-400 shrink-0" />}
+                        <span>{tbl}</span>
+                      </div>
+                      <span className="text-[10px] font-sans text-slate-300">{info.msg}</span>
+                    </div>
+                  ))}
+                </div>
+
+                {Object.values(testResults).some(r => r.status !== 'ok') && (
+                  <div className="mt-3 p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl text-amber-200 text-xs space-y-1">
+                    <p className="font-bold flex items-center gap-1">
+                      <AlertTriangle className="w-4 h-4 text-amber-400" />
+                      ডাটা সেভ না হওয়ার সমাধান (Solution):
+                    </p>
+                    <p className="text-[11px] leading-relaxed">
+                      আপনার Supabase ড্যাশবোর্ডে (<a href="https://supabase.com/dashboard" target="_blank" rel="noreferrer" className="underline font-bold text-amber-300">https://supabase.com/dashboard</a>) ঢুকুন, প্রজেক্টের <strong>SQL Editor</strong> সেকশনে যান। উপরের <strong>"📋 Supabase SQL সেটআপ কোড কপি করুন"</strong> বাটনে ক্লিক করে কপি করা SQL পেস্ট করে <strong>Run</strong> বাটনে ক্লিক করুন!
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* SQL Script Box */}
+            <div className="bg-[#11131A] border border-[#2B3042] rounded-xl p-3 text-xs space-y-2">
+              <div className="flex items-center justify-between text-[#94A3B8] font-bold">
+                <span className="flex items-center gap-1.5 text-white">
+                  <Code className="w-3.5 h-3.5 text-cyan-400" />
+                  Supabase Database Auto-Setup Script (SQL)
+                </span>
+                <button
+                  type="button"
+                  onClick={copySqlToClipboard}
+                  className="text-cyan-400 hover:underline text-[11px] font-bold flex items-center gap-1"
+                >
+                  <Copy className="w-3 h-3" />
+                  {copiedSql ? 'কপি হয়েছে' : 'কপি করুন'}
+                </button>
+              </div>
+              <pre className="bg-[#0B0C10] border border-[#2B3042] p-3 rounded-lg text-[10px] font-mono text-cyan-300 max-h-40 overflow-y-auto leading-relaxed select-all">
+                {sqlSetupScript}
+              </pre>
             </div>
           </div>
         </div>
