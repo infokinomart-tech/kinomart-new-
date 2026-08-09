@@ -16,7 +16,8 @@ import {
   X,
   Trash2,
   Send,
-  Zap
+  Zap,
+  ShieldAlert
 } from 'lucide-react';
 import { AdminOrders } from './AdminOrders';
 import { AdminProducts } from './AdminProducts';
@@ -35,7 +36,9 @@ export const AdminLayout: React.FC = () => {
     mockSmsLogs,
     latestSmsToast,
     dismissSmsToast,
-    clearSmsLogs
+    clearSmsLogs,
+    rlsWarning,
+    dismissRlsWarning
   } = useStore();
 
   const [savedSuccessMsg, setSavedSuccessMsg] = useState(false);
@@ -221,6 +224,40 @@ export const AdminLayout: React.FC = () => {
 
       {/* Main Content Area */}
       <main className="max-w-7xl mx-auto px-4 py-6">
+        {rlsWarning && (
+          <div className="bg-amber-500/10 border-2 border-amber-500/50 rounded-2xl p-4 mb-6 text-amber-200 flex flex-wrap items-center justify-between gap-3 shadow-lg animate-fadeIn">
+            <div className="flex items-start gap-3">
+              <ShieldAlert className="w-6 h-6 text-amber-400 shrink-0 mt-0.5 animate-pulse" />
+              <div className="space-y-1 text-xs">
+                <h4 className="font-extrabold text-amber-300 text-sm">
+                  ⚠️ Supabase Row Level Security (RLS) সক্রিয় রয়েছে!
+                </h4>
+                <p className="text-amber-200/90 leading-relaxed">
+                  Supabase ডাটাবেসের টেবিলগুলোতে RLS অন থাকায় নতুন ডিভাইস ও ওয়েবসাইট থেকে সরাসরি ডাটা সেভ ব্লকড হয়ে আছে।
+                </p>
+                <p className="text-amber-300 font-bold">
+                  👉 <strong>সমাধান:</strong> <strong>'সেটিংস (Settings)'</strong> ট্যাবে গিয়ে <strong>'SQL সেটআপ স্ক্রিপ্ট কপি'</strong> করে Supabase -&gt; SQL Editor এ পেস্ট করে Run করুন।
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setActiveAdminTab('settings')}
+                className="bg-amber-500 text-black px-3 py-1.5 rounded-xl font-bold text-xs hover:bg-amber-400 cursor-pointer shadow-md"
+              >
+                সেটিংস এ যান
+              </button>
+              <button
+                onClick={dismissRlsWarning}
+                className="p-1 text-amber-400 hover:text-white rounded-lg cursor-pointer"
+                title="বন্ধ করুন"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
+
         {activeAdminTab === 'orders' && <AdminOrders />}
         {activeAdminTab === 'products' && <AdminProducts />}
         {activeAdminTab === 'categories' && <AdminCategories />}

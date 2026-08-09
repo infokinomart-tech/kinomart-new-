@@ -99,6 +99,8 @@ interface StoreContextType {
   
   refreshSupabaseData: () => Promise<void>;
   resetToDefaults: () => void;
+  rlsWarning: string | null;
+  dismissRlsWarning: () => void;
 }
 
 const safeGetStorage = <T,>(key: string, fallback: T): T => {
@@ -186,6 +188,10 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return safeGetStorage('kinomart_settings', INITIAL_SETTINGS);
   });
 
+  // Supabase RLS Warning State
+  const [rlsWarning, setRlsWarning] = useState<string | null>(null);
+  const dismissRlsWarning = () => setRlsWarning(null);
+
   // Mock SMS Notification State
   const [mockSmsLogs, setMockSmsLogs] = useState<MockSMSLog[]>(() => {
     return safeGetStorage('kinomart_mock_sms_logs', []);
@@ -268,14 +274,23 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     try {
       const { error: primaryErr } = await supabase.from(tableName).upsert(primaryPayload);
-      if (!primaryErr) return true;
+      if (!primaryErr) {
+        setRlsWarning(null);
+        return true;
+      }
 
-      console.warn(`Primary upsert failed on ${tableName}:`, primaryErr.message || primaryErr);
+      const errMsg = String(primaryErr.message || JSON.stringify(primaryErr));
+      console.warn(`Primary upsert failed on ${tableName}:`, errMsg);
+
+      if (primaryErr.code === '42501' || errMsg.toLowerCase().includes('row-level security') || errMsg.toLowerCase().includes('policy')) {
+        setRlsWarning(`Supabase RLS Error: Row Level Security is active on table "${tableName}". Writes are blocked. Please run the SQL setup script in Admin Settings.`);
+      }
 
       for (const fallback of fallbackPayloads) {
         const { error: fbErr } = await supabase.from(tableName).upsert(fallback);
         if (!fbErr) {
           console.log(`Fallback upsert succeeded on ${tableName}`);
+          setRlsWarning(null);
           return true;
         }
       }
@@ -404,6 +419,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             const dataObj = typeof r.data === 'string' ? JSON.parse(r.data) : (r.data || {});
             const localMatch = prev.find(p => p.id === String(r.id || dataObj.id));
             const base: Partial<Product> = localMatch || {};
+            const rawStatus = dataObj.status || r.status || base.status;
 
             return {
               ...base,
@@ -429,7 +445,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               isFeatured: Boolean(dataObj.isFeatured ?? base.isFeatured ?? false),
               rating: Number(dataObj.rating ?? base.rating ?? 5.0),
               reviewsCount: Number(dataObj.reviewsCount ?? base.reviewsCount ?? 1),
-              status: (dataObj.status || base.status === 'INACTIVE' ? 'INACTIVE' : 'ACTIVE') as 'ACTIVE' | 'INACTIVE'
+              status: (rawStatus === 'INACTIVE' ? 'INACTIVE' : 'ACTIVE') as 'ACTIVE' | 'INACTIVE'
             } as Product;
           });
 
@@ -571,17 +587,22 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   };
 
+  // Auto sync credentials from settings if provided
+  useEffect(() => {
+    if (settings.supabaseUrl || settings.supabaseKey) {
+      setSupabaseCredentials(settings.supabaseUrl || '', settings.supabaseKey || '');
+      refreshSupabaseData();
+    }
+  }, [settings.supabaseUrl, settings.supabaseKey]);
+
   // Initial Fetch & Real-time Auto-Sync across devices
   useEffect(() => {
     refreshSupabaseData();
 
-    const supabase = getSupabaseClient();
-    if (!supabase) return;
-
-    // Periodic polling every 8 seconds for multi-device synchronization
+    // Periodic polling every 5 seconds for multi-device synchronization
     const interval = setInterval(() => {
       refreshSupabaseData();
-    }, 8000);
+    }, 5000);
 
     // Refetch when browser window regains focus
     const handleFocus = () => {
@@ -591,21 +612,25 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     // Subscribe to Postgres Changes via Supabase Realtime
     let channel: any;
-    try {
-      channel = supabase.channel('store-all-changes')
-        .on('postgres_changes', { event: '*', schema: 'public' }, () => {
-          refreshSupabaseData();
-        })
-        .subscribe();
-    } catch (err) {
-      console.warn('Realtime channel notice:', err);
+    const client = getSupabaseClient();
+    if (client) {
+      try {
+        channel = client.channel('store-all-changes')
+          .on('postgres_changes', { event: '*', schema: 'public' }, () => {
+            refreshSupabaseData();
+          })
+          .subscribe();
+      } catch (err) {
+        console.warn('Realtime channel notice:', err);
+      }
     }
 
     return () => {
       clearInterval(interval);
       window.removeEventListener('focus', handleFocus);
-      if (channel && supabase) {
-        supabase.removeChannel(channel);
+      const activeClient = getSupabaseClient();
+      if (channel && activeClient) {
+        activeClient.removeChannel(channel);
       }
     };
   }, []);
@@ -1150,7 +1175,9 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         saveSettings,
         validateCoupon,
         refreshSupabaseData,
-        resetToDefaults
+        resetToDefaults,
+        rlsWarning,
+        dismissRlsWarning
       }}
     >
       {children}

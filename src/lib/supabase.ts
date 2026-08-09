@@ -12,7 +12,15 @@ const getEnvVar = (key: string): string => {
 const getStoredVar = (key: string): string => {
   try {
     if (typeof window !== 'undefined') {
-      return localStorage.getItem(key) || '';
+      const direct = localStorage.getItem(key);
+      if (direct) return direct;
+
+      const stg = localStorage.getItem('kinomart_settings');
+      if (stg) {
+        const parsed = JSON.parse(stg);
+        if (key === 'kinomart_supabase_url' && parsed.supabaseUrl) return parsed.supabaseUrl;
+        if (key === 'kinomart_supabase_key' && parsed.supabaseKey) return parsed.supabaseKey;
+      }
     }
   } catch {
     // Ignore localStorage access errors

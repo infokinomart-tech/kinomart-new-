@@ -153,17 +153,32 @@ GRANT ALL ON ALL TABLES IN SCHEMA public TO anon, authenticated, postgres, servi
 
     for (const t of tables) {
       try {
-        const { error } = await client.from(t).select('*').limit(1);
-        if (!error) {
-          res[t] = { status: 'ok', msg: 'টেবিল পাওয়া গেছে ও এক্সেসযোগ্য' };
-        } else {
-          const errStr = (error.message || JSON.stringify(error)).toLowerCase();
+        const { error: selectErr } = await client.from(t).select('*').limit(1);
+        if (selectErr) {
+          const errStr = (selectErr.message || JSON.stringify(selectErr)).toLowerCase();
           if (errStr.includes('does not exist') || errStr.includes('42p01') || errStr.includes('relation')) {
             res[t] = { status: 'missing', msg: 'টেবিল তৈরি করা হয়নি' };
           } else if (errStr.includes('row-level security') || errStr.includes('42501') || errStr.includes('policy')) {
-            res[t] = { status: 'error', msg: 'RLS এনাবল থাকায় ব্লকড' };
+            res[t] = { status: 'error', msg: '⚠️ RLS এনাবল থাকায় ডাটা পড়া ও সেভ ব্লকড' };
           } else {
-            res[t] = { status: 'error', msg: error.message || 'Error querying table' };
+            res[t] = { status: 'error', msg: selectErr.message || 'Error querying table' };
+          }
+        } else {
+          // Test write access
+          const dummyId = `__perm_test_${Date.now()}`;
+          const dummyPayload: any = t === 'customer_profiles' ? { phone: dummyId, name: 'test', data: {} } : { id: dummyId, name: 'test', data: {} };
+          const { error: writeErr } = await client.from(t).upsert(dummyPayload);
+          if (writeErr) {
+            const errStr = (writeErr.message || JSON.stringify(writeErr)).toLowerCase();
+            if (errStr.includes('row-level security') || errStr.includes('42501') || errStr.includes('policy') || errStr.includes('permission')) {
+              res[t] = { status: 'error', msg: '⚠️ Read সফল হলেও RLS এর কারণে Write (ডাটা সেভ) ব্লকড!' };
+            } else {
+              res[t] = { status: 'ok', msg: 'টেবিল পাওয়া গেছে (Read OK)' };
+            }
+          } else {
+            const deleteKey = t === 'customer_profiles' ? 'phone' : 'id';
+            await client.from(t).delete().eq(deleteKey, dummyId);
+            res[t] = { status: 'ok', msg: 'সবকিছু ঠিক আছে (Read & Write OK)' };
           }
         }
       } catch (e: any) {
