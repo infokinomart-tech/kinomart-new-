@@ -385,12 +385,31 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   // Supabase Data Refresh Function
+  // Supabase Data Refresh Function (Ultra-fast Parallel Fetching)
   const refreshSupabaseData = async () => {
     const supabase = getSupabaseClient();
     if (!supabase) return;
     try {
+      // Execute all Supabase queries in parallel for instant zero-latency loading
+      const [
+        { data: ords },
+        { data: prods },
+        { data: cats },
+        { data: cpn },
+        { data: stg },
+        { data: profs },
+        { data: tm }
+      ] = await Promise.all([
+        supabase.from('orders').select('*'),
+        supabase.from('products').select('*'),
+        supabase.from('categories').select('*'),
+        supabase.from('coupons').select('*'),
+        supabase.from('settings').select('*'),
+        supabase.from('customer_profiles').select('*'),
+        supabase.from('team').select('*')
+      ]);
+
       // 1. Orders
-      const { data: ords } = await supabase.from('orders').select('*');
       if (ords && ords.length > 0) {
         setOrders(prev => {
           const fetchedOrders = ords.map(r => {
@@ -420,124 +439,117 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           });
 
           const map = new Map<string, Order>();
+          prev.filter(o => o.id.startsWith('ord-') && !fetchedOrders.some(f => f.id === o.id))
+              .forEach(o => map.set(o.id, o));
           fetchedOrders.forEach(o => map.set(o.id, o));
           return Array.from(map.values());
         });
       }
 
       // 2. Products
-      const { data: prods } = await supabase.from('products').select('*');
-      if (prods) {
+      if (prods && prods.length > 0) {
         setProducts(prev => {
+          const fetchedProducts = prods.map(r => {
+            const dataObj = safeParseJson(r.data);
+            const localMatch = prev.find(p => p.id === String(r.id || dataObj.id));
+            const base: Partial<Product> = localMatch || {};
+            const rawStatus = dataObj.status || r.status || base.status;
+
+            return {
+              ...base,
+              ...dataObj,
+              id: String(r.id || dataObj.id || base.id),
+              name: String(dataObj.name || r.name || base.name || ''),
+              price: Number(dataObj.price ?? r.price ?? base.price ?? 0),
+              discountPrice: dataObj.discountPrice !== undefined ? Number(dataObj.discountPrice) : (base.discountPrice !== undefined ? base.discountPrice : undefined),
+              category: String(dataObj.category || r.category || base.category || 'গ্যাজেট'),
+              subCategory: String(dataObj.subCategory || r.sub_category || r.subCategory || r.subcategory || base.subCategory || ''),
+              stock: Number(dataObj.stock ?? r.stock ?? base.stock ?? 10),
+              limitedStockThreshold: Number(dataObj.limitedStockThreshold ?? base.limitedStockThreshold ?? 10),
+              colors: Array.isArray(dataObj.colors) ? dataObj.colors : (Array.isArray(base.colors) ? base.colors : ['BLACK']),
+              thumbnail: dataObj.thumbnail || base.thumbnail || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800&auto=format&fit=crop&q=80',
+              gallery: Array.isArray(dataObj.gallery) ? dataObj.gallery : (Array.isArray(base.gallery) ? base.gallery : []),
+              videoUrl: dataObj.videoUrl || base.videoUrl || '',
+              shortDescription: dataObj.shortDescription || base.shortDescription || '',
+              longDescription: dataObj.longDescription || base.longDescription || '',
+              specifications: Array.isArray(dataObj.specifications) ? dataObj.specifications : (Array.isArray(base.specifications) ? base.specifications : []),
+              bundles: Array.isArray(dataObj.bundles) ? dataObj.bundles : (Array.isArray(base.bundles) ? base.bundles : []),
+              hasTimer: Boolean(dataObj.hasTimer ?? base.hasTimer ?? false),
+              isBestSeller: Boolean(dataObj.isBestSeller ?? base.isBestSeller ?? false),
+              isFeatured: Boolean(dataObj.isFeatured ?? base.isFeatured ?? false),
+              rating: Number(dataObj.rating ?? base.rating ?? 5.0),
+              reviewsCount: Number(dataObj.reviewsCount ?? base.reviewsCount ?? 1),
+              status: (rawStatus === 'INACTIVE' ? 'INACTIVE' : 'ACTIVE') as 'ACTIVE' | 'INACTIVE'
+            } as Product;
+          });
+
           const map = new Map<string, Product>();
-          prev.forEach(p => map.set(p.id, p));
-
-          if (prods.length > 0) {
-            prods.forEach(r => {
-              const dataObj = safeParseJson(r.data);
-              const localMatch = prev.find(p => p.id === String(r.id || dataObj.id));
-              const base: Partial<Product> = localMatch || {};
-              const rawStatus = dataObj.status || r.status || base.status;
-
-              const mergedProduct: Product = {
-                ...base,
-                ...dataObj,
-                id: String(r.id || dataObj.id || base.id),
-                name: String(dataObj.name || r.name || base.name || ''),
-                price: Number(dataObj.price ?? r.price ?? base.price ?? 0),
-                discountPrice: dataObj.discountPrice !== undefined ? Number(dataObj.discountPrice) : (base.discountPrice !== undefined ? base.discountPrice : undefined),
-                category: String(dataObj.category || r.category || base.category || 'গ্যাজেট'),
-                subCategory: String(dataObj.subCategory || r.sub_category || r.subCategory || r.subcategory || base.subCategory || ''),
-                stock: Number(dataObj.stock ?? r.stock ?? base.stock ?? 10),
-                limitedStockThreshold: Number(dataObj.limitedStockThreshold ?? base.limitedStockThreshold ?? 10),
-                colors: Array.isArray(dataObj.colors) ? dataObj.colors : (Array.isArray(base.colors) ? base.colors : ['BLACK']),
-                thumbnail: dataObj.thumbnail || base.thumbnail || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800&auto=format&fit=crop&q=80',
-                gallery: Array.isArray(dataObj.gallery) ? dataObj.gallery : (Array.isArray(base.gallery) ? base.gallery : []),
-                videoUrl: dataObj.videoUrl || base.videoUrl || '',
-                shortDescription: dataObj.shortDescription || base.shortDescription || '',
-                longDescription: dataObj.longDescription || base.longDescription || '',
-                specifications: Array.isArray(dataObj.specifications) ? dataObj.specifications : (Array.isArray(base.specifications) ? base.specifications : []),
-                bundles: Array.isArray(dataObj.bundles) ? dataObj.bundles : (Array.isArray(base.bundles) ? base.bundles : []),
-                hasTimer: Boolean(dataObj.hasTimer ?? base.hasTimer ?? false),
-                isBestSeller: Boolean(dataObj.isBestSeller ?? base.isBestSeller ?? false),
-                isFeatured: Boolean(dataObj.isFeatured ?? base.isFeatured ?? false),
-                rating: Number(dataObj.rating ?? base.rating ?? 5.0),
-                reviewsCount: Number(dataObj.reviewsCount ?? base.reviewsCount ?? 1),
-                status: (rawStatus === 'INACTIVE' ? 'INACTIVE' : 'ACTIVE') as 'ACTIVE' | 'INACTIVE'
-              };
-
-              if (mergedProduct.id) map.set(mergedProduct.id, mergedProduct);
-            });
-          }
-
+          prev.filter(p => p.id.startsWith('prod-') && !fetchedProducts.some(f => f.id === p.id))
+              .forEach(p => map.set(p.id, p));
+          fetchedProducts.forEach(p => map.set(p.id, p));
           return Array.from(map.values());
         });
       }
 
       // 3. Categories
-      const { data: cats } = await supabase.from('categories').select('*');
-      if (cats) {
+      if (cats && cats.length > 0) {
         setCategories(prev => {
-          const map = new Map<string, Category>();
-          prev.forEach(c => map.set(c.id, c));
+          const fetchedCats = cats.map(r => {
+            const dataObj = safeParseJson(r.data);
+            const localMatch = prev.find(c => c.id === String(r.id || dataObj.id));
+            const base: Partial<Category> = localMatch || {};
 
-          if (cats.length > 0) {
-            cats.forEach(r => {
-              const dataObj = safeParseJson(r.data);
-              const localMatch = prev.find(c => c.id === String(r.id || dataObj.id));
-              const base: Partial<Category> = localMatch || {};
+            const dataSub = dataObj.subCategories;
+            const colSub = r.sub_categories ?? r.subCategories ?? r.subcategories;
 
-              const dataSub = dataObj.subCategories;
-              const colSub = r.sub_categories ?? r.subCategories ?? r.subcategories;
+            let rawSub: any = null;
+            if (Array.isArray(dataSub) && dataSub.length > 0) {
+              rawSub = dataSub;
+            } else if (Array.isArray(colSub) && colSub.length > 0) {
+              rawSub = colSub;
+            } else if (colSub) {
+              rawSub = colSub;
+            } else if (dataSub) {
+              rawSub = dataSub;
+            } else if (base.subCategories) {
+              rawSub = base.subCategories;
+            }
 
-              let rawSub: any = null;
-              if (Array.isArray(dataSub) && dataSub.length > 0) {
-                rawSub = dataSub;
-              } else if (Array.isArray(colSub) && colSub.length > 0) {
-                rawSub = colSub;
-              } else if (colSub) {
-                rawSub = colSub;
-              } else if (dataSub) {
-                rawSub = dataSub;
-              } else if (base.subCategories) {
-                rawSub = base.subCategories;
-              }
-
-              let parsedSub: string[] = [];
-              if (Array.isArray(rawSub)) {
-                parsedSub = rawSub.map(s => String(s).trim()).filter(Boolean);
-              } else if (typeof rawSub === 'string') {
-                try {
-                  const p = JSON.parse(rawSub);
-                  if (Array.isArray(p)) {
-                    parsedSub = p.map(s => String(s).trim()).filter(Boolean);
-                  }
-                } catch {
-                  parsedSub = [];
+            let parsedSub: string[] = [];
+            if (Array.isArray(rawSub)) {
+              parsedSub = rawSub.map(s => String(s).trim()).filter(Boolean);
+            } else if (typeof rawSub === 'string') {
+              try {
+                const p = JSON.parse(rawSub);
+                if (Array.isArray(p)) {
+                  parsedSub = p.map(s => String(s).trim()).filter(Boolean);
                 }
+              } catch {
+                parsedSub = [];
               }
+            }
 
-              const mergedCat: Category = {
-                ...base,
-                ...dataObj,
-                id: String(r.id || dataObj.id || base.id),
-                name: String(dataObj.name || r.name || base.name || ''),
-                image: dataObj.image || r.image || base.image || '',
-                position: Number(dataObj.position ?? r.position ?? base.position ?? 1),
-                isVisibleOnHome: Boolean(dataObj.isVisibleOnHome ?? r.is_visible_on_home ?? base.isVisibleOnHome ?? true),
-                subCategories: parsedSub
-              };
+            return {
+              ...base,
+              ...dataObj,
+              id: String(r.id || dataObj.id || base.id),
+              name: String(dataObj.name || r.name || base.name || ''),
+              image: dataObj.image || r.image || base.image || '',
+              position: Number(dataObj.position ?? r.position ?? base.position ?? 1),
+              isVisibleOnHome: Boolean(dataObj.isVisibleOnHome ?? r.is_visible_on_home ?? base.isVisibleOnHome ?? true),
+              subCategories: parsedSub
+            } as Category;
+          });
 
-              if (mergedCat.id) map.set(mergedCat.id, mergedCat);
-            });
-          }
-
+          const map = new Map<string, Category>();
+          prev.filter(c => c.id.startsWith('cat-') && !fetchedCats.some(f => f.id === c.id))
+              .forEach(c => map.set(c.id, c));
+          fetchedCats.forEach(c => map.set(c.id, c));
           return Array.from(map.values());
         });
       }
 
       // 4. Coupons
-      const { data: cpn } = await supabase.from('coupons').select('*');
       if (cpn && cpn.length > 0) {
         setCoupons(prev => {
           const fetchedCoupons = cpn.map(r => {
@@ -558,13 +570,14 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           });
 
           const map = new Map<string, Coupon>();
+          prev.filter(c => c.id.startsWith('cpn-') && !fetchedCoupons.some(f => f.id === c.id))
+              .forEach(c => map.set(c.id, c));
           fetchedCoupons.forEach(c => map.set(c.id, c));
           return Array.from(map.values());
         });
       }
 
       // 5. Settings
-      const { data: stg } = await supabase.from('settings').select('*');
       if (stg && stg.length > 0) {
         const fetchedStg = safeParseJson(stg[0].data);
         if (fetchedStg && typeof fetchedStg === 'object' && Object.keys(fetchedStg).length > 0) {
@@ -573,7 +586,6 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }
 
       // 6. Customer Profiles
-      const { data: profs } = await supabase.from('customer_profiles').select('*');
       if (profs && profs.length > 0) {
         setCustomerProfiles(prev => {
           const map: Record<string, CustomerProfile> = { ...prev };
@@ -593,7 +605,6 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }
 
       // 7. Team
-      const { data: tm } = await supabase.from('team').select('*');
       if (tm && tm.length > 0) {
         setTeam(prev => {
           const fetchedTeam = tm.map(r => {
@@ -614,6 +625,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           });
 
           const map = new Map<string, TeamMember>();
+          prev.filter(t => t.id.startsWith('team-') && !fetchedTeam.some(f => f.id === t.id))
+              .forEach(t => map.set(t.id, t));
           fetchedTeam.forEach(t => map.set(t.id, t));
           return Array.from(map.values());
         });
