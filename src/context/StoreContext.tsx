@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { getSupabaseClient, isSupabaseConfigured, setSupabaseCredentials } from '../lib/supabase';
 import {
   INITIAL_CATEGORIES,
   INITIAL_COUPONS,
@@ -307,18 +307,25 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setCustomerUser(updated);
     setCustomerProfiles((prev) => ({ ...prev, [updated.phone]: updated }));
 
-    if (isSupabaseConfigured() && supabase) {
+    const supabase = getSupabaseClient();
+    if (supabase) {
       supabase.from('customer_profiles').upsert({
         phone: updated.phone,
         name: updated.name,
-        address: updated.address
-      }).then();
+        address: updated.address,
+        data: updated
+      }).then(({ error }) => {
+        if (error && supabase) {
+          supabase.from('customer_profiles').upsert({ phone: updated.phone, data: updated }).then();
+        }
+      });
     }
   };
 
   // Supabase Data Refresh Function
   const refreshSupabaseData = async () => {
-    if (!isSupabaseConfigured() || !supabase) return;
+    const supabase = getSupabaseClient();
+    if (!supabase) return;
     try {
       // 1. Orders
       const { data: ords } = await supabase.from('orders').select('*');
@@ -414,7 +421,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   useEffect(() => {
     refreshSupabaseData();
 
-    if (!isSupabaseConfigured() || !supabase) return;
+    const supabase = getSupabaseClient();
+    if (!supabase) return;
 
     // Periodic polling every 8 seconds for multi-device synchronization
     const interval = setInterval(() => {
@@ -530,7 +538,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         prev.map(p => {
           if (p.id === item.product.id) {
             const updatedP = { ...p, stock: Math.max(0, p.stock - item.quantity) };
-            if (isSupabaseConfigured() && supabase) {
+            const supabase = getSupabaseClient();
+            if (supabase) {
               supabase.from('products').upsert({
                 id: updatedP.id,
                 name: updatedP.name,
@@ -539,7 +548,11 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 price: updatedP.price,
                 stock: updatedP.stock,
                 data: updatedP
-              }).then(null, err => console.warn('Supabase product stock update error:', err));
+              }).then(({ error }) => {
+                if (error && supabase) {
+                  supabase.from('products').upsert({ id: updatedP.id, data: updatedP }).then();
+                }
+              });
             }
             return updatedP;
           }
@@ -558,12 +571,18 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       };
       setCustomerUser(autoProfile);
       setCustomerProfiles((prev) => ({ ...prev, [phoneKey]: autoProfile }));
-      if (isSupabaseConfigured() && supabase) {
+      const supabase = getSupabaseClient();
+      if (supabase) {
         supabase.from('customer_profiles').upsert({
           phone: autoProfile.phone,
           name: autoProfile.name,
-          address: autoProfile.address
-        }).then();
+          address: autoProfile.address,
+          data: autoProfile
+        }).then(({ error }) => {
+          if (error && supabase) {
+            supabase.from('customer_profiles').upsert({ phone: autoProfile.phone, data: autoProfile }).then();
+          }
+        });
       }
     }
 
@@ -580,7 +599,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     // Fire dataLayer purchase event
     trackPurchase(newOrder);
 
-    if (isSupabaseConfigured() && supabase) {
+    const supabase = getSupabaseClient();
+    if (supabase) {
       supabase.from('orders').upsert({
         id: newOrder.id,
         orderNumber: newOrder.orderNumber,
@@ -590,7 +610,11 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         status: newOrder.status,
         callStatus: newOrder.callStatus,
         data: newOrder
-      }).then(null, err => console.warn('Supabase order save error:', err));
+      }).then(({ error }) => {
+        if (error && supabase) {
+          supabase.from('orders').upsert({ id: newOrder.id, data: newOrder }).then();
+        }
+      });
     }
 
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -626,23 +650,30 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       triggerMockSMS(targetOrder, customSmsMsg);
     }
 
-    if (isSupabaseConfigured() && supabase && targetOrder) {
+    const supabase = getSupabaseClient();
+    if (supabase && targetOrder) {
+      const ord = targetOrder as Order;
       supabase.from('orders').upsert({
-        id: (targetOrder as Order).id,
-        orderNumber: (targetOrder as Order).orderNumber,
-        customerName: (targetOrder as Order).customerName,
-        customerPhone: (targetOrder as Order).customerPhone,
-        totalPrice: (targetOrder as Order).totalPrice,
-        status: (targetOrder as Order).status,
-        callStatus: (targetOrder as Order).callStatus,
-        data: targetOrder
-      }).then(null, err => console.warn('Supabase order status update error:', err));
+        id: ord.id,
+        orderNumber: ord.orderNumber,
+        customerName: ord.customerName,
+        customerPhone: ord.customerPhone,
+        totalPrice: ord.totalPrice,
+        status: ord.status,
+        callStatus: ord.callStatus,
+        data: ord
+      }).then(({ error }) => {
+        if (error && supabase) {
+          supabase.from('orders').upsert({ id: ord.id, data: ord }).then();
+        }
+      });
     }
   };
 
   const deleteOrder = (orderId: string) => {
     setOrders(prev => prev.filter(o => o.id !== orderId));
-    if (isSupabaseConfigured() && supabase) {
+    const supabase = getSupabaseClient();
+    if (supabase) {
       supabase.from('orders').delete().eq('id', orderId).then(null, err => console.warn('Supabase order delete error:', err));
     }
   };
@@ -658,21 +689,28 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }
     });
 
-    if (isSupabaseConfigured() && supabase) {
+    const supabase = getSupabaseClient();
+    if (supabase) {
       supabase.from('products').upsert({
         id: product.id,
         name: product.name,
         category: product.category,
         subCategory: product.subCategory,
         price: product.price,
+        stock: product.stock,
         data: product
-      }).then(null, err => console.warn('Supabase product save error:', err));
+      }).then(({ error }) => {
+        if (error && supabase) {
+          supabase.from('products').upsert({ id: product.id, data: product }).then();
+        }
+      });
     }
   };
 
   const deleteProduct = (productId: string) => {
     setProducts(prev => prev.filter(p => p.id !== productId));
-    if (isSupabaseConfigured() && supabase) {
+    const supabase = getSupabaseClient();
+    if (supabase) {
       supabase.from('products').delete().eq('id', productId).then(null, err => console.warn('Supabase product delete error:', err));
     }
   };
@@ -697,7 +735,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }
     });
 
-    if (isSupabaseConfigured() && supabase) {
+    const supabase = getSupabaseClient();
+    if (supabase) {
       try {
         const payload = {
           id: cleanCategory.id,
@@ -764,7 +803,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const deleteCategory = (categoryId: string) => {
     setCategories(prev => prev.filter(c => c.id !== categoryId));
-    if (isSupabaseConfigured() && supabase) {
+    const supabase = getSupabaseClient();
+    if (supabase) {
       supabase.from('categories').delete().eq('id', categoryId).then(null, err => console.warn('Supabase category delete error:', err));
     }
   };
@@ -780,18 +820,24 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }
     });
 
-    if (isSupabaseConfigured() && supabase) {
+    const supabase = getSupabaseClient();
+    if (supabase) {
       supabase.from('coupons').upsert({
         id: coupon.id,
         code: coupon.code,
         data: coupon
-      }).then(null, err => console.warn('Supabase coupon save error:', err));
+      }).then(({ error }) => {
+        if (error && supabase) {
+          supabase.from('coupons').upsert({ id: coupon.id, data: coupon }).then();
+        }
+      });
     }
   };
 
   const deleteCoupon = (couponId: string) => {
     setCoupons(prev => prev.filter(c => c.id !== couponId));
-    if (isSupabaseConfigured() && supabase) {
+    const supabase = getSupabaseClient();
+    if (supabase) {
       supabase.from('coupons').delete().eq('id', couponId).then(null, err => console.warn('Supabase coupon delete error:', err));
     }
   };
@@ -807,19 +853,25 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }
     });
 
-    if (isSupabaseConfigured() && supabase) {
+    const supabase = getSupabaseClient();
+    if (supabase) {
       supabase.from('team').upsert({
         id: member.id,
         name: member.name,
         role: member.role,
         data: member
-      }).then(null, err => console.warn('Supabase team save error:', err));
+      }).then(({ error }) => {
+        if (error && supabase) {
+          supabase.from('team').upsert({ id: member.id, data: member }).then();
+        }
+      });
     }
   };
 
   const deleteTeamMember = (memberId: string) => {
     setTeam(prev => prev.filter(t => t.id !== memberId));
-    if (isSupabaseConfigured() && supabase) {
+    const supabase = getSupabaseClient();
+    if (supabase) {
       supabase.from('team').delete().eq('id', memberId).then(null, err => console.warn('Supabase team delete error:', err));
     }
   };
@@ -827,11 +879,19 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   // Settings
   const saveSettings = (newSettings: StoreSettings) => {
     setSettings(newSettings);
-    if (isSupabaseConfigured() && supabase) {
+    if (newSettings.supabaseUrl || newSettings.supabaseKey) {
+      setSupabaseCredentials(newSettings.supabaseUrl || '', newSettings.supabaseKey || '');
+    }
+    const supabase = getSupabaseClient();
+    if (supabase) {
       supabase.from('settings').upsert({
         id: 'site_settings',
         data: newSettings
-      }).then(null, err => console.warn('Supabase settings save error:', err));
+      }).then(({ error }) => {
+        if (error && supabase) {
+          supabase.from('settings').upsert({ id: 'site_settings', data: newSettings }).then();
+        }
+      });
     }
   };
 

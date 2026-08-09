@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useStore } from '../../context/StoreContext';
+import { getSupabaseConfig, isSupabaseConfigured } from '../../lib/supabase';
 import {
   Settings,
   Save,
@@ -10,13 +11,19 @@ import {
   CreditCard,
   Building,
   KeyRound,
-  RotateCcw
+  RotateCcw,
+  Database
 } from 'lucide-react';
 
 export const AdminSettings: React.FC = () => {
   const { settings, saveSettings, resetToDefaults } = useStore();
 
-  const [formData, setFormData] = useState({ ...settings });
+  const currentSupabase = getSupabaseConfig();
+  const [formData, setFormData] = useState({
+    ...settings,
+    supabaseUrl: settings.supabaseUrl || currentSupabase.url || '',
+    supabaseKey: settings.supabaseKey || currentSupabase.key || ''
+  });
   const [currentPass, setCurrentPass] = useState('');
   const [newAdminId, setNewAdminId] = useState(settings.adminUsername);
   const [newPass, setNewPass] = useState('');
@@ -339,6 +346,54 @@ export const AdminSettings: React.FC = () => {
               onChange={(e) => setFormData({ ...formData, footerAbout: e.target.value })}
               className="w-full bg-[#11131A] border border-[#33384B] rounded-xl p-3 text-white"
             />
+          </div>
+        </div>
+
+        {/* Section 6: Supabase Cloud Database Connection */}
+        <div className="bg-[#181B26] border border-[#2B3042] p-5 rounded-2xl space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="font-extrabold text-white text-sm flex items-center gap-2">
+              <Database className="w-4 h-4 text-cyan-400" />
+              সুপাবেস ডাটাবেস সংযোগ (Supabase Database Credentials)
+            </h3>
+            <span
+              className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold flex items-center gap-1 ${
+                isSupabaseConfigured()
+                  ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                  : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+              }`}
+            >
+              <span className={`w-2 h-2 rounded-full ${isSupabaseConfigured() ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`}></span>
+              {isSupabaseConfigured() ? 'ডাটাবেস কানেক্টেড (Connected)' : 'নট কানেক্টেড (Not Connected)'}
+            </span>
+          </div>
+
+          <p className="text-xs text-[#94A3B8]">
+            যেকোনো ডিভাইস থেকে ডাটা সেভ ও সিঙ্ক করতে আপনার Supabase Project URL এবং Anon Key প্রদান করুন। এটি সেভ করলে সকল ডিভাইসে লাইভ ডাটা শো করবে।
+          </p>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+            <div>
+              <label className="block text-[#94A3B8] font-bold mb-1">Supabase Project URL</label>
+              <input
+                type="text"
+                value={formData.supabaseUrl || ''}
+                onChange={(e) => setFormData({ ...formData, supabaseUrl: e.target.value })}
+                placeholder="https://xyz.supabase.co"
+                className="w-full bg-[#11131A] border border-[#33384B] rounded-xl p-3 text-white font-mono text-xs"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[#94A3B8] font-bold mb-1">Supabase Anon Key</label>
+              <input
+                type="password"
+                value={formData.supabaseKey || ''}
+                onChange={(e) => setFormData({ ...formData, supabaseKey: e.target.value })}
+                placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6..."
+                className="w-full bg-[#11131A] border border-[#33384B] rounded-xl p-3 text-white font-mono text-xs"
+              />
+            </div>
           </div>
         </div>
 

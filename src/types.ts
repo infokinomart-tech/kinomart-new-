@@ -122,6 +122,10 @@ export interface StoreSettings {
   footerAbout: string;
   adminUsername: string;
   adminPasswordHash: string;
+  deliveryFeeInside?: number;
+  deliveryFeeOutside?: number;
+  supabaseUrl?: string;
+  supabaseKey?: string;
 }
 
 export interface TeamMember {

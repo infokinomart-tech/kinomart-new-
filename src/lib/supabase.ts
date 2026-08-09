@@ -9,18 +9,74 @@ const getEnvVar = (key: string): string => {
   }
 };
 
-const supabaseUrl = getEnvVar('VITE_SUPABASE_URL');
-const supabaseAnonKey = getEnvVar('VITE_SUPABASE_ANON_KEY');
+const getStoredVar = (key: string): string => {
+  try {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem(key) || '';
+    }
+  } catch {
+    // Ignore localStorage access errors
+  }
+  return '';
+};
 
-export const supabase: SupabaseClient | null =
-  supabaseUrl &&
-  supabaseAnonKey &&
-  supabaseUrl.startsWith('http') &&
-  !supabaseUrl.includes('your-supabase-project')
-    ? createClient(supabaseUrl, supabaseAnonKey)
-    : null;
+export const getSupabaseConfig = (): { url: string; key: string } => {
+  const envUrl = getEnvVar('VITE_SUPABASE_URL');
+  const envKey = getEnvVar('VITE_SUPABASE_ANON_KEY');
+  const localUrl = getStoredVar('kinomart_supabase_url');
+  const localKey = getStoredVar('kinomart_supabase_key');
+
+  const url = (localUrl && localUrl.startsWith('http')) ? localUrl : envUrl;
+  const key = localKey || envKey;
+
+  const validUrl = url && url.startsWith('http') && !url.includes('your-supabase-project') ? url : '';
+  const validKey = key && !key.includes('your-supabase-anon-key') ? key : '';
+
+  return { url: validUrl, key: validKey };
+};
+
+let cachedClient: SupabaseClient | null = null;
+let lastUrl = '';
+let lastKey = '';
+
+export const getSupabaseClient = (): SupabaseClient | null => {
+  const { url, key } = getSupabaseConfig();
+  if (!url || !key) return null;
+
+  if (cachedClient && lastUrl === url && lastKey === key) {
+    return cachedClient;
+  }
+
+  try {
+    cachedClient = createClient(url, key);
+    lastUrl = url;
+    lastKey = key;
+    return cachedClient;
+  } catch (err) {
+    console.error('Failed to initialize Supabase client:', err);
+    return null;
+  }
+};
+
+export const supabase: SupabaseClient | null = getSupabaseClient();
 
 export const isSupabaseConfigured = (): boolean => {
-  return !!supabase;
+  return !!getSupabaseClient();
+};
+
+export const setSupabaseCredentials = (url: string, key: string) => {
+  try {
+    if (typeof window !== 'undefined') {
+      if (url) localStorage.setItem('kinomart_supabase_url', url);
+      else localStorage.removeItem('kinomart_supabase_url');
+
+      if (key) localStorage.setItem('kinomart_supabase_key', key);
+      else localStorage.removeItem('kinomart_supabase_key');
+    }
+  } catch {
+    // Ignore
+  }
+  cachedClient = null;
+  getSupabaseClient();
 };
 
