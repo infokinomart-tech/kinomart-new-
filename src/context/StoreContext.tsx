@@ -331,13 +331,24 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const { data: ords } = await supabase.from('orders').select('*');
       if (ords && ords.length > 0) {
         setOrders(ords.map(r => {
-          const item = r.data || r;
+          const item = typeof r.data === 'string' ? JSON.parse(r.data) : (r.data || r);
           return {
             ...item,
             id: String(item.id || r.id),
             orderNumber: String(item.orderNumber || r.orderNumber || r.order_number || item.id || r.id),
+            customerName: String(item.customerName || r.customer_name || r.customerName || ''),
+            customerPhone: String(item.customerPhone || r.customer_phone || r.customerPhone || ''),
+            shippingAddress: String(item.shippingAddress || r.shipping_address || ''),
+            deliveryArea: item.deliveryArea || 'Inside Dhaka',
+            deliveryFee: Number(item.deliveryFee ?? 0),
+            paymentMethod: item.paymentMethod || 'COD',
+            items: Array.isArray(item.items) ? item.items : [],
+            subtotal: Number(item.subtotal ?? 0),
+            discount: Number(item.discount ?? 0),
+            totalPrice: Number(item.totalPrice ?? r.total_price ?? r.totalPrice ?? 0),
             status: item.status || r.status || 'Pending',
-            callStatus: item.callStatus || r.callStatus || 'Not Called'
+            callStatus: item.callStatus || r.call_status || r.callStatus || 'Not Called',
+            createdAt: item.createdAt || r.created_at || new Date().toISOString()
           };
         }));
       }
@@ -345,15 +356,41 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       // 2. Products
       const { data: prods } = await supabase.from('products').select('*');
       if (prods && prods.length > 0) {
-        setProducts(prods.map(r => r.data || r));
+        setProducts(prods.map(r => {
+          const item = typeof r.data === 'string' ? JSON.parse(r.data) : (r.data || r);
+          return {
+            id: String(item.id || r.id),
+            name: String(item.name || r.name || ''),
+            price: Number(item.price ?? r.price ?? 0),
+            discountPrice: item.discountPrice !== undefined && item.discountPrice !== null ? Number(item.discountPrice) : undefined,
+            category: String(item.category || r.category || 'গ্যাজেট'),
+            subCategory: String(item.subCategory || r.sub_category || r.subCategory || ''),
+            stock: Number(item.stock ?? r.stock ?? 10),
+            limitedStockThreshold: Number(item.limitedStockThreshold ?? 10),
+            colors: Array.isArray(item.colors) ? item.colors : ['BLACK'],
+            thumbnail: item.thumbnail || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800&auto=format&fit=crop&q=80',
+            gallery: Array.isArray(item.gallery) ? item.gallery : [],
+            videoUrl: item.videoUrl || '',
+            shortDescription: item.shortDescription || '',
+            longDescription: item.longDescription || '',
+            specifications: Array.isArray(item.specifications) ? item.specifications : [],
+            bundles: Array.isArray(item.bundles) ? item.bundles : [],
+            hasTimer: Boolean(item.hasTimer),
+            isBestSeller: Boolean(item.isBestSeller),
+            isFeatured: Boolean(item.isFeatured),
+            rating: Number(item.rating ?? 5.0),
+            reviewsCount: Number(item.reviewsCount ?? 1),
+            status: (item.status === 'INACTIVE' ? 'INACTIVE' : 'ACTIVE')
+          };
+        }));
       }
 
       // 3. Categories
       const { data: cats } = await supabase.from('categories').select('*');
       if (cats && cats.length > 0) {
         setCategories(cats.map(r => {
-          const item = r.data || r;
-          const dataSub = r.data?.subCategories;
+          const item = typeof r.data === 'string' ? JSON.parse(r.data) : (r.data || r);
+          const dataSub = item?.subCategories;
           const topSub = r.subCategories ?? r.sub_categories ?? r.subcategories ?? item.subCategories;
           let parsedSub: string[] = [];
 
@@ -385,14 +422,24 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       // 4. Coupons
       const { data: cpn } = await supabase.from('coupons').select('*');
       if (cpn && cpn.length > 0) {
-        setCoupons(cpn.map(r => r.data || r));
+        setCoupons(cpn.map(r => {
+          const item = typeof r.data === 'string' ? JSON.parse(r.data) : (r.data || r);
+          return {
+            id: String(item.id || r.id),
+            code: String(item.code || r.code || ''),
+            type: (item.type || r.discount_type || 'FIXED') as 'PERCENTAGE' | 'FIXED',
+            value: Number(item.value ?? r.discount_amount ?? 0),
+            minOrderAmount: item.minOrderAmount ? Number(item.minOrderAmount) : undefined,
+            isActive: Boolean(item.isActive ?? true)
+          };
+        }));
       }
 
       // 5. Settings
       const { data: stg } = await supabase.from('settings').select('*');
       if (stg && stg.length > 0) {
-        const fetchedStg = stg[0].data || stg[0];
-        if (fetchedStg) {
+        const fetchedStg = typeof stg[0].data === 'string' ? JSON.parse(stg[0].data) : (stg[0].data || stg[0]);
+        if (fetchedStg && typeof fetchedStg === 'object') {
           setSettings(prev => ({ ...prev, ...fetchedStg }));
         }
       }
@@ -402,7 +449,14 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       if (profs && profs.length > 0) {
         const map: Record<string, CustomerProfile> = {};
         profs.forEach(p => {
-          map[p.phone] = { name: p.name, phone: p.phone, address: p.address };
+          const item = typeof p.data === 'string' ? JSON.parse(p.data) : (p.data || p);
+          if (p.phone) {
+            map[p.phone] = {
+              name: item.name || p.name || '',
+              phone: String(p.phone),
+              address: item.address || p.address || ''
+            };
+          }
         });
         setCustomerProfiles(map);
       }
@@ -410,7 +464,17 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       // 7. Team
       const { data: tm } = await supabase.from('team').select('*');
       if (tm && tm.length > 0) {
-        setTeam(tm.map(r => r.data || r));
+        setTeam(tm.map(r => {
+          const item = typeof r.data === 'string' ? JSON.parse(r.data) : (r.data || r);
+          return {
+            id: String(item.id || r.id),
+            name: String(item.name || r.name || ''),
+            role: String(item.role || r.role || ''),
+            image: item.image || r.image || '',
+            phone: item.phone || r.phone || '',
+            email: item.email || r.email || ''
+          };
+        }));
       }
     } catch (e) {
       console.warn('Supabase fetch notice:', e);
@@ -601,21 +665,30 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     const supabase = getSupabaseClient();
     if (supabase) {
-      supabase.from('orders').upsert({
-        id: newOrder.id,
-        order_number: newOrder.orderNumber,
-        customer_name: newOrder.customerName,
-        customer_phone: newOrder.customerPhone,
-        total_price: newOrder.totalPrice,
-        status: newOrder.status,
-        call_status: newOrder.callStatus,
-        data: newOrder
-      }).then(({ error }) => {
-        if (error && supabase) {
-          console.warn('Order primary upsert error, falling back:', error);
-          supabase.from('orders').upsert({ id: newOrder.id, data: newOrder }).then();
+      (async () => {
+        try {
+          const cleanOrder: Order = JSON.parse(JSON.stringify(newOrder));
+          const payload = {
+            id: cleanOrder.id,
+            order_number: cleanOrder.orderNumber || '',
+            customer_name: cleanOrder.customerName || '',
+            customer_phone: cleanOrder.customerPhone || '',
+            total_price: Number(cleanOrder.totalPrice || 0),
+            status: cleanOrder.status || 'Pending',
+            call_status: cleanOrder.callStatus || 'Not Called',
+            data: cleanOrder
+          };
+
+          const { error } = await supabase.from('orders').upsert(payload);
+          if (error) {
+            console.warn('Order primary upsert error, falling back:', error);
+            await supabase.from('orders').upsert({ id: cleanOrder.id, data: cleanOrder });
+          }
+          await refreshSupabaseData();
+        } catch (err) {
+          console.warn('Supabase order save exception:', err);
         }
-      });
+      })();
     }
 
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -653,22 +726,31 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     const supabase = getSupabaseClient();
     if (supabase && targetOrder) {
-      const ord = targetOrder as Order;
-      supabase.from('orders').upsert({
-        id: ord.id,
-        order_number: ord.orderNumber,
-        customer_name: ord.customerName,
-        customer_phone: ord.customerPhone,
-        total_price: ord.totalPrice,
-        status: ord.status,
-        call_status: ord.callStatus,
-        data: ord
-      }).then(({ error }) => {
-        if (error && supabase) {
-          console.warn('Order status update primary error, falling back:', error);
-          supabase.from('orders').upsert({ id: ord.id, data: ord }).then();
+      const ordToSave = targetOrder as Order;
+      (async () => {
+        try {
+          const cleanOrd: Order = JSON.parse(JSON.stringify(ordToSave));
+          const payload = {
+            id: cleanOrd.id,
+            order_number: cleanOrd.orderNumber || '',
+            customer_name: cleanOrd.customerName || '',
+            customer_phone: cleanOrd.customerPhone || '',
+            total_price: Number(cleanOrd.totalPrice || 0),
+            status: cleanOrd.status || 'Pending',
+            call_status: cleanOrd.callStatus || 'Not Called',
+            data: cleanOrd
+          };
+
+          const { error } = await supabase.from('orders').upsert(payload);
+          if (error) {
+            console.warn('Order status update primary error, falling back:', error);
+            await supabase.from('orders').upsert({ id: cleanOrd.id, data: cleanOrd });
+          }
+          await refreshSupabaseData();
+        } catch (err) {
+          console.warn('Supabase order status update exception:', err);
         }
-      });
+      })();
     }
   };
 
@@ -676,38 +758,51 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setOrders(prev => prev.filter(o => o.id !== orderId));
     const supabase = getSupabaseClient();
     if (supabase) {
-      supabase.from('orders').delete().eq('id', orderId).then(null, err => console.warn('Supabase order delete error:', err));
+      supabase.from('orders').delete().eq('id', orderId).then(() => refreshSupabaseData(), err => console.warn('Supabase order delete error:', err));
     }
   };
 
   // Product CRUD
   const saveProduct = (product: Product) => {
+    const cleanProduct: Product = JSON.parse(JSON.stringify(product));
+
     setProducts(prev => {
-      const exists = prev.some(p => p.id === product.id);
+      const exists = prev.some(p => p.id === cleanProduct.id);
       if (exists) {
-        return prev.map(p => (p.id === product.id ? product : p));
+        return prev.map(p => (p.id === cleanProduct.id ? cleanProduct : p));
       } else {
-        return [product, ...prev];
+        return [cleanProduct, ...prev];
       }
     });
 
     const supabase = getSupabaseClient();
     if (supabase) {
-      supabase.from('products').upsert({
-        id: product.id,
-        name: product.name,
-        category: product.category,
-        sub_category: product.subCategory,
-        price: product.price,
-        stock: product.stock,
-        data: product
-      }).then(async ({ error }) => {
-        if (error && supabase) {
-          console.warn('Product save primary error, falling back:', error);
-          await supabase.from('products').upsert({ id: product.id, data: product });
+      (async () => {
+        try {
+          const payload = {
+            id: cleanProduct.id,
+            name: cleanProduct.name || '',
+            category: cleanProduct.category || '',
+            sub_category: cleanProduct.subCategory || '',
+            price: Number(cleanProduct.price || 0),
+            stock: Number(cleanProduct.stock || 0),
+            data: cleanProduct
+          };
+
+          const { error } = await supabase.from('products').upsert(payload);
+          if (error) {
+            console.warn('Product save primary error, falling back:', error);
+            await supabase.from('products').upsert({
+              id: cleanProduct.id,
+              name: cleanProduct.name || '',
+              data: cleanProduct
+            });
+          }
+          await refreshSupabaseData();
+        } catch (err) {
+          console.warn('Supabase product save exception:', err);
         }
-        refreshSupabaseData();
-      });
+      })();
     }
   };
 
@@ -812,30 +907,39 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // Coupon CRUD
   const saveCoupon = (coupon: Coupon) => {
+    const cleanCoupon: Coupon = JSON.parse(JSON.stringify(coupon));
+
     setCoupons(prev => {
-      const exists = prev.some(c => c.id === coupon.id);
+      const exists = prev.some(c => c.id === cleanCoupon.id);
       if (exists) {
-        return prev.map(c => (c.id === coupon.id ? coupon : c));
+        return prev.map(c => (c.id === cleanCoupon.id ? cleanCoupon : c));
       } else {
-        return [...prev, coupon];
+        return [...prev, cleanCoupon];
       }
     });
 
     const supabase = getSupabaseClient();
     if (supabase) {
-      supabase.from('coupons').upsert({
-        id: coupon.id,
-        code: coupon.code,
-        discount_amount: coupon.value,
-        discount_type: coupon.type,
-        data: coupon
-      }).then(async ({ error }) => {
-        if (error && supabase) {
-          console.warn('Coupon save primary error, falling back:', error);
-          await supabase.from('coupons').upsert({ id: coupon.id, data: coupon });
+      (async () => {
+        try {
+          const payload = {
+            id: cleanCoupon.id,
+            code: cleanCoupon.code || '',
+            discount_amount: Number(cleanCoupon.value || 0),
+            discount_type: cleanCoupon.type || 'FIXED',
+            data: cleanCoupon
+          };
+
+          const { error } = await supabase.from('coupons').upsert(payload);
+          if (error) {
+            console.warn('Coupon save primary error, falling back:', error);
+            await supabase.from('coupons').upsert({ id: cleanCoupon.id, data: cleanCoupon });
+          }
+          await refreshSupabaseData();
+        } catch (err) {
+          console.warn('Supabase coupon save exception:', err);
         }
-        refreshSupabaseData();
-      });
+      })();
     }
   };
 
@@ -849,28 +953,38 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // Team Member CRUD
   const saveTeamMember = (member: TeamMember) => {
+    const cleanMember: TeamMember = JSON.parse(JSON.stringify(member));
+
     setTeam(prev => {
-      const exists = prev.some(t => t.id === member.id);
+      const exists = prev.some(t => t.id === cleanMember.id);
       if (exists) {
-        return prev.map(t => (t.id === member.id ? member : t));
+        return prev.map(t => (t.id === cleanMember.id ? cleanMember : t));
       } else {
-        return [...prev, member];
+        return [...prev, cleanMember];
       }
     });
 
     const supabase = getSupabaseClient();
     if (supabase) {
-      supabase.from('team').upsert({
-        id: member.id,
-        name: member.name,
-        role: member.role,
-        data: member
-      }).then(async ({ error }) => {
-        if (error && supabase) {
-          await supabase.from('team').upsert({ id: member.id, data: member });
+      (async () => {
+        try {
+          const payload = {
+            id: cleanMember.id,
+            name: cleanMember.name || '',
+            role: cleanMember.role || '',
+            data: cleanMember
+          };
+
+          const { error } = await supabase.from('team').upsert(payload);
+          if (error) {
+            console.warn('Team save primary error, falling back:', error);
+            await supabase.from('team').upsert({ id: cleanMember.id, data: cleanMember });
+          }
+          await refreshSupabaseData();
+        } catch (err) {
+          console.warn('Supabase team save exception:', err);
         }
-        refreshSupabaseData();
-      });
+      })();
     }
   };
 
@@ -884,21 +998,31 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // Settings
   const saveSettings = (newSettings: StoreSettings) => {
-    setSettings(newSettings);
-    if (newSettings.supabaseUrl || newSettings.supabaseKey) {
-      setSupabaseCredentials(newSettings.supabaseUrl || '', newSettings.supabaseKey || '');
+    const cleanSettings: StoreSettings = JSON.parse(JSON.stringify(newSettings));
+    setSettings(cleanSettings);
+
+    if (cleanSettings.supabaseUrl || cleanSettings.supabaseKey) {
+      setSupabaseCredentials(cleanSettings.supabaseUrl || '', cleanSettings.supabaseKey || '');
     }
+
     const supabase = getSupabaseClient();
     if (supabase) {
-      supabase.from('settings').upsert({
-        id: 'site_settings',
-        data: newSettings
-      }).then(async ({ error }) => {
-        if (error && supabase) {
-          await supabase.from('settings').upsert({ id: 'site_settings', data: newSettings });
+      (async () => {
+        try {
+          const payload = {
+            id: 'site_settings',
+            data: cleanSettings
+          };
+
+          const { error } = await supabase.from('settings').upsert(payload);
+          if (error) {
+            console.warn('Settings save error:', error);
+          }
+          await refreshSupabaseData();
+        } catch (err) {
+          console.warn('Supabase settings save exception:', err);
         }
-        refreshSupabaseData();
-      });
+      })();
     }
   };
 
