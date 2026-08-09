@@ -406,7 +406,6 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
           const map = new Map<string, Order>();
           fetchedOrders.forEach(o => map.set(o.id, o));
-          prev.forEach(o => { if (!map.has(o.id)) map.set(o.id, o); });
           return Array.from(map.values());
         });
       }
@@ -451,7 +450,6 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
           const map = new Map<string, Product>();
           fetchedProducts.forEach(p => map.set(p.id, p));
-          prev.forEach(p => { if (!map.has(p.id)) map.set(p.id, p); });
           return Array.from(map.values());
         });
       }
@@ -493,7 +491,6 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
           const map = new Map<string, Category>();
           fetchedCats.forEach(c => map.set(c.id, c));
-          prev.forEach(c => { if (!map.has(c.id)) map.set(c.id, c); });
           return Array.from(map.values());
         });
       }
@@ -521,7 +518,6 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
           const map = new Map<string, Coupon>();
           fetchedCoupons.forEach(c => map.set(c.id, c));
-          prev.forEach(c => { if (!map.has(c.id)) map.set(c.id, c); });
           return Array.from(map.values());
         });
       }
@@ -578,7 +574,6 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
           const map = new Map<string, TeamMember>();
           fetchedTeam.forEach(t => map.set(t.id, t));
-          prev.forEach(t => { if (!map.has(t.id)) map.set(t.id, t); });
           return Array.from(map.values());
         });
       }
