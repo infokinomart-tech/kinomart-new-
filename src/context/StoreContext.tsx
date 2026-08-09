@@ -263,6 +263,21 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   }, [customerUser]);
 
+  // Safe JSON Parser helper
+  const safeParseJson = (val: any): Record<string, any> => {
+    if (!val) return {};
+    if (typeof val === 'object') return val;
+    if (typeof val === 'string') {
+      try {
+        const parsed = JSON.parse(val);
+        return typeof parsed === 'object' && parsed !== null ? parsed : {};
+      } catch {
+        return {};
+      }
+    }
+    return {};
+  };
+
   // Resilient Smart Upsert Helper for Supabase
   const smartUpsert = async (
     tableName: string,
@@ -379,7 +394,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       if (ords && ords.length > 0) {
         setOrders(prev => {
           const fetchedOrders = ords.map(r => {
-            const dataObj = typeof r.data === 'string' ? JSON.parse(r.data) : (r.data || {});
+            const dataObj = safeParseJson(r.data);
             const localMatch = prev.find(o => o.id === String(r.id || dataObj.id));
             const base: Partial<Order> = localMatch || {};
 
@@ -415,7 +430,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       if (prods && prods.length > 0) {
         setProducts(prev => {
           const fetchedProducts = prods.map(r => {
-            const dataObj = typeof r.data === 'string' ? JSON.parse(r.data) : (r.data || {});
+            const dataObj = safeParseJson(r.data);
             const localMatch = prev.find(p => p.id === String(r.id || dataObj.id));
             const base: Partial<Product> = localMatch || {};
             const rawStatus = dataObj.status || r.status || base.status;
@@ -459,7 +474,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       if (cats && cats.length > 0) {
         setCategories(prev => {
           const fetchedCats = cats.map(r => {
-            const dataObj = typeof r.data === 'string' ? JSON.parse(r.data) : (r.data || {});
+            const dataObj = safeParseJson(r.data);
             const localMatch = prev.find(c => c.id === String(r.id || dataObj.id));
             const base: Partial<Category> = localMatch || {};
 
@@ -500,7 +515,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       if (cpn && cpn.length > 0) {
         setCoupons(prev => {
           const fetchedCoupons = cpn.map(r => {
-            const dataObj = typeof r.data === 'string' ? JSON.parse(r.data) : (r.data || {});
+            const dataObj = safeParseJson(r.data);
             const localMatch = prev.find(c => c.id === String(r.id || dataObj.id));
             const base: Partial<Coupon> = localMatch || {};
 
@@ -525,8 +540,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       // 5. Settings
       const { data: stg } = await supabase.from('settings').select('*');
       if (stg && stg.length > 0) {
-        const fetchedStg = typeof stg[0].data === 'string' ? JSON.parse(stg[0].data) : (stg[0].data || stg[0]);
-        if (fetchedStg && typeof fetchedStg === 'object') {
+        const fetchedStg = safeParseJson(stg[0].data);
+        if (fetchedStg && typeof fetchedStg === 'object' && Object.keys(fetchedStg).length > 0) {
           setSettings(prev => ({ ...prev, ...fetchedStg }));
         }
       }
@@ -537,7 +552,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setCustomerProfiles(prev => {
           const map: Record<string, CustomerProfile> = { ...prev };
           profs.forEach(p => {
-            const dataObj = typeof p.data === 'string' ? JSON.parse(p.data) : (p.data || {});
+            const dataObj = safeParseJson(p.data);
             const phone = String(p.phone || dataObj.phone || '');
             if (phone) {
               map[phone] = {
@@ -556,7 +571,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       if (tm && tm.length > 0) {
         setTeam(prev => {
           const fetchedTeam = tm.map(r => {
-            const dataObj = typeof r.data === 'string' ? JSON.parse(r.data) : (r.data || {});
+            const dataObj = safeParseJson(r.data);
             const localMatch = prev.find(t => t.id === String(r.id || dataObj.id));
             const base: Partial<TeamMember> = localMatch || {};
 
@@ -904,11 +919,29 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           id: cleanProduct.id,
           name: cleanProduct.name || '',
           category: cleanProduct.category || '',
+          sub_category: cleanProduct.subCategory || '',
+          price: Number(cleanProduct.price || 0),
+          stock: Number(cleanProduct.stock || 0),
+          data: JSON.stringify(cleanProduct)
+        },
+        {
+          id: cleanProduct.id,
+          name: cleanProduct.name || '',
+          category: cleanProduct.category || '',
           price: Number(cleanProduct.price || 0),
           stock: Number(cleanProduct.stock || 0),
           data: cleanProduct
         },
+        {
+          id: cleanProduct.id,
+          name: cleanProduct.name || '',
+          category: cleanProduct.category || '',
+          price: Number(cleanProduct.price || 0),
+          stock: Number(cleanProduct.stock || 0),
+          data: JSON.stringify(cleanProduct)
+        },
         { id: cleanProduct.id, data: cleanProduct },
+        { id: cleanProduct.id, data: JSON.stringify(cleanProduct) },
         {
           id: cleanProduct.id,
           name: cleanProduct.name || '',
@@ -918,8 +951,10 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         }
       ];
 
-      await smartUpsert('products', primary, fallbacks);
-      await refreshSupabaseData();
+      const ok = await smartUpsert('products', primary, fallbacks);
+      if (ok) {
+        await refreshSupabaseData();
+      }
     })();
   };
 
@@ -962,12 +997,16 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     const fallbacks = [
       { id: cleanCategory.id, name: cleanCategory.name, image: cleanCategory.image || '', data: cleanCategory },
+      { id: cleanCategory.id, name: cleanCategory.name, image: cleanCategory.image || '', data: JSON.stringify(cleanCategory) },
       { id: cleanCategory.id, data: cleanCategory },
+      { id: cleanCategory.id, data: JSON.stringify(cleanCategory) },
       { id: cleanCategory.id, name: cleanCategory.name }
     ];
 
-    await smartUpsert('categories', primary, fallbacks);
-    await refreshSupabaseData();
+    const ok = await smartUpsert('categories', primary, fallbacks);
+    if (ok) {
+      await refreshSupabaseData();
+    }
   };
 
   const deleteCategory = (categoryId: string) => {
@@ -1001,12 +1040,16 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       };
       const fallbacks = [
         { id: cleanCoupon.id, code: cleanCoupon.code || '', data: cleanCoupon },
+        { id: cleanCoupon.id, code: cleanCoupon.code || '', data: JSON.stringify(cleanCoupon) },
         { id: cleanCoupon.id, data: cleanCoupon },
+        { id: cleanCoupon.id, data: JSON.stringify(cleanCoupon) },
         { id: cleanCoupon.id, code: cleanCoupon.code || '', discount_amount: Number(cleanCoupon.value || 0) }
       ];
 
-      await smartUpsert('coupons', primary, fallbacks);
-      await refreshSupabaseData();
+      const ok = await smartUpsert('coupons', primary, fallbacks);
+      if (ok) {
+        await refreshSupabaseData();
+      }
     })();
   };
 
@@ -1040,11 +1083,14 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       };
       const fallbacks = [
         { id: cleanMember.id, data: cleanMember },
+        { id: cleanMember.id, data: JSON.stringify(cleanMember) },
         { id: cleanMember.id, name: cleanMember.name || '', role: cleanMember.role || '' }
       ];
 
-      await smartUpsert('team', primary, fallbacks);
-      await refreshSupabaseData();
+      const ok = await smartUpsert('team', primary, fallbacks);
+      if (ok) {
+        await refreshSupabaseData();
+      }
     })();
   };
 
@@ -1071,11 +1117,14 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         data: cleanSettings
       };
       const fallbacks = [
-        { id: 'site_settings', data: JSON.stringify(cleanSettings) }
+        { id: 'site_settings', data: JSON.stringify(cleanSettings) },
+        { id: 'site_settings', data: cleanSettings }
       ];
 
-      await smartUpsert('settings', primary, fallbacks);
-      await refreshSupabaseData();
+      const ok = await smartUpsert('settings', primary, fallbacks);
+      if (ok) {
+        await refreshSupabaseData();
+      }
     })();
   };
 
