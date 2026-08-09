@@ -544,7 +544,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 id: updatedP.id,
                 name: updatedP.name,
                 category: updatedP.category,
-                subCategory: updatedP.subCategory,
+                sub_category: updatedP.subCategory,
                 price: updatedP.price,
                 stock: updatedP.stock,
                 data: updatedP
@@ -603,15 +603,16 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     if (supabase) {
       supabase.from('orders').upsert({
         id: newOrder.id,
-        orderNumber: newOrder.orderNumber,
-        customerName: newOrder.customerName,
-        customerPhone: newOrder.customerPhone,
-        totalPrice: newOrder.totalPrice,
+        order_number: newOrder.orderNumber,
+        customer_name: newOrder.customerName,
+        customer_phone: newOrder.customerPhone,
+        total_price: newOrder.totalPrice,
         status: newOrder.status,
-        callStatus: newOrder.callStatus,
+        call_status: newOrder.callStatus,
         data: newOrder
       }).then(({ error }) => {
         if (error && supabase) {
+          console.warn('Order primary upsert error, falling back:', error);
           supabase.from('orders').upsert({ id: newOrder.id, data: newOrder }).then();
         }
       });
@@ -655,15 +656,16 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const ord = targetOrder as Order;
       supabase.from('orders').upsert({
         id: ord.id,
-        orderNumber: ord.orderNumber,
-        customerName: ord.customerName,
-        customerPhone: ord.customerPhone,
-        totalPrice: ord.totalPrice,
+        order_number: ord.orderNumber,
+        customer_name: ord.customerName,
+        customer_phone: ord.customerPhone,
+        total_price: ord.totalPrice,
         status: ord.status,
-        callStatus: ord.callStatus,
+        call_status: ord.callStatus,
         data: ord
       }).then(({ error }) => {
         if (error && supabase) {
+          console.warn('Order status update primary error, falling back:', error);
           supabase.from('orders').upsert({ id: ord.id, data: ord }).then();
         }
       });
@@ -695,14 +697,16 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         id: product.id,
         name: product.name,
         category: product.category,
-        subCategory: product.subCategory,
+        sub_category: product.subCategory,
         price: product.price,
         stock: product.stock,
         data: product
-      }).then(({ error }) => {
+      }).then(async ({ error }) => {
         if (error && supabase) {
-          supabase.from('products').upsert({ id: product.id, data: product }).then();
+          console.warn('Product save primary error, falling back:', error);
+          await supabase.from('products').upsert({ id: product.id, data: product });
         }
+        refreshSupabaseData();
       });
     }
   };
@@ -711,7 +715,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setProducts(prev => prev.filter(p => p.id !== productId));
     const supabase = getSupabaseClient();
     if (supabase) {
-      supabase.from('products').delete().eq('id', productId).then(null, err => console.warn('Supabase product delete error:', err));
+      supabase.from('products').delete().eq('id', productId).then(() => refreshSupabaseData(), err => console.warn('Supabase product delete error:', err));
     }
   };
 
@@ -743,11 +747,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           name: cleanCategory.name,
           image: cleanCategory.image || '',
           position: cleanCategory.position,
-          isVisibleOnHome: cleanCategory.isVisibleOnHome ?? true,
           is_visible_on_home: cleanCategory.isVisibleOnHome ?? true,
-          subCategories: subList,
           sub_categories: subList,
-          subcategories: subList,
           data: cleanCategory
         };
 
@@ -805,7 +806,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setCategories(prev => prev.filter(c => c.id !== categoryId));
     const supabase = getSupabaseClient();
     if (supabase) {
-      supabase.from('categories').delete().eq('id', categoryId).then(null, err => console.warn('Supabase category delete error:', err));
+      supabase.from('categories').delete().eq('id', categoryId).then(() => refreshSupabaseData(), err => console.warn('Supabase category delete error:', err));
     }
   };
 
@@ -825,11 +826,15 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       supabase.from('coupons').upsert({
         id: coupon.id,
         code: coupon.code,
+        discount_amount: coupon.value,
+        discount_type: coupon.type,
         data: coupon
-      }).then(({ error }) => {
+      }).then(async ({ error }) => {
         if (error && supabase) {
-          supabase.from('coupons').upsert({ id: coupon.id, data: coupon }).then();
+          console.warn('Coupon save primary error, falling back:', error);
+          await supabase.from('coupons').upsert({ id: coupon.id, data: coupon });
         }
+        refreshSupabaseData();
       });
     }
   };
@@ -838,7 +843,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setCoupons(prev => prev.filter(c => c.id !== couponId));
     const supabase = getSupabaseClient();
     if (supabase) {
-      supabase.from('coupons').delete().eq('id', couponId).then(null, err => console.warn('Supabase coupon delete error:', err));
+      supabase.from('coupons').delete().eq('id', couponId).then(() => refreshSupabaseData(), err => console.warn('Supabase coupon delete error:', err));
     }
   };
 
@@ -860,10 +865,11 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         name: member.name,
         role: member.role,
         data: member
-      }).then(({ error }) => {
+      }).then(async ({ error }) => {
         if (error && supabase) {
-          supabase.from('team').upsert({ id: member.id, data: member }).then();
+          await supabase.from('team').upsert({ id: member.id, data: member });
         }
+        refreshSupabaseData();
       });
     }
   };
@@ -872,7 +878,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setTeam(prev => prev.filter(t => t.id !== memberId));
     const supabase = getSupabaseClient();
     if (supabase) {
-      supabase.from('team').delete().eq('id', memberId).then(null, err => console.warn('Supabase team delete error:', err));
+      supabase.from('team').delete().eq('id', memberId).then(() => refreshSupabaseData(), err => console.warn('Supabase team delete error:', err));
     }
   };
 
@@ -887,10 +893,11 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       supabase.from('settings').upsert({
         id: 'site_settings',
         data: newSettings
-      }).then(({ error }) => {
+      }).then(async ({ error }) => {
         if (error && supabase) {
-          supabase.from('settings').upsert({ id: 'site_settings', data: newSettings }).then();
+          await supabase.from('settings').upsert({ id: 'site_settings', data: newSettings });
         }
+        refreshSupabaseData();
       });
     }
   };

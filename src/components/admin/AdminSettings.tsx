@@ -116,6 +116,15 @@ ALTER TABLE public.settings DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.team DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.customer_profiles DISABLE ROW LEVEL SECURITY;
 
+-- Allow public access policies (In case RLS is forced on)
+DO $$ BEGIN CREATE POLICY "Public All Orders" ON public.orders FOR ALL USING (true) WITH CHECK (true); EXCEPTION WHEN OTHERS THEN NULL; END $$;
+DO $$ BEGIN CREATE POLICY "Public All Products" ON public.products FOR ALL USING (true) WITH CHECK (true); EXCEPTION WHEN OTHERS THEN NULL; END $$;
+DO $$ BEGIN CREATE POLICY "Public All Categories" ON public.categories FOR ALL USING (true) WITH CHECK (true); EXCEPTION WHEN OTHERS THEN NULL; END $$;
+DO $$ BEGIN CREATE POLICY "Public All Coupons" ON public.coupons FOR ALL USING (true) WITH CHECK (true); EXCEPTION WHEN OTHERS THEN NULL; END $$;
+DO $$ BEGIN CREATE POLICY "Public All Settings" ON public.settings FOR ALL USING (true) WITH CHECK (true); EXCEPTION WHEN OTHERS THEN NULL; END $$;
+DO $$ BEGIN CREATE POLICY "Public All Team" ON public.team FOR ALL USING (true) WITH CHECK (true); EXCEPTION WHEN OTHERS THEN NULL; END $$;
+DO $$ BEGIN CREATE POLICY "Public All Customers" ON public.customer_profiles FOR ALL USING (true) WITH CHECK (true); EXCEPTION WHEN OTHERS THEN NULL; END $$;
+
 -- Grant permissions to public anon role
 GRANT ALL ON ALL TABLES IN SCHEMA public TO anon, authenticated, postgres, service_role;`;
 
