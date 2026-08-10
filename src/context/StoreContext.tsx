@@ -647,6 +647,32 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 createdAt: dataObj.createdAt || r.created_at || new Date().toISOString()
               } as Order;
             });
+            fetchedOrders.sort((a, b) => {
+              const parseTime = (ord: Order) => {
+                if (ord.id && ord.id.startsWith('ord-')) {
+                  const num = Number(ord.id.replace('ord-', ''));
+                  if (!isNaN(num) && num > 1000000) return num;
+                }
+                if (ord.createdAt) {
+                  const parts = ord.createdAt.split(' ');
+                  if (parts.length >= 2 && parts[0].includes('/')) {
+                    const [d, m, y] = parts[0].split('/').map(Number);
+                    const [hh, mm] = (parts[1] || '00:00').split(':').map(Number);
+                    if (y && m && d) {
+                      return new Date(y, m - 1, d, hh || 0, mm || 0).getTime();
+                    }
+                  }
+                  const parsed = Date.parse(ord.createdAt);
+                  if (!isNaN(parsed)) return parsed;
+                }
+                if (ord.id) {
+                  const num = parseInt(ord.id.replace(/\D/g, ''), 10);
+                  if (!isNaN(num)) return num;
+                }
+                return 0;
+              };
+              return parseTime(b) - parseTime(a);
+            });
             setOrders(fetchedOrders);
           } else {
             const isSeeded = safeGetStorage('kinomart_seeded_ords', false);

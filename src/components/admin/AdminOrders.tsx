@@ -141,22 +141,50 @@ export const AdminOrders: React.FC = () => {
     return `প্রিয় ${ord.customerName}, আপনার ${ord.orderNumber} অর্ডারটির স্ট্যাটাস পরিবর্তিত হয়ে '${st}' হয়েছে। মোট: ৳${ord.totalPrice}। - ${settings.websiteTitle}`;
   };
 
-  // Filter orders
-  const filteredOrders = orders.filter((order) => {
-    const matchesSearch =
-      order.orderNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      order.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      order.customerPhone.includes(searchTerm) ||
-      order.shippingAddress.toLowerCase().includes(searchTerm.toLowerCase());
+  // Helper to get timestamp for sorting orders (newest first)
+  const getOrderTimestamp = (order: Order): number => {
+    if (order.id && order.id.startsWith('ord-')) {
+      const rawNum = order.id.replace('ord-', '');
+      const num = Number(rawNum);
+      if (!isNaN(num) && num > 1000000) return num;
+    }
+    if (order.createdAt) {
+      const parts = order.createdAt.split(' ');
+      if (parts.length >= 2 && parts[0].includes('/')) {
+        const [d, m, y] = parts[0].split('/').map(Number);
+        const [hh, mm] = (parts[1] || '00:00').split(':').map(Number);
+        if (y && m && d) {
+          return new Date(y, m - 1, d, hh || 0, mm || 0).getTime();
+        }
+      }
+      const parsed = Date.parse(order.createdAt);
+      if (!isNaN(parsed)) return parsed;
+    }
+    if (order.id) {
+      const num = parseInt(order.id.replace(/\D/g, ''), 10);
+      if (!isNaN(num)) return num;
+    }
+    return 0;
+  };
 
-    const matchesStatus =
-      selectedStatus === 'All' || order.status === selectedStatus;
+  // Filter and sort orders (newest first)
+  const filteredOrders = orders
+    .filter((order) => {
+      const matchesSearch =
+        order.orderNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        order.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        order.customerPhone.includes(searchTerm) ||
+        order.shippingAddress.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchesCallStatus =
-      selectedCallStatus === 'All' || order.callStatus === selectedCallStatus;
+      const matchesStatus =
+        selectedStatus === 'All' || order.status === selectedStatus;
 
-    return matchesSearch && matchesStatus && matchesCallStatus;
-  });
+      const matchesCallStatus =
+        selectedCallStatus === 'All' || order.callStatus === selectedCallStatus;
+
+      return matchesSearch && matchesStatus && matchesCallStatus;
+    })
+    .sort((a, b) => getOrderTimestamp(b) - getOrderTimestamp(a));
 
   const handleOpenEdit = (order: Order) => {
     setEditingOrder(order);
