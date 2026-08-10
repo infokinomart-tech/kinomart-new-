@@ -13,7 +13,7 @@ export const FloatingContacts: React.FC = () => {
   };
 
   return (
-    <div className="fixed bottom-16 sm:bottom-5 right-4 sm:right-5 z-40 flex flex-col items-end gap-2.5 sm:gap-3 pointer-events-auto">
+    <div className="fixed bottom-5 sm:bottom-5 right-3 sm:right-5 z-40 flex flex-col items-end gap-2.5 sm:gap-3 pointer-events-auto">
       {/* Phone Call Modal Popup */}
       {isOpenCall && (
         <div className="bg-white border border-[#E8E3D9] p-4 rounded-2xl shadow-2xl mb-2 text-xs text-[#1F241E] w-60 animate-scaleUp">

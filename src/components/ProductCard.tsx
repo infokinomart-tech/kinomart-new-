@@ -156,13 +156,13 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
         ) : (
           <button
             onClick={handleQuickOrder}
-            className="relative overflow-hidden w-full bg-[#5E6A45] hover:bg-[#485333] active:scale-[0.98] text-white text-xs sm:text-sm font-black py-2 sm:py-2.5 px-3 rounded-xl flex items-center justify-center gap-1.5 transition-all shadow-md hover:shadow-lg cursor-pointer group animate-order-btn"
+            className="relative overflow-hidden w-full bg-[#485539] hover:bg-[#3C472E] active:scale-[0.98] text-white text-xs sm:text-sm font-black py-2 sm:py-2.5 px-3 rounded-full flex items-center justify-center gap-1.5 transition-all shadow-md hover:shadow-lg border border-[#586847] cursor-pointer group animate-order-btn"
           >
             {/* Shimmer Light Bar */}
-            <span className="absolute inset-0 w-1/2 h-full bg-gradient-to-r from-transparent via-white/30 to-transparent pointer-events-none animate-order-shimmer" />
-            
-            <Zap className="w-4 h-4 fill-amber-300 text-amber-300 animate-zap-pop shrink-0" />
-            <span className="relative z-10 tracking-wide">অর্ডার করুন</span>
+            <span className="absolute inset-0 w-1/2 h-full bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none animate-order-shimmer" />
+
+            <Zap className="w-4 h-4 fill-[#FACC15] text-[#FACC15] animate-zap-pop shrink-0" />
+            <span className="relative z-10 tracking-wide font-extrabold text-white">এখনই অর্ডার করুন</span>
           </button>
         )}
       </div>

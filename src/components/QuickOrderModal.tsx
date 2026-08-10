@@ -596,13 +596,13 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({ product, onClo
           <button
             type="submit"
             disabled={isSubmitting}
-            className="relative overflow-hidden w-full bg-[#627048] hover:bg-[#4E5B37] active:scale-[0.98] text-white text-base sm:text-lg font-black py-3.5 sm:py-4 px-6 rounded-2xl flex items-center justify-center gap-2.5 shadow-lg shadow-[#627048]/25 hover:shadow-xl transition-all disabled:opacity-50 cursor-pointer animate-order-btn"
+            className="relative overflow-hidden w-full bg-[#485539] hover:bg-[#3C472E] active:scale-[0.98] text-white text-base sm:text-lg font-black py-3.5 sm:py-4 px-6 rounded-full flex items-center justify-center gap-2.5 shadow-lg shadow-[#485539]/25 hover:shadow-xl border border-[#586847] transition-all disabled:opacity-50 cursor-pointer animate-order-btn"
           >
             {/* Shimmer Light Bar */}
-            <span className="absolute inset-0 w-1/2 h-full bg-gradient-to-r from-transparent via-white/35 to-transparent pointer-events-none animate-order-shimmer" />
+            <span className="absolute inset-0 w-1/2 h-full bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none animate-order-shimmer" />
 
-            <Zap className="w-5 h-5 sm:w-6 sm:h-6 fill-white text-white animate-zap-pop shrink-0" />
-            <span className="relative z-10 tracking-wide">
+            <Zap className="w-5 h-5 sm:w-6 sm:h-6 fill-[#FACC15] text-[#FACC15] animate-zap-pop shrink-0" />
+            <span className="relative z-10 tracking-wide font-extrabold text-white">
               {isSubmitting
                 ? 'অর্ডার প্রসেস হচ্ছে...'
                 : `এখনই অর্ডার কনফার্ম করুন (৳${totalPrice.toLocaleString('bn-BD')})`}

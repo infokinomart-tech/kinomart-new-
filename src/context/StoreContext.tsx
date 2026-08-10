@@ -410,110 +410,119 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       ]);
 
       // 1. Orders
-      if (ords && ords.length > 0) {
-        setOrders(prev => {
+      if (Array.isArray(ords)) {
+        if (ords.length > 0) {
+          safeSetStorage('kinomart_seeded_ords', true);
           const fetchedOrders = ords.map(r => {
             const dataObj = safeParseJson(r.data);
-            const localMatch = prev.find(o => o.id === String(r.id || dataObj.id));
-            const base: Partial<Order> = localMatch || {};
-
             return {
-              ...base,
               ...dataObj,
-              id: String(r.id || dataObj.id || base.id),
-              orderNumber: String(dataObj.orderNumber || r.order_number || r.orderNumber || base.orderNumber || r.id),
-              customerName: String(dataObj.customerName || r.customer_name || r.customerName || base.customerName || ''),
-              customerPhone: String(dataObj.customerPhone || r.customer_phone || r.customerPhone || base.customerPhone || ''),
-              shippingAddress: String(dataObj.shippingAddress || r.shipping_address || base.shippingAddress || ''),
-              deliveryArea: dataObj.deliveryArea || base.deliveryArea || 'Inside Dhaka',
-              deliveryFee: Number(dataObj.deliveryFee ?? base.deliveryFee ?? 0),
-              paymentMethod: dataObj.paymentMethod || base.paymentMethod || 'COD',
-              items: Array.isArray(dataObj.items) ? dataObj.items : (Array.isArray(base.items) ? base.items : []),
-              subtotal: Number(dataObj.subtotal ?? base.subtotal ?? 0),
-              discount: Number(dataObj.discount ?? base.discount ?? 0),
-              totalPrice: Number(dataObj.totalPrice ?? r.total_price ?? base.totalPrice ?? 0),
-              status: dataObj.status || r.status || base.status || 'Pending',
-              callStatus: dataObj.callStatus || r.call_status || base.callStatus || 'Not Called',
-              createdAt: dataObj.createdAt || r.created_at || base.createdAt || new Date().toISOString()
+              id: String(r.id || dataObj.id),
+              orderNumber: String(dataObj.orderNumber || r.order_number || r.orderNumber || r.id),
+              customerName: String(dataObj.customerName || r.customer_name || r.customerName || ''),
+              customerPhone: String(dataObj.customerPhone || r.customer_phone || r.customerPhone || ''),
+              shippingAddress: String(dataObj.shippingAddress || r.shipping_address || ''),
+              deliveryArea: dataObj.deliveryArea || 'Inside Dhaka',
+              deliveryFee: Number(dataObj.deliveryFee ?? 0),
+              paymentMethod: dataObj.paymentMethod || 'COD',
+              items: Array.isArray(dataObj.items) ? dataObj.items : [],
+              subtotal: Number(dataObj.subtotal ?? 0),
+              discount: Number(dataObj.discount ?? 0),
+              totalPrice: Number(dataObj.totalPrice ?? r.total_price ?? 0),
+              status: dataObj.status || r.status || 'Pending',
+              callStatus: dataObj.callStatus || r.call_status || 'Not Called',
+              createdAt: dataObj.createdAt || r.created_at || new Date().toISOString()
             } as Order;
           });
-
-          const map = new Map<string, Order>();
-          prev.filter(o => o.id.startsWith('ord-') && !fetchedOrders.some(f => f.id === o.id))
-              .forEach(o => map.set(o.id, o));
-          fetchedOrders.forEach(o => map.set(o.id, o));
-          return Array.from(map.values());
-        });
+          setOrders(fetchedOrders);
+        } else {
+          const isSeeded = safeGetStorage('kinomart_seeded_ords', false);
+          if (!isSeeded) {
+            safeSetStorage('kinomart_seeded_ords', true);
+            for (const ord of INITIAL_ORDERS) {
+              smartUpsert('orders', {
+                id: ord.id,
+                order_number: ord.orderNumber,
+                customer_name: ord.customerName,
+                customer_phone: ord.customerPhone,
+                total_price: ord.totalPrice,
+                status: ord.status,
+                call_status: ord.callStatus,
+                data: ord
+              });
+            }
+            setOrders(INITIAL_ORDERS);
+          } else {
+            setOrders([]);
+          }
+        }
       }
 
       // 2. Products
-      if (prods && prods.length > 0) {
-        setProducts(prev => {
+      if (Array.isArray(prods)) {
+        if (prods.length > 0) {
+          safeSetStorage('kinomart_seeded_products', true);
           const fetchedProducts = prods.map(r => {
             const dataObj = safeParseJson(r.data);
-            const localMatch = prev.find(p => p.id === String(r.id || dataObj.id));
-            const base: Partial<Product> = localMatch || {};
-            const rawStatus = dataObj.status || r.status || base.status;
-
+            const rawStatus = dataObj.status || r.status;
             return {
-              ...base,
               ...dataObj,
-              id: String(r.id || dataObj.id || base.id),
-              name: String(dataObj.name || r.name || base.name || ''),
-              price: Number(dataObj.price ?? r.price ?? base.price ?? 0),
-              discountPrice: dataObj.discountPrice !== undefined ? Number(dataObj.discountPrice) : (base.discountPrice !== undefined ? base.discountPrice : undefined),
-              category: String(dataObj.category || r.category || base.category || 'গ্যাজেট'),
-              subCategory: String(dataObj.subCategory || r.sub_category || r.subCategory || r.subcategory || base.subCategory || ''),
-              stock: Number(dataObj.stock ?? r.stock ?? base.stock ?? 10),
-              limitedStockThreshold: Number(dataObj.limitedStockThreshold ?? base.limitedStockThreshold ?? 10),
-              colors: Array.isArray(dataObj.colors) ? dataObj.colors : (Array.isArray(base.colors) ? base.colors : ['BLACK']),
-              thumbnail: dataObj.thumbnail || base.thumbnail || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800&auto=format&fit=crop&q=80',
-              gallery: Array.isArray(dataObj.gallery) ? dataObj.gallery : (Array.isArray(base.gallery) ? base.gallery : []),
-              videoUrl: dataObj.videoUrl || base.videoUrl || '',
-              shortDescription: dataObj.shortDescription || base.shortDescription || '',
-              longDescription: dataObj.longDescription || base.longDescription || '',
-              specifications: Array.isArray(dataObj.specifications) ? dataObj.specifications : (Array.isArray(base.specifications) ? base.specifications : []),
-              bundles: Array.isArray(dataObj.bundles) ? dataObj.bundles : (Array.isArray(base.bundles) ? base.bundles : []),
-              hasTimer: Boolean(dataObj.hasTimer ?? base.hasTimer ?? false),
-              isBestSeller: Boolean(dataObj.isBestSeller ?? base.isBestSeller ?? false),
-              isFeatured: Boolean(dataObj.isFeatured ?? base.isFeatured ?? false),
-              rating: Number(dataObj.rating ?? base.rating ?? 5.0),
-              reviewsCount: Number(dataObj.reviewsCount ?? base.reviewsCount ?? 1),
+              id: String(r.id || dataObj.id),
+              name: String(dataObj.name || r.name || ''),
+              price: Number(dataObj.price ?? r.price ?? 0),
+              discountPrice: dataObj.discountPrice !== undefined ? Number(dataObj.discountPrice) : undefined,
+              category: String(dataObj.category || r.category || 'গ্যাজেট'),
+              subCategory: String(dataObj.subCategory || r.sub_category || r.subCategory || r.subcategory || ''),
+              stock: Number(dataObj.stock ?? r.stock ?? 10),
+              limitedStockThreshold: Number(dataObj.limitedStockThreshold ?? 10),
+              colors: Array.isArray(dataObj.colors) ? dataObj.colors : ['BLACK'],
+              thumbnail: dataObj.thumbnail || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800&auto=format&fit=crop&q=80',
+              gallery: Array.isArray(dataObj.gallery) ? dataObj.gallery : [],
+              videoUrl: dataObj.videoUrl || '',
+              shortDescription: dataObj.shortDescription || '',
+              longDescription: dataObj.longDescription || '',
+              specifications: Array.isArray(dataObj.specifications) ? dataObj.specifications : [],
+              bundles: Array.isArray(dataObj.bundles) ? dataObj.bundles : [],
+              hasTimer: Boolean(dataObj.hasTimer ?? false),
+              isBestSeller: Boolean(dataObj.isBestSeller ?? false),
+              isFeatured: Boolean(dataObj.isFeatured ?? false),
+              rating: Number(dataObj.rating ?? 5.0),
+              reviewsCount: Number(dataObj.reviewsCount ?? 1),
               status: (rawStatus === 'INACTIVE' ? 'INACTIVE' : 'ACTIVE') as 'ACTIVE' | 'INACTIVE'
             } as Product;
           });
-
-          const map = new Map<string, Product>();
-          prev.filter(p => p.id.startsWith('prod-') && !fetchedProducts.some(f => f.id === p.id))
-              .forEach(p => map.set(p.id, p));
-          fetchedProducts.forEach(p => map.set(p.id, p));
-          return Array.from(map.values());
-        });
+          setProducts(fetchedProducts);
+        } else {
+          const isSeeded = safeGetStorage('kinomart_seeded_products', false);
+          if (!isSeeded) {
+            safeSetStorage('kinomart_seeded_products', true);
+            for (const p of INITIAL_PRODUCTS) {
+              smartUpsert('products', {
+                id: p.id,
+                name: p.name,
+                category: p.category,
+                sub_category: p.subCategory,
+                price: p.price,
+                stock: p.stock,
+                data: p
+              });
+            }
+            setProducts(INITIAL_PRODUCTS);
+          } else {
+            setProducts([]);
+          }
+        }
       }
 
       // 3. Categories
-      if (cats && cats.length > 0) {
-        setCategories(prev => {
+      if (Array.isArray(cats)) {
+        if (cats.length > 0) {
+          safeSetStorage('kinomart_seeded_cats', true);
           const fetchedCats = cats.map(r => {
             const dataObj = safeParseJson(r.data);
-            const localMatch = prev.find(c => c.id === String(r.id || dataObj.id));
-            const base: Partial<Category> = localMatch || {};
-
             const dataSub = dataObj.subCategories;
             const colSub = r.sub_categories ?? r.subCategories ?? r.subcategories;
-
-            let rawSub: any = null;
-            if (Array.isArray(dataSub) && dataSub.length > 0) {
-              rawSub = dataSub;
-            } else if (Array.isArray(colSub) && colSub.length > 0) {
-              rawSub = colSub;
-            } else if (colSub) {
-              rawSub = colSub;
-            } else if (dataSub) {
-              rawSub = dataSub;
-            } else if (base.subCategories) {
-              rawSub = base.subCategories;
-            }
+            let rawSub: any = dataSub || colSub;
 
             let parsedSub: string[] = [];
             if (Array.isArray(rawSub)) {
@@ -530,51 +539,73 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             }
 
             return {
-              ...base,
               ...dataObj,
-              id: String(r.id || dataObj.id || base.id),
-              name: String(dataObj.name || r.name || base.name || ''),
-              image: dataObj.image || r.image || base.image || '',
-              position: Number(dataObj.position ?? r.position ?? base.position ?? 1),
-              isVisibleOnHome: Boolean(dataObj.isVisibleOnHome ?? r.is_visible_on_home ?? base.isVisibleOnHome ?? true),
+              id: String(r.id || dataObj.id),
+              name: String(dataObj.name || r.name || ''),
+              image: dataObj.image || r.image || '',
+              position: Number(dataObj.position ?? r.position ?? 1),
+              isVisibleOnHome: Boolean(dataObj.isVisibleOnHome ?? r.is_visible_on_home ?? true),
               subCategories: parsedSub
             } as Category;
           });
-
-          const map = new Map<string, Category>();
-          prev.filter(c => c.id.startsWith('cat-') && !fetchedCats.some(f => f.id === c.id))
-              .forEach(c => map.set(c.id, c));
-          fetchedCats.forEach(c => map.set(c.id, c));
-          return Array.from(map.values());
-        });
+          setCategories(fetchedCats);
+        } else {
+          const isSeeded = safeGetStorage('kinomart_seeded_cats', false);
+          if (!isSeeded) {
+            safeSetStorage('kinomart_seeded_cats', true);
+            for (const c of INITIAL_CATEGORIES) {
+              smartUpsert('categories', {
+                id: c.id,
+                name: c.name,
+                image: c.image,
+                position: c.position,
+                is_visible_on_home: c.isVisibleOnHome,
+                sub_categories: c.subCategories,
+                data: c
+              });
+            }
+            setCategories(INITIAL_CATEGORIES);
+          } else {
+            setCategories([]);
+          }
+        }
       }
 
       // 4. Coupons
-      if (cpn && cpn.length > 0) {
-        setCoupons(prev => {
+      if (Array.isArray(cpn)) {
+        if (cpn.length > 0) {
+          safeSetStorage('kinomart_seeded_coupons', true);
           const fetchedCoupons = cpn.map(r => {
             const dataObj = safeParseJson(r.data);
-            const localMatch = prev.find(c => c.id === String(r.id || dataObj.id));
-            const base: Partial<Coupon> = localMatch || {};
-
             return {
-              ...base,
               ...dataObj,
-              id: String(r.id || dataObj.id || base.id),
-              code: String(dataObj.code || r.code || base.code || ''),
-              type: (dataObj.type || r.discount_type || base.type || 'FIXED') as 'PERCENTAGE' | 'FIXED',
-              value: Number(dataObj.value ?? r.discount_amount ?? base.value ?? 0),
-              minOrderAmount: dataObj.minOrderAmount ?? base.minOrderAmount,
-              isActive: Boolean(dataObj.isActive ?? base.isActive ?? true)
+              id: String(r.id || dataObj.id),
+              code: String(dataObj.code || r.code || ''),
+              type: (dataObj.type || r.discount_type || 'FIXED') as 'PERCENTAGE' | 'FIXED',
+              value: Number(dataObj.value ?? r.discount_amount ?? 0),
+              minOrderAmount: dataObj.minOrderAmount,
+              isActive: Boolean(dataObj.isActive ?? true)
             } as Coupon;
           });
-
-          const map = new Map<string, Coupon>();
-          prev.filter(c => c.id.startsWith('cpn-') && !fetchedCoupons.some(f => f.id === c.id))
-              .forEach(c => map.set(c.id, c));
-          fetchedCoupons.forEach(c => map.set(c.id, c));
-          return Array.from(map.values());
-        });
+          setCoupons(fetchedCoupons);
+        } else {
+          const isSeeded = safeGetStorage('kinomart_seeded_coupons', false);
+          if (!isSeeded) {
+            safeSetStorage('kinomart_seeded_coupons', true);
+            for (const cp of INITIAL_COUPONS) {
+              smartUpsert('coupons', {
+                id: cp.id,
+                code: cp.code,
+                discount_amount: cp.value,
+                discount_type: cp.type,
+                data: cp
+              });
+            }
+            setCoupons(INITIAL_COUPONS);
+          } else {
+            setCoupons([]);
+          }
+        }
       }
 
       // 5. Settings
@@ -605,31 +636,39 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }
 
       // 7. Team
-      if (tm && tm.length > 0) {
-        setTeam(prev => {
+      if (Array.isArray(tm)) {
+        if (tm.length > 0) {
+          safeSetStorage('kinomart_seeded_team', true);
           const fetchedTeam = tm.map(r => {
             const dataObj = safeParseJson(r.data);
-            const localMatch = prev.find(t => t.id === String(r.id || dataObj.id));
-            const base: Partial<TeamMember> = localMatch || {};
-
             return {
-              ...base,
               ...dataObj,
-              id: String(r.id || dataObj.id || base.id),
-              name: String(dataObj.name || r.name || base.name || ''),
-              role: String(dataObj.role || r.role || base.role || ''),
-              image: dataObj.image || base.image || '',
-              phone: dataObj.phone || base.phone || '',
-              email: dataObj.email || base.email || ''
+              id: String(r.id || dataObj.id),
+              name: String(dataObj.name || r.name || ''),
+              role: String(dataObj.role || r.role || ''),
+              image: dataObj.image || '',
+              phone: dataObj.phone || '',
+              email: dataObj.email || ''
             } as TeamMember;
           });
-
-          const map = new Map<string, TeamMember>();
-          prev.filter(t => t.id.startsWith('team-') && !fetchedTeam.some(f => f.id === t.id))
-              .forEach(t => map.set(t.id, t));
-          fetchedTeam.forEach(t => map.set(t.id, t));
-          return Array.from(map.values());
-        });
+          setTeam(fetchedTeam);
+        } else {
+          const isSeeded = safeGetStorage('kinomart_seeded_team', false);
+          if (!isSeeded) {
+            safeSetStorage('kinomart_seeded_team', true);
+            for (const member of INITIAL_TEAM) {
+              smartUpsert('team', {
+                id: member.id,
+                name: member.name,
+                role: member.role,
+                data: member
+              });
+            }
+            setTeam(INITIAL_TEAM);
+          } else {
+            setTeam([]);
+          }
+        }
       }
     } catch (e) {
       console.warn('Supabase fetch notice:', e);

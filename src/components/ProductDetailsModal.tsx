@@ -273,7 +273,7 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-3 sm:px-4 py-4 sm:py-6 pb-20 lg:pb-6 space-y-6 animate-fadeIn">
+    <div className="max-w-7xl mx-auto px-3 sm:px-4 py-4 sm:py-6 pb-8 sm:pb-12 space-y-6 animate-fadeIn">
       {/* Category Sub Navigation Bar (Hidden on mobile) */}
       <div className="hidden lg:block bg-white border border-[#E8E3D9] rounded-2xl p-2.5 overflow-x-auto shadow-2xs">
         <div className="flex items-center gap-2 text-xs font-bold whitespace-nowrap">
@@ -679,13 +679,13 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
                 {/* Main Order Button */}
                 <button
                   onClick={handleOrderNow}
-                  className="relative overflow-hidden w-full bg-[#627048] hover:bg-[#4E5B37] active:scale-[0.98] text-white text-base sm:text-lg font-black py-3.5 sm:py-4 px-6 rounded-2xl flex items-center justify-center gap-2.5 shadow-lg shadow-[#627048]/25 hover:shadow-xl transition-all cursor-pointer mt-2 animate-order-btn"
+                  className="relative overflow-hidden w-full bg-[#485539] hover:bg-[#3C472E] active:scale-[0.98] text-white text-base sm:text-lg font-black py-3.5 sm:py-4 px-6 rounded-full flex items-center justify-center gap-2.5 shadow-xl shadow-[#485539]/30 border border-[#586847] transition-all cursor-pointer mt-2 animate-order-btn"
                 >
                   {/* Shimmer Light Bar */}
-                  <span className="absolute inset-0 w-1/2 h-full bg-gradient-to-r from-transparent via-white/35 to-transparent pointer-events-none animate-order-shimmer" />
+                  <span className="absolute inset-0 w-1/2 h-full bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none animate-order-shimmer" />
 
-                  <Zap className="w-5 h-5 sm:w-6 sm:h-6 fill-white text-white animate-zap-pop shrink-0" />
-                  <span className="relative z-10 tracking-wide">এখনই অর্ডার করুন</span>
+                  <Zap className="w-5 h-5 sm:w-6 sm:h-6 fill-[#FACC15] text-[#FACC15] animate-zap-pop shrink-0" />
+                  <span className="relative z-10 tracking-wide font-extrabold text-white">এখনই অর্ডার করুন</span>
                 </button>
               </>
             )}
@@ -829,47 +829,14 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
               <button
                 type="button"
                 onClick={handleOrderNow}
-                className="inline-flex items-center justify-center gap-2.5 bg-[#D9A74A] hover:bg-[#C99639] active:scale-95 text-[#1F241E] font-black text-sm sm:text-lg py-3.5 sm:py-4 px-8 sm:px-10 rounded-2xl shadow-xl shadow-amber-500/20 hover:shadow-amber-500/40 hover:scale-[1.03] transition-all cursor-pointer group"
+                className="inline-flex items-center justify-center gap-2.5 bg-[#485539] hover:bg-[#3C472E] active:scale-95 text-white font-black text-base sm:text-lg py-3.5 sm:py-4 px-8 sm:px-10 rounded-full shadow-xl shadow-[#485539]/40 border border-[#586847] hover:scale-[1.03] transition-all cursor-pointer group"
               >
-                <Zap className="w-5 h-5 fill-[#1F241E] text-[#1F241E] group-hover:scale-125 transition-transform" />
-                <span>৳{totalPrice.toLocaleString('bn-BD')} — এখনই কিনুন</span>
+                <Zap className="w-5 h-5 fill-[#FACC15] text-[#FACC15] group-hover:scale-125 transition-transform" />
+                <span className="text-white font-extrabold">৳{totalPrice.toLocaleString('bn-BD')} — এখনই অর্ডার করুন</span>
               </button>
             )}
           </div>
         </div>
-      </div>
-
-      {/* Mobile Sticky Order Bar */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-[#E8E3D9] p-3 shadow-2xl z-40 flex items-center justify-between gap-3">
-        <div>
-          <span className="text-[10px] text-gray-500 block">স্ট্যাটাস:</span>
-          <span className={`text-sm font-black ${isOutOfStock ? 'text-red-600' : 'text-[#5E6A45]'}`}>
-            {isOutOfStock ? 'আউট অব স্টক' : `৳${totalPrice.toLocaleString('bn-BD')}`}
-          </span>
-        </div>
-        {isOutOfStock ? (
-          <button
-            onClick={() => {
-              const el = document.getElementById('notify-me-box');
-              el?.scrollIntoView({ behavior: 'smooth' });
-            }}
-            className="flex-1 bg-[#374151] hover:bg-[#1F241E] active:scale-95 text-white font-extrabold text-xs sm:text-sm py-2.5 px-3 rounded-xl flex items-center justify-center gap-1.5 shadow-md transition-all cursor-pointer"
-          >
-            <BellRing className="w-4 h-4 text-amber-300" />
-            <span>স্টকে ফিরলে জানান</span>
-          </button>
-        ) : (
-          <button
-            onClick={handleOrderNow}
-            className="relative overflow-hidden flex-1 bg-[#5E6A45] hover:bg-[#485333] active:scale-95 text-white font-extrabold text-sm py-2.5 px-4 rounded-xl flex items-center justify-center gap-1.5 shadow-lg transition-all cursor-pointer animate-order-btn"
-          >
-            {/* Shimmer Light Bar */}
-            <span className="absolute inset-0 w-1/2 h-full bg-gradient-to-r from-transparent via-white/35 to-transparent pointer-events-none animate-order-shimmer" />
-
-            <Zap className="w-4 h-4 fill-amber-300 text-amber-300 animate-zap-pop shrink-0" />
-            <span className="relative z-10">এখনই অর্ডার করুন</span>
-          </button>
-        )}
       </div>
     </div>
   );
