@@ -130,6 +130,11 @@ const MainAppContent: React.FC = () => {
     trackPageView(document.title, window.location.href, targetPath);
   }, [viewMode, activeClientPage, selectedProduct]);
 
+  // Scroll to top of window whenever product is selected, view mode changes, or page changes
+  React.useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+  }, [selectedProduct?.id, activeClientPage, viewMode, selectedCategory]);
+
   // Trigger Admin Login when user searches "admin"
   React.useEffect(() => {
     if (searchQuery.trim().toLowerCase() === 'admin') {

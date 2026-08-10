@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useStore } from '../../context/StoreContext';
-import { Product, Specification, ProductBundle } from '../../types';
+import { Product, Specification, ProductBundle, Review } from '../../types';
 import { getDefaultBundles } from '../../lib/bundleUtils';
 import {
   Plus,
@@ -622,11 +622,11 @@ export const AdminProducts: React.FC = () => {
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <div>
-                      <label className="block text-[10px] text-[#CBD5E1] font-bold mb-1">কাস্টমারের নাম</label>
+                      <label className="block text-[10px] text-[#CBD5E1] font-bold mb-1">কাস্টমারের নাম *</label>
                       <input
                         type="text"
                         id="new-rev-name"
-                        placeholder="যেমন: Rahat Islam / তানভীর"
+                        placeholder="যেমন: তানভীর আহমেদ / Rahat Islam"
                         className="w-full bg-[#0F172A] border border-[#1E293B] rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500"
                       />
                     </div>
@@ -635,20 +635,69 @@ export const AdminProducts: React.FC = () => {
                       <input
                         type="text"
                         id="new-rev-role"
-                        placeholder="যেমন: CEO, AURORA TECH বা VERIFIED BUYER"
+                        placeholder="যেমন: VERIFIED BUYER / ঢাকা"
                         className="w-full bg-[#0F172A] border border-[#1E293B] rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500"
                       />
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-[10px] text-[#CBD5E1] font-bold mb-1">রিভিউ কোট / বক্তব্য</label>
+                    <label className="block text-[10px] text-[#CBD5E1] font-bold mb-1">রিভিউ বক্তব্য / কমেন্ট *</label>
                     <textarea
                       id="new-rev-comment"
                       rows={2}
-                      placeholder="যেমন: প্রোডাক্টটি পেয়ে আমি খুব সন্তুষ্ট। ফাস্ট ডেলিভারি ও প্যাকেজিং চমৎকার ছিল!"
+                      placeholder="যেমন: প্রোডাক্টটি পেয়ে আমি খুব সন্তুষ্ট। ক্রিস্টাল ক্লিয়ার সাউন্ড ও ফাস্ট ডেলিভারি পেয়েছি!"
                       className="w-full bg-[#0F172A] border border-[#1E293B] rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500"
                     />
+                  </div>
+
+                  {/* Customer Image (1:1 Ratio) URL or File Upload */}
+                  <div>
+                    <label className="block text-[10px] text-[#CBD5E1] font-bold mb-1">
+                      কাস্টমার ছবি / প্রোডাক্ট রিভিউ ছবি (1:1 Aspect Ratio Image):
+                    </label>
+                    <div className="flex flex-col sm:flex-row items-center gap-2">
+                      <input
+                        type="text"
+                        id="new-rev-image"
+                        placeholder="যেমন: https://images.unsplash.com/... (ইমেজ URL)"
+                        className="w-full bg-[#0F172A] border border-[#1E293B] rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500"
+                      />
+                      <label className="shrink-0 cursor-pointer bg-[#1E293B] hover:bg-[#334155] text-emerald-400 border border-emerald-500/40 font-bold text-[11px] px-3 py-1.5 rounded-xl flex items-center gap-1 transition-all">
+                        <Upload className="w-3.5 h-3.5" />
+                        <span>ছবি আপলোড</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            const reader = new FileReader();
+                            reader.onload = (evt) => {
+                              if (evt.target?.result) {
+                                const imgEl = document.getElementById('new-rev-image') as HTMLInputElement;
+                                if (imgEl) imgEl.value = evt.target.result as string;
+                              }
+                            };
+                            reader.readAsDataURL(file);
+                          }}
+                        />
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const imgEl = document.getElementById('new-rev-image') as HTMLInputElement;
+                          if (imgEl && editingProduct.thumbnail) {
+                            imgEl.value = editingProduct.thumbnail;
+                          }
+                        }}
+                        className="shrink-0 text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2 py-1.5 rounded-xl font-bold hover:bg-amber-500/30 cursor-pointer"
+                        title="প্রোডাক্টের থাম্বনেইল ব্যবহার করুন"
+                      >
+                        প্রোডাক্ট ছবি নিন
+                      </button>
+                    </div>
                   </div>
 
                   <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-1">
@@ -662,6 +711,8 @@ export const AdminProducts: React.FC = () => {
                         <option value="5">⭐⭐⭐⭐⭐ (5 Star)</option>
                         <option value="4">⭐⭐⭐⭐ (4 Star)</option>
                         <option value="3">⭐⭐⭐ (3 Star)</option>
+                        <option value="2">⭐⭐ (2 Star)</option>
+                        <option value="1">⭐ (1 Star)</option>
                       </select>
                     </div>
 
@@ -671,19 +722,21 @@ export const AdminProducts: React.FC = () => {
                         const nameEl = document.getElementById('new-rev-name') as HTMLInputElement;
                         const roleEl = document.getElementById('new-rev-role') as HTMLInputElement;
                         const commentEl = document.getElementById('new-rev-comment') as HTMLTextAreaElement;
+                        const imageEl = document.getElementById('new-rev-image') as HTMLInputElement;
                         const ratingEl = document.getElementById('new-rev-rating') as HTMLSelectElement;
 
                         if (!nameEl?.value.trim() || !commentEl?.value.trim()) {
-                          alert('দয়া করে নাম এবং বক্তব্য লিখুন');
+                          alert('দয়া করে কাস্টমারের নাম এবং রিভিউ কমেন্ট লিখুন');
                           return;
                         }
 
-                        const newRev = {
+                        const newRev: Review = {
                           id: `rev-${Date.now()}`,
                           userName: nameEl.value.trim(),
                           userRole: roleEl?.value.trim() || 'VERIFIED BUYER',
                           comment: commentEl.value.trim(),
                           rating: Number(ratingEl?.value || 5),
+                          image: imageEl?.value.trim() || undefined,
                           date: new Date().toLocaleDateString('bn-BD'),
                           isVerifiedPurchase: true
                         };
@@ -696,11 +749,12 @@ export const AdminProducts: React.FC = () => {
                         nameEl.value = '';
                         if (roleEl) roleEl.value = '';
                         commentEl.value = '';
+                        if (imageEl) imageEl.value = '';
                       }}
                       className="bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs px-4 py-2 rounded-xl transition-all shadow-md cursor-pointer flex items-center gap-1.5"
                     >
                       <Plus className="w-3.5 h-3.5" />
-                      <span>রিভিউ কার্ড যোগ করুন</span>
+                      <span>রিভিউ যোগ করুন</span>
                     </button>
                   </div>
                 </div>

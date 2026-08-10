@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { Product, Review } from '../types';
 import { useStore } from '../context/StoreContext';
 import {
@@ -77,6 +78,9 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
 
     // Track view_item event
     trackViewItem(product, def?.quantity || 1, product.colors && product.colors.length > 0 ? product.colors[0] : undefined);
+
+    // Ensure page scrolls to top on product selection
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
   }, [product]);
 
   const [reviewSlideIdx, setReviewSlideIdx] = useState<number>(0);
@@ -251,7 +255,37 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
 
   const hasVideo = Boolean(product.videoUrl && product.videoUrl.trim() !== '');
 
-  const hasAnyDetails = hasDescription || hasSpecs || hasGallery || hasVideo;
+  const productReviews = (product.reviews || []).filter(
+    (r) => r && (r.userName?.trim() || r.comment?.trim())
+  );
+  const hasReviews = productReviews.length > 0;
+
+  const hasAnyDetails = hasDescription || hasSpecs || hasGallery || hasVideo || hasReviews;
+
+  const [currentReviewIndex, setCurrentReviewIndex] = useState(0);
+  const [expandedReviewImage, setExpandedReviewImage] = useState<string | null>(null);
+
+  useEffect(() => {
+    setCurrentReviewIndex(0);
+  }, [product.id]);
+
+  useEffect(() => {
+    if (productReviews.length <= 1) return;
+    const interval = setInterval(() => {
+      setCurrentReviewIndex((prev) => (prev + 1) % productReviews.length);
+    }, 6000);
+    return () => clearInterval(interval);
+  }, [productReviews.length]);
+
+  const handlePrevReview = () => {
+    if (productReviews.length === 0) return;
+    setCurrentReviewIndex((prev) => (prev - 1 + productReviews.length) % productReviews.length);
+  };
+
+  const handleNextReview = () => {
+    if (productReviews.length === 0) return;
+    setCurrentReviewIndex((prev) => (prev + 1) % productReviews.length);
+  };
 
   // Handle order now
   const handleOrderNow = () => {
@@ -698,13 +732,13 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
                 {/* Main Order Button */}
                 <button
                   onClick={handleOrderNow}
-                  className="relative overflow-hidden w-full bg-[#485539] hover:bg-[#3C472E] active:scale-[0.98] text-white text-base sm:text-lg font-black py-3.5 sm:py-4 px-6 rounded-full flex items-center justify-center gap-2.5 shadow-xl shadow-[#485539]/30 border border-[#586847] transition-all cursor-pointer mt-2 animate-order-btn"
+                  className="relative overflow-hidden w-full bg-[#485539] hover:bg-[#3C472E] active:scale-[0.98] text-white text-base sm:text-lg font-black py-3.5 sm:py-4 px-6 rounded-2xl flex items-center justify-center gap-2.5 shadow-xl shadow-[#485539]/30 border border-[#586847] transition-all cursor-pointer mt-2 animate-order-btn"
                 >
                   {/* Shimmer Light Bar */}
                   <span className="absolute inset-0 w-1/2 h-full bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none animate-order-shimmer" />
 
                   <Zap className="w-5 h-5 sm:w-6 sm:h-6 fill-[#FACC15] text-[#FACC15] animate-zap-pop shrink-0" />
-                  <span className="relative z-10 tracking-wide font-extrabold text-white">এখনই অর্ডার করুন</span>
+                  <span className="relative z-10 tracking-wide font-extrabold text-white">অর্ডার করুন</span>
                 </button>
               </>
             )}
@@ -813,29 +847,206 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
                 </div>
               </div>
             )}
+
+            {/* Customer Reviews & Ratings Animated Slider */}
+            {hasReviews && (
+              <div className="space-y-4 border-t border-[#E8E3D9] pt-6">
+                {/* Section Title & Rating Summary */}
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h3 className="font-black text-[#1F241E] text-base sm:text-lg flex items-center gap-2">
+                    <MessageSquareQuote className="w-5 h-5 text-[#5E6A45]" />
+                    <span>কাস্টমার রিভিউ ও ফিডব্যাক ({productReviews.length})</span>
+                  </h3>
+                  <div className="flex items-center gap-1.5 bg-[#FAF8F5] border border-[#E8E3D9] px-3 py-1 rounded-full text-xs font-bold text-[#1F241E]">
+                    <div className="flex items-center text-amber-500">
+                      {[1, 2, 3, 4, 5].map((s) => (
+                        <Star key={s} className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                      ))}
+                    </div>
+                    <span>{product.rating || 5.0} / 5.0</span>
+                  </div>
+                </div>
+
+                {/* Animated Carousel Container with Arrows on Left and Right */}
+                <div className="relative bg-gradient-to-br from-[#FAF8F5] via-white to-[#F5F2EC] border border-[#E8E3D9] rounded-3xl p-4 sm:p-7 shadow-xs overflow-hidden">
+                  {/* Left Navigation Arrow */}
+                  {productReviews.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={handlePrevReview}
+                      className="absolute left-2 sm:left-3 top-1/2 -translate-y-1/2 z-20 bg-white/90 hover:bg-[#5E6A45] hover:text-white text-[#1F241E] border border-[#E8E3D9] p-2 sm:p-2.5 rounded-full shadow-md transition-all active:scale-90 cursor-pointer"
+                      aria-label="Previous Review"
+                    >
+                      <ChevronLeft className="w-4 h-4 sm:w-5 h-5" />
+                    </button>
+                  )}
+
+                  {/* Right Navigation Arrow */}
+                  {productReviews.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={handleNextReview}
+                      className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 z-20 bg-white/90 hover:bg-[#5E6A45] hover:text-white text-[#1F241E] border border-[#E8E3D9] p-2 sm:p-2.5 rounded-full shadow-md transition-all active:scale-90 cursor-pointer"
+                      aria-label="Next Review"
+                    >
+                      <ChevronRight className="w-4 h-4 sm:w-5 h-5" />
+                    </button>
+                  )}
+
+                  {/* Slide Content with Framer Motion Animation */}
+                  <div className="px-5 sm:px-10">
+                    <AnimatePresence mode="wait">
+                      {(() => {
+                        const activeRev = productReviews[currentReviewIndex % productReviews.length];
+                        if (!activeRev) return null;
+
+                        return (
+                          <motion.div
+                            key={`rev-card-${activeRev.id || currentReviewIndex}`}
+                            initial={{ opacity: 0, x: 25 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: -25 }}
+                            transition={{ duration: 0.3, ease: 'easeOut' }}
+                            className="flex flex-col sm:flex-row gap-5 sm:gap-6 items-center sm:items-start"
+                          >
+                            {/* 1:1 Aspect Ratio Customer Image */}
+                            {activeRev.image && (
+                              <div className="shrink-0 relative group">
+                                <div className="w-32 sm:w-40 md:w-44 aspect-square rounded-2xl overflow-hidden border-2 border-[#5E6A45]/30 bg-black/5 shadow-md">
+                                  <img
+                                    src={activeRev.image}
+                                    alt={activeRev.userName}
+                                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                    referrerPolicy="no-referrer"
+                                  />
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => setExpandedReviewImage(activeRev.image!)}
+                                  className="absolute bottom-2 right-2 bg-black/70 hover:bg-black text-white p-1.5 rounded-lg text-xs opacity-90 group-hover:opacity-100 transition-opacity cursor-pointer flex items-center gap-1 shadow-md"
+                                  title="বড় করে দেখুন"
+                                >
+                                  <ZoomIn className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            )}
+
+                            {/* Review Details */}
+                            <div className="flex-1 space-y-3 text-center sm:text-left">
+                              {/* Rating Stars & Verified Badge */}
+                              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
+                                <div className="flex items-center text-amber-400">
+                                  {[1, 2, 3, 4, 5].map((s) => (
+                                    <Star
+                                      key={s}
+                                      className={`w-4 h-4 ${s <= (activeRev.rating || 5) ? 'fill-amber-400 text-amber-400' : 'text-gray-300'}`}
+                                    />
+                                  ))}
+                                </div>
+                                {activeRev.isVerifiedPurchase !== false && (
+                                  <span className="inline-flex items-center gap-1 text-[11px] font-bold bg-emerald-100 text-emerald-800 px-2.5 py-0.5 rounded-full">
+                                    <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                                    <span>ভেরিফাইড ক্রেতা</span>
+                                  </span>
+                                )}
+                              </div>
+
+                              {/* Comment Quote */}
+                              <blockquote className="text-xs sm:text-sm text-[#2C3328] font-semibold leading-relaxed italic relative">
+                                "{activeRev.comment}"
+                              </blockquote>
+
+                              {/* Customer Info & Date */}
+                              <div className="pt-2 border-t border-[#E8E3D9]/80 flex flex-wrap items-center justify-center sm:justify-between gap-2 text-xs">
+                                <div>
+                                  <span className="font-extrabold text-[#1F241E] block text-sm">{activeRev.userName}</span>
+                                  {activeRev.userRole && (
+                                    <span className="text-[11px] text-[#5E6A45] font-medium">{activeRev.userRole}</span>
+                                  )}
+                                </div>
+                                {activeRev.date && (
+                                  <span className="text-[11px] text-[#6B7264] font-medium">{activeRev.date}</span>
+                                )}
+                              </div>
+                            </div>
+                          </motion.div>
+                        );
+                      })()}
+                    </AnimatePresence>
+                  </div>
+
+                  {/* Dots Indicator */}
+                  {productReviews.length > 1 && (
+                    <div className="flex items-center justify-center gap-1.5 pt-4">
+                      {productReviews.map((_, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => setCurrentReviewIndex(idx)}
+                          className={`h-2 rounded-full transition-all cursor-pointer ${
+                            idx === (currentReviewIndex % productReviews.length)
+                              ? 'w-6 bg-[#5E6A45]'
+                              : 'w-2 bg-[#D3CDC0] hover:bg-[#A39C8E]'
+                          }`}
+                          aria-label={`Go to review ${idx + 1}`}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
 
-      {/* High-Converting Animated CTA Banner matching KinoMart Theme */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#1F241E] via-[#2A3324] to-[#121611] p-8 sm:p-12 text-center text-white shadow-2xl border border-[#3E4935]/50 my-6">
-        {/* Ambient Animated Glow Effects */}
-        <div className="absolute -top-20 -left-20 w-56 h-56 bg-[#5E6A45]/30 rounded-full blur-3xl animate-pulse pointer-events-none" />
-        <div className="absolute -bottom-20 -right-20 w-56 h-56 bg-amber-500/20 rounded-full blur-3xl animate-pulse pointer-events-none" style={{ animationDelay: '1s' }} />
+      {/* Expanded Review Image Modal / Lightbox */}
+      {expandedReviewImage && (
+        <div
+          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200"
+          onClick={() => setExpandedReviewImage(null)}
+        >
+          <div
+            className="relative max-w-xl w-full bg-[#181B26] p-2 rounded-3xl border border-white/20 shadow-2xl overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setExpandedReviewImage(null)}
+              className="absolute top-4 right-4 z-10 bg-black/70 hover:bg-black text-white p-2 rounded-full cursor-pointer transition-all shadow-lg"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <div className="aspect-square w-full rounded-2xl overflow-hidden bg-black/40">
+              <img
+                src={expandedReviewImage}
+                alt="Review Image Expanded"
+                className="w-full h-full object-contain mx-auto"
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
-        <div className="relative z-10 max-w-2xl mx-auto space-y-4">
-          {/* Animated Heading */}
-          <h2 className="text-2xl sm:text-4xl font-black tracking-tight text-white drop-shadow-md animate-pulse">
+      {/* High-Converting CTA Banner matching KinoMart Theme and Demo Design */}
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#1F241E] via-[#283123] to-[#121611] p-8 sm:p-12 text-center text-white shadow-2xl border border-[#3E4935]/60 my-8">
+        {/* Ambient Subtle Glows */}
+        <div className="absolute -top-16 -left-16 w-48 h-48 bg-[#5E6A45]/25 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-16 -right-16 w-48 h-48 bg-amber-500/20 rounded-full blur-3xl pointer-events-none" />
+
+        <div className="relative z-10 max-w-xl mx-auto space-y-3.5">
+          {/* Title */}
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-black tracking-tight text-white drop-shadow-sm">
             আজই অর্ডার করুন!
           </h2>
 
-          {/* Subheading */}
-          <p className="text-xs sm:text-base text-gray-300 font-medium leading-relaxed max-w-lg mx-auto">
+          {/* Subtitle */}
+          <p className="text-xs sm:text-sm md:text-base text-gray-300/90 font-medium leading-relaxed">
             সীমিত স্টক — দেরি না করে এখনই নিশ্চিত করুন আপনার অর্ডার
           </p>
 
-          {/* Glowing Animated Order Button */}
-          <div className="pt-3">
+          {/* Golden Order Button */}
+          <div className="pt-4">
             {isOutOfStock ? (
               <button
                 type="button"
@@ -843,7 +1054,7 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
                   const el = document.getElementById('notify-me-box');
                   el?.scrollIntoView({ behavior: 'smooth' });
                 }}
-                className="inline-flex items-center justify-center gap-2.5 bg-[#D9A74A] hover:bg-[#C99639] active:scale-95 text-[#1F241E] font-black text-sm sm:text-base py-3.5 px-7 rounded-2xl shadow-xl shadow-amber-500/20 hover:shadow-amber-500/40 transition-all cursor-pointer"
+                className="inline-flex items-center justify-center gap-2.5 bg-gradient-to-r from-[#D4A359] to-[#C29248] hover:from-[#C29248] hover:to-[#B08137] text-[#1F241E] font-black text-sm sm:text-base py-3.5 px-8 rounded-2xl shadow-xl shadow-amber-500/20 transition-all cursor-pointer active:scale-95"
               >
                 <BellRing className="w-5 h-5 text-[#1F241E]" />
                 <span>স্টকে ফিরলে জানান (Notify Me)</span>
@@ -852,10 +1063,9 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
               <button
                 type="button"
                 onClick={handleOrderNow}
-                className="inline-flex items-center justify-center gap-2.5 bg-[#485539] hover:bg-[#3C472E] active:scale-95 text-white font-black text-base sm:text-lg py-3.5 sm:py-4 px-8 sm:px-10 rounded-full shadow-xl shadow-[#485539]/40 border border-[#586847] hover:scale-[1.03] transition-all cursor-pointer group"
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 bg-gradient-to-r from-[#D4A359] via-[#EAB308] to-[#C29248] hover:from-[#EAB308] hover:to-[#D4A359] text-[#1F241E] font-black text-base sm:text-lg py-4 px-10 sm:px-14 rounded-2xl sm:rounded-3xl shadow-xl shadow-amber-500/25 hover:shadow-amber-500/40 hover:scale-[1.02] active:scale-95 transition-all cursor-pointer border border-amber-300/40 group"
               >
-                <Zap className="w-5 h-5 fill-[#FACC15] text-[#FACC15] group-hover:scale-125 transition-transform" />
-                <span className="text-white font-extrabold">৳{totalPrice.toLocaleString('bn-BD')} — এখনই অর্ডার করুন</span>
+                <span>৳{totalPrice.toLocaleString('bn-BD')} — এখনই কিনুন</span>
               </button>
             )}
           </div>

@@ -135,7 +135,39 @@ export const INITIAL_PRODUCTS: Product[] = [
     isBestSeller: true,
     isFeatured: true,
     rating: 5.0,
-    reviewsCount: 1,
+    reviewsCount: 3,
+    reviews: [
+      {
+        id: 'rev-1',
+        userName: 'তানভীর আহমেদ',
+        userRole: 'Verified Buyer (ঢাকা)',
+        rating: 5,
+        comment: 'অসাধারণ সাউন্ড কোয়ালিটি! ব্যাটারি ব্যাকআপ অনেক ভালো এবং মাত্র ২ দিনে হোম ডেলিভারি পেয়েছি। ধন্যবাদ কীনোমার্ট।',
+        date: '০৮ আগস্ট, ২০২৬',
+        image: 'https://images.unsplash.com/photo-1546435770-a3e426bf472b?w=600&auto=format&fit=crop&q=80',
+        isVerifiedPurchase: true
+      },
+      {
+        id: 'rev-2',
+        userName: 'রাহাত ইসলাম',
+        userRole: 'Verified Buyer (চট্টগ্রাম)',
+        rating: 5,
+        comment: 'প্রোডাক্টের ফিনিশিং ও প্যাকেজিং চমৎকার। গান শোনার অভিজ্ঞতাই পাল্টে গেছে। একদম অরিজিনাল গ্যাজেট।',
+        date: '০৫ আগস্ট, ২০২৬',
+        image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=600&auto=format&fit=crop&q=80',
+        isVerifiedPurchase: true
+      },
+      {
+        id: 'rev-3',
+        userName: 'নাসরিন সুলতানা',
+        userRole: 'Verified Buyer (সিলেট)',
+        rating: 5,
+        comment: 'আমার ভাইয়ের জন্য অর্ডার করেছিলাম, সে উপহার পেয়ে অসম্ভব খুশি! সাউন্ড বেস খুব স্ট্রং।',
+        date: '০২ আগস্ট, ২০২৬',
+        image: 'https://images.unsplash.com/photo-1572536147248-ac59a8abfa4b?w=600&auto=format&fit=crop&q=80',
+        isVerifiedPurchase: true
+      }
+    ],
     status: 'ACTIVE'
   },
   {
