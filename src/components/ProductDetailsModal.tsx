@@ -231,9 +231,27 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
   const totalPrice = displayPrice;
 
   // Variants list
-  const variantList = product.colors && product.colors.length > 0
-    ? product.colors
-    : ['MINT', 'PEACE', 'WATERMELON', 'GRAPE'];
+  const variantList = (product.colors && Array.isArray(product.colors))
+    ? product.colors.filter((c) => c && typeof c === 'string' && c.trim() !== '')
+    : [];
+
+  const hasShortDesc = Boolean(product.shortDescription && product.shortDescription.trim() !== '');
+  const hasLongDesc = Boolean(product.longDescription && product.longDescription.trim() !== '');
+  const hasDescription = hasShortDesc || hasLongDesc;
+
+  const validSpecs = (product.specifications || []).filter(
+    (s) => s && (s.key?.trim() || s.value?.trim())
+  );
+  const hasSpecs = validSpecs.length > 0;
+
+  const validGallery = (product.gallery || []).filter(
+    (img) => img && typeof img === 'string' && img.trim() !== ''
+  );
+  const hasGallery = validGallery.length > 0;
+
+  const hasVideo = Boolean(product.videoUrl && product.videoUrl.trim() !== '');
+
+  const hasAnyDetails = hasDescription || hasSpecs || hasGallery || hasVideo;
 
   // Handle order now
   const handleOrderNow = () => {
@@ -533,13 +551,14 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
             )}
 
             {/* Short Description Box */}
-            <div className="bg-[#F4F4F5] rounded-2xl p-4 text-xs sm:text-sm text-[#374151] font-medium leading-relaxed border border-gray-200/50">
-              {product.shortDescription ||
-                'Discover the pure taste of Africa with Organic Wild Honey, harvested from the untouched wilderness where wild bees thrive on diverse native blossoms.'}
-            </div>
+            {hasShortDesc && (
+              <div className="bg-[#F4F4F5] rounded-2xl p-4 text-xs sm:text-sm text-[#374151] font-medium leading-relaxed border border-gray-200/50">
+                {product.shortDescription}
+              </div>
+            )}
 
             {/* Color / Variant Selection */}
-            {variantList && variantList.length > 0 && (
+            {variantList.length > 0 && (
               <div className="space-y-2 pt-1">
                 <label className="text-xs sm:text-sm font-extrabold text-[#1F241E] block">
                   কালার: <span className="text-[#5E6A45]">{selectedColor}</span>
@@ -710,45 +729,47 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
       </div>
 
       {/* Product Details Tabs Container */}
-      <div className="bg-white border border-[#E8E3D9] rounded-3xl p-4 sm:p-8 shadow-xs space-y-6">
-        {/* Section Header */}
-        <div className="border-b border-[#E8E3D9] pb-3">
-          <h2 className="text-base sm:text-xl font-black text-[#1F241E] flex items-center gap-2">
-            <FileText className="w-5 h-5 text-[#5E6A45]" />
-            <span>প্রোডাক্টের বিস্তারিত তথ্য ও বিবরণ</span>
-          </h2>
-        </div>
+      {hasAnyDetails && (
+        <div className="bg-white border border-[#E8E3D9] rounded-3xl p-4 sm:p-8 shadow-xs space-y-6">
+          {/* Section Header */}
+          <div className="border-b border-[#E8E3D9] pb-3">
+            <h2 className="text-base sm:text-xl font-black text-[#1F241E] flex items-center gap-2">
+              <FileText className="w-5 h-5 text-[#5E6A45]" />
+              <span>প্রোডাক্টের বিস্তারিত তথ্য ও বিবরণ</span>
+            </h2>
+          </div>
 
-        {/* Details Content */}
-        <div className="space-y-8">
-              {/* Main Description Text */}
+          {/* Details Content */}
+          <div className="space-y-8">
+            {/* Main Description Text */}
+            {hasDescription && (
               <div className="text-xs sm:text-sm text-[#3D4738] leading-relaxed whitespace-pre-line font-medium space-y-2">
-                <p>{product.shortDescription}</p>
-                <p>{product.longDescription}</p>
+                {hasShortDesc && <p>{product.shortDescription}</p>}
+                {hasLongDesc && <p>{product.longDescription}</p>}
               </div>
+            )}
 
-              {/* Specifications Section directly under description */}
+            {/* Specifications Section */}
+            {hasSpecs && (
               <div className="space-y-4 border-t border-[#E8E3D9] pt-6">
                 <h3 className="font-black text-[#1F241E] text-base sm:text-lg flex items-center gap-2">
                   <FileText className="w-5 h-5 text-[#5E6A45]" />
                   <span>স্পেসিফিকেশন (Specifications)</span>
                 </h3>
 
-                {product.specifications && product.specifications.length > 0 ? (
-                  <div className="border border-[#E8E3D9] rounded-2xl overflow-hidden divide-y divide-[#E8E3D9]">
-                    {product.specifications.map((spec, i) => (
-                      <div key={i} className="flex p-3 sm:p-4 text-xs sm:text-sm bg-white">
-                        <span className="w-1/3 font-black text-[#1F241E]">{spec.key}</span>
-                        <span className="w-2/3 text-[#4A5343] font-medium">{spec.value}</span>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-xs text-[#6B7264] italic">কোনো অতিরিক্ত স্পেসিফিকেশন দেওয়া হয়নি।</p>
-                )}
+                <div className="border border-[#E8E3D9] rounded-2xl overflow-hidden divide-y divide-[#E8E3D9]">
+                  {validSpecs.map((spec, i) => (
+                    <div key={i} className="flex p-3 sm:p-4 text-xs sm:text-sm bg-white">
+                      <span className="w-1/3 font-black text-[#1F241E]">{spec.key}</span>
+                      <span className="w-2/3 text-[#4A5343] font-medium">{spec.value}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
+            )}
 
-              {/* Real Product Gallery Posters / Photos */}
+            {/* Real Product Gallery Posters / Photos */}
+            {hasGallery && (
               <div className="space-y-4 border-t border-[#E8E3D9] pt-6">
                 <h3 className="font-black text-[#1F241E] text-base sm:text-lg flex items-center gap-2">
                   <ImageIcon className="w-5 h-5 text-[#5E6A45]" />
@@ -756,7 +777,7 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
                 </h3>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {allImages.map((img, idx) => (
+                  {validGallery.map((img, idx) => (
                     <div
                       key={idx}
                       className="aspect-square w-full rounded-2xl overflow-hidden border border-[#E8E3D9] bg-[#FAF8F5] shadow-2xs hover:shadow-md transition-shadow"
@@ -771,8 +792,10 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
                   ))}
                 </div>
               </div>
+            )}
 
-              {/* Product Video Review / Demo Frame */}
+            {/* Product Video Review / Demo Frame */}
+            {hasVideo && (
               <div className="space-y-4 border-t border-[#E8E3D9] pt-6">
                 <h3 className="font-black text-[#1F241E] text-base sm:text-lg flex items-center gap-2">
                   <PlayCircle className="w-5 h-5 text-red-600" />
@@ -789,10 +812,10 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
                   />
                 </div>
               </div>
-
-
-            </div>
+            )}
           </div>
+        </div>
+      )}
 
       {/* High-Converting Animated CTA Banner matching KinoMart Theme */}
       <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#1F241E] via-[#2A3324] to-[#121611] p-8 sm:p-12 text-center text-white shadow-2xl border border-[#3E4935]/50 my-6">
