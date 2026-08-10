@@ -73,6 +73,10 @@ export const isSupabaseConfigured = (): boolean => {
 };
 
 export const setSupabaseCredentials = (url: string, key: string) => {
+  const current = getSupabaseConfig();
+  if (current.url === url && current.key === key && cachedClient) {
+    return;
+  }
   try {
     if (typeof window !== 'undefined') {
       if (url) localStorage.setItem('kinomart_supabase_url', url);

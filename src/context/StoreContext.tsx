@@ -385,301 +385,327 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   // Supabase Data Refresh Function
-  // Supabase Data Refresh Function (Ultra-fast Parallel Fetching)
+  // Supabase Data Refresh Function (Instant Asynchronous Per-Table Processing)
   const refreshSupabaseData = async () => {
     const supabase = getSupabaseClient();
     if (!supabase) return;
-    try {
-      // Execute all Supabase queries in parallel for instant zero-latency loading
-      const [
-        { data: ords },
-        { data: prods },
-        { data: cats },
-        { data: cpn },
-        { data: stg },
-        { data: profs },
-        { data: tm }
-      ] = await Promise.all([
-        supabase.from('orders').select('*'),
-        supabase.from('products').select('*'),
-        supabase.from('categories').select('*'),
-        supabase.from('coupons').select('*'),
-        supabase.from('settings').select('*'),
-        supabase.from('customer_profiles').select('*'),
-        supabase.from('team').select('*')
-      ]);
 
-      // 1. Orders
-      if (Array.isArray(ords)) {
-        if (ords.length > 0) {
-          safeSetStorage('kinomart_seeded_ords', true);
-          const fetchedOrders = ords.map(r => {
-            const dataObj = safeParseJson(r.data);
-            return {
-              ...dataObj,
-              id: String(r.id || dataObj.id),
-              orderNumber: String(dataObj.orderNumber || r.order_number || r.orderNumber || r.id),
-              customerName: String(dataObj.customerName || r.customer_name || r.customerName || ''),
-              customerPhone: String(dataObj.customerPhone || r.customer_phone || r.customerPhone || ''),
-              shippingAddress: String(dataObj.shippingAddress || r.shipping_address || ''),
-              deliveryArea: dataObj.deliveryArea || 'Inside Dhaka',
-              deliveryFee: Number(dataObj.deliveryFee ?? 0),
-              paymentMethod: dataObj.paymentMethod || 'COD',
-              items: Array.isArray(dataObj.items) ? dataObj.items : [],
-              subtotal: Number(dataObj.subtotal ?? 0),
-              discount: Number(dataObj.discount ?? 0),
-              totalPrice: Number(dataObj.totalPrice ?? r.total_price ?? 0),
-              status: dataObj.status || r.status || 'Pending',
-              callStatus: dataObj.callStatus || r.call_status || 'Not Called',
-              createdAt: dataObj.createdAt || r.created_at || new Date().toISOString()
-            } as Order;
-          });
-          setOrders(fetchedOrders);
-        } else {
-          const isSeeded = safeGetStorage('kinomart_seeded_ords', false);
-          if (!isSeeded) {
-            safeSetStorage('kinomart_seeded_ords', true);
-            for (const ord of INITIAL_ORDERS) {
-              smartUpsert('orders', {
-                id: ord.id,
-                order_number: ord.orderNumber,
-                customer_name: ord.customerName,
-                customer_phone: ord.customerPhone,
-                total_price: ord.totalPrice,
-                status: ord.status,
-                call_status: ord.callStatus,
-                data: ord
-              });
-            }
-            setOrders(INITIAL_ORDERS);
-          } else {
-            setOrders([]);
-          }
-        }
-      }
-
-      // 2. Products
-      if (Array.isArray(prods)) {
-        if (prods.length > 0) {
-          safeSetStorage('kinomart_seeded_products', true);
-          const fetchedProducts = prods.map(r => {
-            const dataObj = safeParseJson(r.data);
-            const rawStatus = dataObj.status || r.status;
-            return {
-              ...dataObj,
-              id: String(r.id || dataObj.id),
-              name: String(dataObj.name || r.name || ''),
-              price: Number(dataObj.price ?? r.price ?? 0),
-              discountPrice: dataObj.discountPrice !== undefined ? Number(dataObj.discountPrice) : undefined,
-              category: String(dataObj.category || r.category || 'গ্যাজেট'),
-              subCategory: String(dataObj.subCategory || r.sub_category || r.subCategory || r.subcategory || ''),
-              stock: Number(dataObj.stock ?? r.stock ?? 10),
-              limitedStockThreshold: Number(dataObj.limitedStockThreshold ?? 10),
-              colors: Array.isArray(dataObj.colors) ? dataObj.colors : ['BLACK'],
-              thumbnail: dataObj.thumbnail || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800&auto=format&fit=crop&q=80',
-              gallery: Array.isArray(dataObj.gallery) ? dataObj.gallery : [],
-              videoUrl: dataObj.videoUrl || '',
-              shortDescription: dataObj.shortDescription || '',
-              longDescription: dataObj.longDescription || '',
-              specifications: Array.isArray(dataObj.specifications) ? dataObj.specifications : [],
-              bundles: Array.isArray(dataObj.bundles) ? dataObj.bundles : [],
-              hasTimer: Boolean(dataObj.hasTimer ?? false),
-              isBestSeller: Boolean(dataObj.isBestSeller ?? false),
-              isFeatured: Boolean(dataObj.isFeatured ?? false),
-              rating: Number(dataObj.rating ?? 5.0),
-              reviewsCount: Number(dataObj.reviewsCount ?? 1),
-              status: (rawStatus === 'INACTIVE' ? 'INACTIVE' : 'ACTIVE') as 'ACTIVE' | 'INACTIVE'
-            } as Product;
-          });
-          setProducts(fetchedProducts);
-        } else {
-          const isSeeded = safeGetStorage('kinomart_seeded_products', false);
-          if (!isSeeded) {
+    // 1. Products (Highest Priority for Storefront - updates instantly)
+    (async () => {
+      try {
+        const { data: prods, error } = await supabase.from('products').select('*');
+        if (!error && Array.isArray(prods)) {
+          if (prods.length > 0) {
             safeSetStorage('kinomart_seeded_products', true);
-            for (const p of INITIAL_PRODUCTS) {
-              smartUpsert('products', {
-                id: p.id,
-                name: p.name,
-                category: p.category,
-                sub_category: p.subCategory,
-                price: p.price,
-                stock: p.stock,
-                data: p
-              });
-            }
-            setProducts(INITIAL_PRODUCTS);
+            const fetchedProducts = prods.map(r => {
+              const dataObj = safeParseJson(r.data);
+              const rawStatus = dataObj.status || r.status;
+              return {
+                ...dataObj,
+                id: String(r.id || dataObj.id),
+                name: String(dataObj.name || r.name || ''),
+                price: Number(dataObj.price ?? r.price ?? 0),
+                discountPrice: dataObj.discountPrice !== undefined ? Number(dataObj.discountPrice) : undefined,
+                category: String(dataObj.category || r.category || 'গ্যাজেট'),
+                subCategory: String(dataObj.subCategory || r.sub_category || r.subCategory || r.subcategory || ''),
+                stock: Number(dataObj.stock ?? r.stock ?? 10),
+                limitedStockThreshold: Number(dataObj.limitedStockThreshold ?? 10),
+                colors: Array.isArray(dataObj.colors) ? dataObj.colors : ['BLACK'],
+                thumbnail: dataObj.thumbnail || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800&auto=format&fit=crop&q=80',
+                gallery: Array.isArray(dataObj.gallery) ? dataObj.gallery : [],
+                videoUrl: dataObj.videoUrl || '',
+                shortDescription: dataObj.shortDescription || '',
+                longDescription: dataObj.longDescription || '',
+                specifications: Array.isArray(dataObj.specifications) ? dataObj.specifications : [],
+                bundles: Array.isArray(dataObj.bundles) ? dataObj.bundles : [],
+                hasTimer: Boolean(dataObj.hasTimer ?? false),
+                isBestSeller: Boolean(dataObj.isBestSeller ?? false),
+                isFeatured: Boolean(dataObj.isFeatured ?? false),
+                rating: Number(dataObj.rating ?? 5.0),
+                reviewsCount: Number(dataObj.reviewsCount ?? 1),
+                status: (rawStatus === 'INACTIVE' ? 'INACTIVE' : 'ACTIVE') as 'ACTIVE' | 'INACTIVE'
+              } as Product;
+            });
+            setProducts(fetchedProducts);
           } else {
-            setProducts([]);
+            const isSeeded = safeGetStorage('kinomart_seeded_products', false);
+            if (!isSeeded) {
+              safeSetStorage('kinomart_seeded_products', true);
+              INITIAL_PRODUCTS.forEach(p => {
+                smartUpsert('products', {
+                  id: p.id,
+                  name: p.name,
+                  category: p.category,
+                  sub_category: p.subCategory,
+                  price: p.price,
+                  stock: p.stock,
+                  data: p
+                });
+              });
+              setProducts(INITIAL_PRODUCTS);
+            } else {
+              setProducts([]);
+            }
           }
         }
+      } catch (e) {
+        console.warn('Product sync notice:', e);
       }
+    })();
 
-      // 3. Categories
-      if (Array.isArray(cats)) {
-        if (cats.length > 0) {
-          safeSetStorage('kinomart_seeded_cats', true);
-          const fetchedCats = cats.map(r => {
-            const dataObj = safeParseJson(r.data);
-            const dataSub = dataObj.subCategories;
-            const colSub = r.sub_categories ?? r.subCategories ?? r.subcategories;
-            let rawSub: any = dataSub || colSub;
-
-            let parsedSub: string[] = [];
-            if (Array.isArray(rawSub)) {
-              parsedSub = rawSub.map(s => String(s).trim()).filter(Boolean);
-            } else if (typeof rawSub === 'string') {
-              try {
-                const p = JSON.parse(rawSub);
-                if (Array.isArray(p)) {
-                  parsedSub = p.map(s => String(s).trim()).filter(Boolean);
-                }
-              } catch {
-                parsedSub = [];
-              }
-            }
-
-            return {
-              ...dataObj,
-              id: String(r.id || dataObj.id),
-              name: String(dataObj.name || r.name || ''),
-              image: dataObj.image || r.image || '',
-              position: Number(dataObj.position ?? r.position ?? 1),
-              isVisibleOnHome: Boolean(dataObj.isVisibleOnHome ?? r.is_visible_on_home ?? true),
-              subCategories: parsedSub
-            } as Category;
-          });
-          setCategories(fetchedCats);
-        } else {
-          const isSeeded = safeGetStorage('kinomart_seeded_cats', false);
-          if (!isSeeded) {
+    // 2. Categories
+    (async () => {
+      try {
+        const { data: cats, error } = await supabase.from('categories').select('*');
+        if (!error && Array.isArray(cats)) {
+          if (cats.length > 0) {
             safeSetStorage('kinomart_seeded_cats', true);
-            for (const c of INITIAL_CATEGORIES) {
-              smartUpsert('categories', {
-                id: c.id,
-                name: c.name,
-                image: c.image,
-                position: c.position,
-                is_visible_on_home: c.isVisibleOnHome,
-                sub_categories: c.subCategories,
-                data: c
-              });
-            }
-            setCategories(INITIAL_CATEGORIES);
+            const fetchedCats = cats.map(r => {
+              const dataObj = safeParseJson(r.data);
+              const dataSub = dataObj.subCategories;
+              const colSub = r.sub_categories ?? r.subCategories ?? r.subcategories;
+              let rawSub: any = dataSub || colSub;
+
+              let parsedSub: string[] = [];
+              if (Array.isArray(rawSub)) {
+                parsedSub = rawSub.map(s => String(s).trim()).filter(Boolean);
+              } else if (typeof rawSub === 'string') {
+                try {
+                  const p = JSON.parse(rawSub);
+                  if (Array.isArray(p)) {
+                    parsedSub = p.map(s => String(s).trim()).filter(Boolean);
+                  }
+                } catch {
+                  parsedSub = [];
+                }
+              }
+
+              return {
+                ...dataObj,
+                id: String(r.id || dataObj.id),
+                name: String(dataObj.name || r.name || ''),
+                image: dataObj.image || r.image || '',
+                position: Number(dataObj.position ?? r.position ?? 1),
+                isVisibleOnHome: Boolean(dataObj.isVisibleOnHome ?? r.is_visible_on_home ?? true),
+                subCategories: parsedSub
+              } as Category;
+            });
+            setCategories(fetchedCats);
           } else {
-            setCategories([]);
+            const isSeeded = safeGetStorage('kinomart_seeded_cats', false);
+            if (!isSeeded) {
+              safeSetStorage('kinomart_seeded_cats', true);
+              INITIAL_CATEGORIES.forEach(c => {
+                smartUpsert('categories', {
+                  id: c.id,
+                  name: c.name,
+                  image: c.image,
+                  position: c.position,
+                  is_visible_on_home: c.isVisibleOnHome,
+                  sub_categories: c.subCategories,
+                  data: c
+                });
+              });
+              setCategories(INITIAL_CATEGORIES);
+            } else {
+              setCategories([]);
+            }
           }
         }
+      } catch (e) {
+        console.warn('Category sync notice:', e);
       }
+    })();
 
-      // 4. Coupons
-      if (Array.isArray(cpn)) {
-        if (cpn.length > 0) {
-          safeSetStorage('kinomart_seeded_coupons', true);
-          const fetchedCoupons = cpn.map(r => {
-            const dataObj = safeParseJson(r.data);
-            return {
-              ...dataObj,
-              id: String(r.id || dataObj.id),
-              code: String(dataObj.code || r.code || ''),
-              type: (dataObj.type || r.discount_type || 'FIXED') as 'PERCENTAGE' | 'FIXED',
-              value: Number(dataObj.value ?? r.discount_amount ?? 0),
-              minOrderAmount: dataObj.minOrderAmount,
-              isActive: Boolean(dataObj.isActive ?? true)
-            } as Coupon;
-          });
-          setCoupons(fetchedCoupons);
-        } else {
-          const isSeeded = safeGetStorage('kinomart_seeded_coupons', false);
-          if (!isSeeded) {
+    // 3. Settings
+    (async () => {
+      try {
+        const { data: stg, error } = await supabase.from('settings').select('*');
+        if (!error && stg && stg.length > 0) {
+          const fetchedStg = safeParseJson(stg[0].data);
+          if (fetchedStg && typeof fetchedStg === 'object' && Object.keys(fetchedStg).length > 0) {
+            setSettings(prev => ({ ...prev, ...fetchedStg }));
+          }
+        }
+      } catch (e) {
+        console.warn('Settings sync notice:', e);
+      }
+    })();
+
+    // 4. Coupons
+    (async () => {
+      try {
+        const { data: cpn, error } = await supabase.from('coupons').select('*');
+        if (!error && Array.isArray(cpn)) {
+          if (cpn.length > 0) {
             safeSetStorage('kinomart_seeded_coupons', true);
-            for (const cp of INITIAL_COUPONS) {
-              smartUpsert('coupons', {
-                id: cp.id,
-                code: cp.code,
-                discount_amount: cp.value,
-                discount_type: cp.type,
-                data: cp
-              });
-            }
-            setCoupons(INITIAL_COUPONS);
+            const fetchedCoupons = cpn.map(r => {
+              const dataObj = safeParseJson(r.data);
+              return {
+                ...dataObj,
+                id: String(r.id || dataObj.id),
+                code: String(dataObj.code || r.code || ''),
+                type: (dataObj.type || r.discount_type || 'FIXED') as 'PERCENTAGE' | 'FIXED',
+                value: Number(dataObj.value ?? r.discount_amount ?? 0),
+                minOrderAmount: dataObj.minOrderAmount,
+                isActive: Boolean(dataObj.isActive ?? true)
+              } as Coupon;
+            });
+            setCoupons(fetchedCoupons);
           } else {
-            setCoupons([]);
+            const isSeeded = safeGetStorage('kinomart_seeded_coupons', false);
+            if (!isSeeded) {
+              safeSetStorage('kinomart_seeded_coupons', true);
+              INITIAL_COUPONS.forEach(cp => {
+                smartUpsert('coupons', {
+                  id: cp.id,
+                  code: cp.code,
+                  discount_amount: cp.value,
+                  discount_type: cp.type,
+                  data: cp
+                });
+              });
+              setCoupons(INITIAL_COUPONS);
+            } else {
+              setCoupons([]);
+            }
           }
         }
+      } catch (e) {
+        console.warn('Coupons sync notice:', e);
       }
+    })();
 
-      // 5. Settings
-      if (stg && stg.length > 0) {
-        const fetchedStg = safeParseJson(stg[0].data);
-        if (fetchedStg && typeof fetchedStg === 'object' && Object.keys(fetchedStg).length > 0) {
-          setSettings(prev => ({ ...prev, ...fetchedStg }));
-        }
-      }
-
-      // 6. Customer Profiles
-      if (profs && profs.length > 0) {
-        setCustomerProfiles(prev => {
-          const map: Record<string, CustomerProfile> = { ...prev };
-          profs.forEach(p => {
-            const dataObj = safeParseJson(p.data);
-            const phone = String(p.phone || dataObj.phone || '');
-            if (phone) {
-              map[phone] = {
-                name: dataObj.name || p.name || prev[phone]?.name || '',
-                phone: phone,
-                address: dataObj.address || p.address || prev[phone]?.address || ''
-              };
-            }
-          });
-          return map;
-        });
-      }
-
-      // 7. Team
-      if (Array.isArray(tm)) {
-        if (tm.length > 0) {
-          safeSetStorage('kinomart_seeded_team', true);
-          const fetchedTeam = tm.map(r => {
-            const dataObj = safeParseJson(r.data);
-            return {
-              ...dataObj,
-              id: String(r.id || dataObj.id),
-              name: String(dataObj.name || r.name || ''),
-              role: String(dataObj.role || r.role || ''),
-              image: dataObj.image || '',
-              phone: dataObj.phone || '',
-              email: dataObj.email || ''
-            } as TeamMember;
-          });
-          setTeam(fetchedTeam);
-        } else {
-          const isSeeded = safeGetStorage('kinomart_seeded_team', false);
-          if (!isSeeded) {
+    // 5. Team
+    (async () => {
+      try {
+        const { data: tm, error } = await supabase.from('team').select('*');
+        if (!error && Array.isArray(tm)) {
+          if (tm.length > 0) {
             safeSetStorage('kinomart_seeded_team', true);
-            for (const member of INITIAL_TEAM) {
-              smartUpsert('team', {
-                id: member.id,
-                name: member.name,
-                role: member.role,
-                data: member
-              });
-            }
-            setTeam(INITIAL_TEAM);
+            const fetchedTeam = tm.map(r => {
+              const dataObj = safeParseJson(r.data);
+              return {
+                ...dataObj,
+                id: String(r.id || dataObj.id),
+                name: String(dataObj.name || r.name || ''),
+                role: String(dataObj.role || r.role || ''),
+                image: dataObj.image || '',
+                phone: dataObj.phone || '',
+                email: dataObj.email || ''
+              } as TeamMember;
+            });
+            setTeam(fetchedTeam);
           } else {
-            setTeam([]);
+            const isSeeded = safeGetStorage('kinomart_seeded_team', false);
+            if (!isSeeded) {
+              safeSetStorage('kinomart_seeded_team', true);
+              INITIAL_TEAM.forEach(member => {
+                smartUpsert('team', {
+                  id: member.id,
+                  name: member.name,
+                  role: member.role,
+                  data: member
+                });
+              });
+              setTeam(INITIAL_TEAM);
+            } else {
+              setTeam([]);
+            }
           }
         }
+      } catch (e) {
+        console.warn('Team sync notice:', e);
       }
-    } catch (e) {
-      console.warn('Supabase fetch notice:', e);
-    }
+    })();
+
+    // 6. Orders (Runs in background)
+    (async () => {
+      try {
+        const { data: ords, error } = await supabase.from('orders').select('*');
+        if (!error && Array.isArray(ords)) {
+          if (ords.length > 0) {
+            safeSetStorage('kinomart_seeded_ords', true);
+            const fetchedOrders = ords.map(r => {
+              const dataObj = safeParseJson(r.data);
+              return {
+                ...dataObj,
+                id: String(r.id || dataObj.id),
+                orderNumber: String(dataObj.orderNumber || r.order_number || r.orderNumber || r.id),
+                customerName: String(dataObj.customerName || r.customer_name || r.customerName || ''),
+                customerPhone: String(dataObj.customerPhone || r.customer_phone || r.customerPhone || ''),
+                shippingAddress: String(dataObj.shippingAddress || r.shipping_address || ''),
+                deliveryArea: dataObj.deliveryArea || 'Inside Dhaka',
+                deliveryFee: Number(dataObj.deliveryFee ?? 0),
+                paymentMethod: dataObj.paymentMethod || 'COD',
+                items: Array.isArray(dataObj.items) ? dataObj.items : [],
+                subtotal: Number(dataObj.subtotal ?? 0),
+                discount: Number(dataObj.discount ?? 0),
+                totalPrice: Number(dataObj.totalPrice ?? r.total_price ?? 0),
+                status: dataObj.status || r.status || 'Pending',
+                callStatus: dataObj.callStatus || r.call_status || 'Not Called',
+                createdAt: dataObj.createdAt || r.created_at || new Date().toISOString()
+              } as Order;
+            });
+            setOrders(fetchedOrders);
+          } else {
+            const isSeeded = safeGetStorage('kinomart_seeded_ords', false);
+            if (!isSeeded) {
+              safeSetStorage('kinomart_seeded_ords', true);
+              INITIAL_ORDERS.forEach(ord => {
+                smartUpsert('orders', {
+                  id: ord.id,
+                  order_number: ord.orderNumber,
+                  customer_name: ord.customerName,
+                  customer_phone: ord.customerPhone,
+                  total_price: ord.totalPrice,
+                  status: ord.status,
+                  call_status: ord.callStatus,
+                  data: ord
+                });
+              });
+              setOrders(INITIAL_ORDERS);
+            } else {
+              setOrders([]);
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('Orders sync notice:', e);
+      }
+    })();
+
+    // 7. Customer Profiles (Runs in background)
+    (async () => {
+      try {
+        const { data: profs, error } = await supabase.from('customer_profiles').select('*');
+        if (!error && profs && profs.length > 0) {
+          setCustomerProfiles(prev => {
+            const map: Record<string, CustomerProfile> = { ...prev };
+            profs.forEach(p => {
+              const dataObj = safeParseJson(p.data);
+              const phone = String(p.phone || dataObj.phone || '');
+              if (phone) {
+                map[phone] = {
+                  name: dataObj.name || p.name || prev[phone]?.name || '',
+                  phone: phone,
+                  address: dataObj.address || p.address || prev[phone]?.address || ''
+                };
+              }
+            });
+            return map;
+          });
+        }
+      } catch (e) {
+        console.warn('Customer profiles sync notice:', e);
+      }
+    })();
   };
 
   // Auto sync credentials from settings if provided
   useEffect(() => {
     if (settings.supabaseUrl || settings.supabaseKey) {
       setSupabaseCredentials(settings.supabaseUrl || '', settings.supabaseKey || '');
-      refreshSupabaseData();
     }
   }, [settings.supabaseUrl, settings.supabaseKey]);
 
