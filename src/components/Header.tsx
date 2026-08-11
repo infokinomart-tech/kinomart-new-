@@ -309,14 +309,27 @@ export const Header: React.FC = () => {
             </div>
 
             {/* Hello User Orange Card */}
-            <div className="bg-gradient-to-r from-[#FF8800] to-[#FF6D00] rounded-2xl p-4 text-white shadow-md flex items-center gap-3">
-              <div className="w-11 h-11 bg-white/20 rounded-full flex items-center justify-center shrink-0 border border-white/30">
+            <div
+              onClick={() => {
+                setIsMobileMenuOpen(false);
+                setSelectedProduct(null);
+                if (customerUser) {
+                  setActiveClientPage('customer-profile');
+                } else {
+                  setIsCustomerLoginModalOpen(true);
+                }
+              }}
+              className="bg-gradient-to-r from-[#FF8800] to-[#FF6D00] rounded-2xl p-4 text-white shadow-md flex items-center gap-3.5 cursor-pointer hover:opacity-95 active:scale-[0.98] transition-all"
+            >
+              <div className="w-12 h-12 bg-white/25 rounded-full flex items-center justify-center shrink-0 border border-white/30 shadow-inner">
                 <User className="w-6 h-6 text-white" />
               </div>
-              <div>
-                <h3 className="font-extrabold text-base leading-tight">হ্যালো!</h3>
-                <p className="text-xs text-white/95 font-medium mt-0.5">
-                  {settings.phone || '01234567890'}
+              <div className="min-w-0 flex-1">
+                <h3 className="font-extrabold text-base leading-tight truncate">
+                  {customerUser ? (customerUser.name ? `হ্যালো, ${customerUser.name}!` : 'হ্যালো!') : 'হ্যালো!'}
+                </h3>
+                <p className="text-xs text-white font-bold mt-0.5 truncate tracking-wide">
+                  {customerUser ? customerUser.phone : 'লগইন / রেজিস্টার করুন'}
                 </p>
               </div>
             </div>
