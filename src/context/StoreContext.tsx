@@ -286,6 +286,38 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return {};
   };
 
+  // Resilient Smart Delete Helper for Supabase
+  const smartDelete = async (tableName: string, id: string): Promise<boolean> => {
+    const supabase = getSupabaseClient();
+    if (!supabase) return false;
+
+    try {
+      const { error: err1 } = await supabase.from(tableName).delete().eq('id', id);
+      if (!err1) {
+        setRlsWarning(null);
+        return true;
+      }
+
+      const numId = Number(id);
+      if (!isNaN(numId)) {
+        const { error: err2 } = await supabase.from(tableName).delete().eq('id', numId);
+        if (!err2) {
+          setRlsWarning(null);
+          return true;
+        }
+      }
+
+      const errMsg = String(err1?.message || JSON.stringify(err1));
+      console.warn(`Delete failed on table ${tableName} for id ${id}:`, errMsg);
+      if (err1?.code === '42501' || errMsg.toLowerCase().includes('row-level security') || errMsg.toLowerCase().includes('policy')) {
+        setRlsWarning(`Supabase RLS Error: Row Level Security is active on table "${tableName}". Delete is blocked. Please run the SQL setup script in Admin Settings.`);
+      }
+    } catch (err) {
+      console.warn(`Exception during smartDelete on ${tableName}:`, err);
+    }
+    return false;
+  };
+
   // Resilient Smart Upsert Helper for Supabase
   const smartUpsert = async (
     tableName: string,
@@ -881,11 +913,15 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   };
 
-  const deleteOrder = (orderId: string) => {
-    setOrders(prev => prev.filter(o => o.id !== orderId));
-    const supabase = getSupabaseClient();
-    if (supabase) {
-      supabase.from('orders').delete().eq('id', orderId).then(() => refreshSupabaseData(), err => console.warn('Supabase order delete error:', err));
+  const deleteOrder = async (orderId: string) => {
+    setOrders(prev => {
+      const updated = prev.filter(o => o.id !== orderId);
+      safeSetStorage('kinomart_orders', updated);
+      return updated;
+    });
+    const ok = await smartDelete('orders', orderId);
+    if (ok) {
+      await refreshSupabaseData();
     }
   };
 
@@ -895,11 +931,14 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     setProducts(prev => {
       const exists = prev.some(p => p.id === cleanProduct.id);
+      let updated: Product[];
       if (exists) {
-        return prev.map(p => (p.id === cleanProduct.id ? cleanProduct : p));
+        updated = prev.map(p => (p.id === cleanProduct.id ? cleanProduct : p));
       } else {
-        return [cleanProduct, ...prev];
+        updated = [cleanProduct, ...prev];
       }
+      safeSetStorage('kinomart_products', updated);
+      return updated;
     });
 
     (async () => {
@@ -967,11 +1006,15 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     })();
   };
 
-  const deleteProduct = (productId: string) => {
-    setProducts(prev => prev.filter(p => p.id !== productId));
-    const supabase = getSupabaseClient();
-    if (supabase) {
-      supabase.from('products').delete().eq('id', productId).then(() => refreshSupabaseData(), err => console.warn('Supabase product delete error:', err));
+  const deleteProduct = async (productId: string) => {
+    setProducts(prev => {
+      const updated = prev.filter(p => p.id !== productId);
+      safeSetStorage('kinomart_products', updated);
+      return updated;
+    });
+    const ok = await smartDelete('products', productId);
+    if (ok) {
+      await refreshSupabaseData();
     }
   };
 
@@ -987,11 +1030,14 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     setCategories(prev => {
       const exists = prev.some(c => c.id === cleanCategory.id);
+      let updated: Category[];
       if (exists) {
-        return prev.map(c => (c.id === cleanCategory.id ? cleanCategory : c));
+        updated = prev.map(c => (c.id === cleanCategory.id ? cleanCategory : c));
       } else {
-        return [...prev, cleanCategory];
+        updated = [...prev, cleanCategory];
       }
+      safeSetStorage('kinomart_categories', updated);
+      return updated;
     });
 
     const primary = {
@@ -1024,11 +1070,15 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   };
 
-  const deleteCategory = (categoryId: string) => {
-    setCategories(prev => prev.filter(c => c.id !== categoryId));
-    const supabase = getSupabaseClient();
-    if (supabase) {
-      supabase.from('categories').delete().eq('id', categoryId).then(() => refreshSupabaseData(), err => console.warn('Supabase category delete error:', err));
+  const deleteCategory = async (categoryId: string) => {
+    setCategories(prev => {
+      const updated = prev.filter(c => c.id !== categoryId);
+      safeSetStorage('kinomart_categories', updated);
+      return updated;
+    });
+    const ok = await smartDelete('categories', categoryId);
+    if (ok) {
+      await refreshSupabaseData();
     }
   };
 
@@ -1038,11 +1088,14 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     setCoupons(prev => {
       const exists = prev.some(c => c.id === cleanCoupon.id);
+      let updated: Coupon[];
       if (exists) {
-        return prev.map(c => (c.id === cleanCoupon.id ? cleanCoupon : c));
+        updated = prev.map(c => (c.id === cleanCoupon.id ? cleanCoupon : c));
       } else {
-        return [...prev, cleanCoupon];
+        updated = [...prev, cleanCoupon];
       }
+      safeSetStorage('kinomart_coupons', updated);
+      return updated;
     });
 
     (async () => {
@@ -1068,11 +1121,15 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     })();
   };
 
-  const deleteCoupon = (couponId: string) => {
-    setCoupons(prev => prev.filter(c => c.id !== couponId));
-    const supabase = getSupabaseClient();
-    if (supabase) {
-      supabase.from('coupons').delete().eq('id', couponId).then(() => refreshSupabaseData(), err => console.warn('Supabase coupon delete error:', err));
+  const deleteCoupon = async (couponId: string) => {
+    setCoupons(prev => {
+      const updated = prev.filter(c => c.id !== couponId);
+      safeSetStorage('kinomart_coupons', updated);
+      return updated;
+    });
+    const ok = await smartDelete('coupons', couponId);
+    if (ok) {
+      await refreshSupabaseData();
     }
   };
 
@@ -1082,11 +1139,14 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     setTeam(prev => {
       const exists = prev.some(t => t.id === cleanMember.id);
+      let updated: TeamMember[];
       if (exists) {
-        return prev.map(t => (t.id === cleanMember.id ? cleanMember : t));
+        updated = prev.map(t => (t.id === cleanMember.id ? cleanMember : t));
       } else {
-        return [...prev, cleanMember];
+        updated = [...prev, cleanMember];
       }
+      safeSetStorage('kinomart_team', updated);
+      return updated;
     });
 
     (async () => {
@@ -1109,11 +1169,15 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     })();
   };
 
-  const deleteTeamMember = (memberId: string) => {
-    setTeam(prev => prev.filter(t => t.id !== memberId));
-    const supabase = getSupabaseClient();
-    if (supabase) {
-      supabase.from('team').delete().eq('id', memberId).then(() => refreshSupabaseData(), err => console.warn('Supabase team delete error:', err));
+  const deleteTeamMember = async (memberId: string) => {
+    setTeam(prev => {
+      const updated = prev.filter(t => t.id !== memberId);
+      safeSetStorage('kinomart_team', updated);
+      return updated;
+    });
+    const ok = await smartDelete('team', memberId);
+    if (ok) {
+      await refreshSupabaseData();
     }
   };
 
