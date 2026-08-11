@@ -157,8 +157,8 @@ export const AdminCategories: React.FC = () => {
 
       {/* Add / Edit Category Modal (Matching Image 14) */}
       {isModalOpen && editingCategory && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-[#181B26] border border-[#2B3042] rounded-2xl max-w-lg w-full p-6 space-y-4 text-white">
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
+          <div className="bg-[#181B26] border border-[#2B3042] rounded-2xl max-w-lg w-full p-4 sm:p-6 space-y-4 text-white my-auto max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center border-b border-[#2B3042] pb-3">
               <h3 className="font-extrabold text-base">ক্যাটাগরি ও সাব-ক্যাটাগরি এডিট</h3>
               <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-white">

@@ -52,6 +52,10 @@ interface StoreContextType {
   completedOrder: Order | null;
   setCompletedOrder: (order: Order | null) => void;
 
+  // Data Loading & Error
+  isDataLoading: boolean;
+  dataError: string | null;
+
   // Data Collections
   products: Product[];
   categories: Category[];
@@ -163,25 +167,29 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const isAdminAuthenticated = isAdminLoggedIn;
   const [activeAdminTab, setActiveAdminTab] = useState<'orders' | 'products' | 'categories' | 'coupons' | 'team' | 'settings'>('orders');
 
+  // Data Loading & Error States
+  const [isDataLoading, setIsDataLoading] = useState<boolean>(true);
+  const [dataError, setDataError] = useState<string | null>(null);
+
   // Persistent States
   const [products, setProducts] = useState<Product[]>(() => {
-    return safeGetStorage('kinomart_products', INITIAL_PRODUCTS);
+    return safeGetStorage('kinomart_products', []);
   });
 
   const [categories, setCategories] = useState<Category[]>(() => {
-    return safeGetStorage('kinomart_categories', INITIAL_CATEGORIES);
+    return safeGetStorage('kinomart_categories', []);
   });
 
   const [orders, setOrders] = useState<Order[]>(() => {
-    return safeGetStorage('kinomart_orders', INITIAL_ORDERS);
+    return safeGetStorage('kinomart_orders', []);
   });
 
   const [coupons, setCoupons] = useState<Coupon[]>(() => {
-    return safeGetStorage('kinomart_coupons', INITIAL_COUPONS);
+    return safeGetStorage('kinomart_coupons', []);
   });
 
   const [team, setTeam] = useState<TeamMember[]>(() => {
-    return safeGetStorage('kinomart_team', INITIAL_TEAM);
+    return safeGetStorage('kinomart_team', []);
   });
 
   const [settings, setSettings] = useState<StoreSettings>(() => {
@@ -385,347 +393,208 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   // Supabase Data Refresh Function
-  // Supabase Data Refresh Function (Instant Asynchronous Per-Table Processing)
+  // Supabase Data Refresh Function (Single Source of Truth)
   const refreshSupabaseData = async () => {
     const supabase = getSupabaseClient();
-    if (!supabase) return;
+    if (!supabase) {
+      setIsDataLoading(false);
+      setDataError('সুপাবেস কানেকশন সেটআপ করা নেই।');
+      return;
+    }
 
-    // 1. Products (Highest Priority for Storefront - updates instantly)
-    (async () => {
-      try {
-        const { data: prods, error } = await supabase.from('products').select('*');
-        if (!error && Array.isArray(prods)) {
-          if (prods.length > 0) {
-            safeSetStorage('kinomart_seeded_products', true);
-            const fetchedProducts = prods.map(r => {
-              const dataObj = safeParseJson(r.data);
-              const rawStatus = dataObj.status || r.status;
-              return {
-                ...dataObj,
-                id: String(r.id || dataObj.id),
-                name: String(dataObj.name || r.name || ''),
-                price: Number(dataObj.price ?? r.price ?? 0),
-                discountPrice: dataObj.discountPrice !== undefined ? Number(dataObj.discountPrice) : undefined,
-                category: String(dataObj.category || r.category || 'গ্যাজেট'),
-                subCategory: String(dataObj.subCategory || r.sub_category || r.subCategory || r.subcategory || ''),
-                stock: Number(dataObj.stock ?? r.stock ?? 10),
-                limitedStockThreshold: Number(dataObj.limitedStockThreshold ?? 10),
-                colors: Array.isArray(dataObj.colors) ? dataObj.colors : ['BLACK'],
-                thumbnail: dataObj.thumbnail || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800&auto=format&fit=crop&q=80',
-                gallery: Array.isArray(dataObj.gallery) ? dataObj.gallery : [],
-                videoUrl: dataObj.videoUrl || '',
-                shortDescription: dataObj.shortDescription || '',
-                longDescription: dataObj.longDescription || '',
-                specifications: Array.isArray(dataObj.specifications) ? dataObj.specifications : [],
-                bundles: Array.isArray(dataObj.bundles) ? dataObj.bundles : [],
-                hasTimer: Boolean(dataObj.hasTimer ?? false),
-                isBestSeller: Boolean(dataObj.isBestSeller ?? false),
-                isFeatured: Boolean(dataObj.isFeatured ?? false),
-                rating: Number(dataObj.rating ?? 5.0),
-                reviewsCount: Number(dataObj.reviewsCount ?? 1),
-                status: (rawStatus === 'INACTIVE' ? 'INACTIVE' : 'ACTIVE') as 'ACTIVE' | 'INACTIVE'
-              } as Product;
-            });
-            setProducts(fetchedProducts);
-          } else {
-            const isSeeded = safeGetStorage('kinomart_seeded_products', false);
-            if (!isSeeded) {
-              safeSetStorage('kinomart_seeded_products', true);
-              INITIAL_PRODUCTS.forEach(p => {
-                smartUpsert('products', {
-                  id: p.id,
-                  name: p.name,
-                  category: p.category,
-                  sub_category: p.subCategory,
-                  price: p.price,
-                  stock: p.stock,
-                  data: p
-                });
-              });
-              setProducts(INITIAL_PRODUCTS);
-            } else {
-              setProducts([]);
-            }
-          }
-        }
-      } catch (e) {
-        console.warn('Product sync notice:', e);
+    try {
+      const [prodsRes, catsRes, stgRes, cpnRes, tmRes, ordsRes, profsRes] = await Promise.allSettled([
+        supabase.from('products').select('*'),
+        supabase.from('categories').select('*'),
+        supabase.from('settings').select('*'),
+        supabase.from('coupons').select('*'),
+        supabase.from('team').select('*'),
+        supabase.from('orders').select('*'),
+        supabase.from('customer_profiles').select('*')
+      ]);
+
+      // 1. Products
+      if (prodsRes.status === 'fulfilled' && !prodsRes.value.error && Array.isArray(prodsRes.value.data)) {
+        const prods = prodsRes.value.data;
+        const fetchedProducts = prods.map(r => {
+          const dataObj = safeParseJson(r.data);
+          const rawStatus = dataObj.status || r.status;
+          return {
+            ...dataObj,
+            id: String(r.id || dataObj.id),
+            name: String(dataObj.name || r.name || ''),
+            price: Number(dataObj.price ?? r.price ?? 0),
+            discountPrice: dataObj.discountPrice !== undefined ? Number(dataObj.discountPrice) : undefined,
+            category: String(dataObj.category || r.category || 'গ্যাজেট'),
+            subCategory: String(dataObj.subCategory || r.sub_category || r.subCategory || r.subcategory || ''),
+            stock: Number(dataObj.stock ?? r.stock ?? 0),
+            limitedStockThreshold: Number(dataObj.limitedStockThreshold ?? 10),
+            colors: Array.isArray(dataObj.colors) ? dataObj.colors : ['BLACK'],
+            thumbnail: dataObj.thumbnail || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800&auto=format&fit=crop&q=80',
+            gallery: Array.isArray(dataObj.gallery) ? dataObj.gallery : [],
+            videoUrl: dataObj.videoUrl || '',
+            shortDescription: dataObj.shortDescription || '',
+            longDescription: dataObj.longDescription || '',
+            specifications: Array.isArray(dataObj.specifications) ? dataObj.specifications : [],
+            bundles: Array.isArray(dataObj.bundles) ? dataObj.bundles : [],
+            hasTimer: Boolean(dataObj.hasTimer ?? false),
+            isBestSeller: Boolean(dataObj.isBestSeller ?? false),
+            isFeatured: Boolean(dataObj.isFeatured ?? false),
+            rating: Number(dataObj.rating ?? 5.0),
+            reviewsCount: Number(dataObj.reviewsCount ?? 1),
+            status: (rawStatus === 'INACTIVE' ? 'INACTIVE' : 'ACTIVE') as 'ACTIVE' | 'INACTIVE'
+          } as Product;
+        });
+        setProducts(fetchedProducts);
       }
-    })();
 
-    // 2. Categories
-    (async () => {
-      try {
-        const { data: cats, error } = await supabase.from('categories').select('*');
-        if (!error && Array.isArray(cats)) {
-          if (cats.length > 0) {
-            safeSetStorage('kinomart_seeded_cats', true);
-            const fetchedCats = cats.map(r => {
-              const dataObj = safeParseJson(r.data);
-              const dataSub = dataObj.subCategories;
-              const colSub = r.sub_categories ?? r.subCategories ?? r.subcategories;
-              let rawSub: any = dataSub || colSub;
+      // 2. Categories
+      if (catsRes.status === 'fulfilled' && !catsRes.value.error && Array.isArray(catsRes.value.data)) {
+        const cats = catsRes.value.data;
+        const fetchedCats = cats.map(r => {
+          const dataObj = safeParseJson(r.data);
+          const dataSub = dataObj.subCategories;
+          const colSub = r.sub_categories ?? r.subCategories ?? r.subcategories;
+          let rawSub: any = dataSub || colSub;
 
-              let parsedSub: string[] = [];
-              if (Array.isArray(rawSub)) {
-                parsedSub = rawSub.map(s => String(s).trim()).filter(Boolean);
-              } else if (typeof rawSub === 'string') {
-                try {
-                  const p = JSON.parse(rawSub);
-                  if (Array.isArray(p)) {
-                    parsedSub = p.map(s => String(s).trim()).filter(Boolean);
-                  }
-                } catch {
-                  parsedSub = [];
-                }
+          let parsedSub: string[] = [];
+          if (Array.isArray(rawSub)) {
+            parsedSub = rawSub.map(s => String(s).trim()).filter(Boolean);
+          } else if (typeof rawSub === 'string') {
+            try {
+              const p = JSON.parse(rawSub);
+              if (Array.isArray(p)) {
+                parsedSub = p.map(s => String(s).trim()).filter(Boolean);
               }
-
-              return {
-                ...dataObj,
-                id: String(r.id || dataObj.id),
-                name: String(dataObj.name || r.name || ''),
-                image: dataObj.image || r.image || '',
-                position: Number(dataObj.position ?? r.position ?? 1),
-                isVisibleOnHome: Boolean(dataObj.isVisibleOnHome ?? r.is_visible_on_home ?? true),
-                subCategories: parsedSub
-              } as Category;
-            });
-            setCategories(fetchedCats);
-          } else {
-            const isSeeded = safeGetStorage('kinomart_seeded_cats', false);
-            if (!isSeeded) {
-              safeSetStorage('kinomart_seeded_cats', true);
-              INITIAL_CATEGORIES.forEach(c => {
-                smartUpsert('categories', {
-                  id: c.id,
-                  name: c.name,
-                  image: c.image,
-                  position: c.position,
-                  is_visible_on_home: c.isVisibleOnHome,
-                  sub_categories: c.subCategories,
-                  data: c
-                });
-              });
-              setCategories(INITIAL_CATEGORIES);
-            } else {
-              setCategories([]);
+            } catch {
+              parsedSub = [];
             }
           }
-        }
-      } catch (e) {
-        console.warn('Category sync notice:', e);
-      }
-    })();
 
-    // 3. Settings
-    (async () => {
-      try {
-        const { data: stg, error } = await supabase.from('settings').select('*');
-        if (!error && stg && stg.length > 0) {
-          const fetchedStg = safeParseJson(stg[0].data);
-          if (fetchedStg && typeof fetchedStg === 'object' && Object.keys(fetchedStg).length > 0) {
-            setSettings(prev => ({ ...prev, ...fetchedStg }));
+          return {
+            ...dataObj,
+            id: String(r.id || dataObj.id),
+            name: String(dataObj.name || r.name || ''),
+            image: dataObj.image || r.image || '',
+            position: Number(dataObj.position ?? r.position ?? 1),
+            isVisibleOnHome: Boolean(dataObj.isVisibleOnHome ?? r.is_visible_on_home ?? true),
+            subCategories: parsedSub
+          } as Category;
+        });
+        setCategories(fetchedCats);
+      }
+
+      // 3. Settings
+      if (stgRes.status === 'fulfilled' && !stgRes.value.error && stgRes.value.data && stgRes.value.data.length > 0) {
+        const fetchedStg = safeParseJson(stgRes.value.data[0].data);
+        if (fetchedStg && typeof fetchedStg === 'object' && Object.keys(fetchedStg).length > 0) {
+          setSettings(prev => ({ ...prev, ...fetchedStg }));
+        }
+      }
+
+      // 4. Coupons
+      if (cpnRes.status === 'fulfilled' && !cpnRes.value.error && Array.isArray(cpnRes.value.data)) {
+        const cpn = cpnRes.value.data;
+        const fetchedCoupons = cpn.map(r => {
+          const dataObj = safeParseJson(r.data);
+          return {
+            ...dataObj,
+            id: String(r.id || dataObj.id),
+            code: String(dataObj.code || r.code || ''),
+            type: (dataObj.type || r.discount_type || 'FIXED') as 'PERCENTAGE' | 'FIXED',
+            value: Number(dataObj.value ?? r.discount_amount ?? 0),
+            minOrderAmount: dataObj.minOrderAmount,
+            isActive: Boolean(dataObj.isActive ?? true)
+          } as Coupon;
+        });
+        setCoupons(fetchedCoupons);
+      }
+
+      // 5. Team
+      if (tmRes.status === 'fulfilled' && !tmRes.value.error && Array.isArray(tmRes.value.data)) {
+        const tm = tmRes.value.data;
+        const fetchedTeam = tm.map(r => {
+          const dataObj = safeParseJson(r.data);
+          return {
+            ...dataObj,
+            id: String(r.id || dataObj.id),
+            name: String(dataObj.name || r.name || ''),
+            role: String(dataObj.role || r.role || ''),
+            image: dataObj.image || '',
+            phone: dataObj.phone || '',
+            email: dataObj.email || ''
+          } as TeamMember;
+        });
+        setTeam(fetchedTeam);
+      }
+
+      // 6. Orders
+      if (ordsRes.status === 'fulfilled' && !ordsRes.value.error && Array.isArray(ordsRes.value.data)) {
+        const ords = ordsRes.value.data;
+        const fetchedOrders = ords.map(r => {
+          const dataObj = safeParseJson(r.data);
+          return {
+            ...dataObj,
+            id: String(r.id || dataObj.id),
+            orderNumber: String(dataObj.orderNumber || r.order_number || r.orderNumber || r.id),
+            customerName: String(dataObj.customerName || r.customer_name || r.customerName || ''),
+            customerPhone: String(dataObj.customerPhone || r.customer_phone || r.customerPhone || ''),
+            shippingAddress: String(dataObj.shippingAddress || r.shipping_address || ''),
+            deliveryArea: dataObj.deliveryArea || 'Inside Dhaka',
+            deliveryFee: Number(dataObj.deliveryFee ?? 0),
+            paymentMethod: dataObj.paymentMethod || 'COD',
+            items: Array.isArray(dataObj.items) ? dataObj.items : [],
+            subtotal: Number(dataObj.subtotal ?? 0),
+            discount: Number(dataObj.discount ?? 0),
+            totalPrice: Number(dataObj.totalPrice ?? r.total_price ?? 0),
+            status: dataObj.status || r.status || 'Pending',
+            callStatus: dataObj.callStatus || r.call_status || 'Not Called',
+            createdAt: dataObj.createdAt || r.created_at || new Date().toISOString()
+          } as Order;
+        });
+
+        const parseTime = (ord: Order) => {
+          if (ord.id && ord.id.startsWith('ord-')) {
+            const num = Number(ord.id.replace('ord-', ''));
+            if (!isNaN(num) && num > 1000000) return num;
           }
-        }
-      } catch (e) {
-        console.warn('Settings sync notice:', e);
-      }
-    })();
-
-    // 4. Coupons
-    (async () => {
-      try {
-        const { data: cpn, error } = await supabase.from('coupons').select('*');
-        if (!error && Array.isArray(cpn)) {
-          if (cpn.length > 0) {
-            safeSetStorage('kinomart_seeded_coupons', true);
-            const fetchedCoupons = cpn.map(r => {
-              const dataObj = safeParseJson(r.data);
-              return {
-                ...dataObj,
-                id: String(r.id || dataObj.id),
-                code: String(dataObj.code || r.code || ''),
-                type: (dataObj.type || r.discount_type || 'FIXED') as 'PERCENTAGE' | 'FIXED',
-                value: Number(dataObj.value ?? r.discount_amount ?? 0),
-                minOrderAmount: dataObj.minOrderAmount,
-                isActive: Boolean(dataObj.isActive ?? true)
-              } as Coupon;
-            });
-            setCoupons(fetchedCoupons);
-          } else {
-            const isSeeded = safeGetStorage('kinomart_seeded_coupons', false);
-            if (!isSeeded) {
-              safeSetStorage('kinomart_seeded_coupons', true);
-              INITIAL_COUPONS.forEach(cp => {
-                smartUpsert('coupons', {
-                  id: cp.id,
-                  code: cp.code,
-                  discount_amount: cp.value,
-                  discount_type: cp.type,
-                  data: cp
-                });
-              });
-              setCoupons(INITIAL_COUPONS);
-            } else {
-              setCoupons([]);
-            }
+          if (ord.createdAt) {
+            const parsed = Date.parse(ord.createdAt);
+            if (!isNaN(parsed)) return parsed;
           }
-        }
-      } catch (e) {
-        console.warn('Coupons sync notice:', e);
+          return 0;
+        };
+        fetchedOrders.sort((a, b) => parseTime(b) - parseTime(a));
+        setOrders(fetchedOrders);
       }
-    })();
 
-    // 5. Team
-    (async () => {
-      try {
-        const { data: tm, error } = await supabase.from('team').select('*');
-        if (!error && Array.isArray(tm)) {
-          if (tm.length > 0) {
-            safeSetStorage('kinomart_seeded_team', true);
-            const fetchedTeam = tm.map(r => {
-              const dataObj = safeParseJson(r.data);
-              return {
-                ...dataObj,
-                id: String(r.id || dataObj.id),
-                name: String(dataObj.name || r.name || ''),
-                role: String(dataObj.role || r.role || ''),
-                image: dataObj.image || '',
-                phone: dataObj.phone || '',
-                email: dataObj.email || ''
-              } as TeamMember;
-            });
-            setTeam(fetchedTeam);
-          } else {
-            const isSeeded = safeGetStorage('kinomart_seeded_team', false);
-            if (!isSeeded) {
-              safeSetStorage('kinomart_seeded_team', true);
-              INITIAL_TEAM.forEach(member => {
-                smartUpsert('team', {
-                  id: member.id,
-                  name: member.name,
-                  role: member.role,
-                  data: member
-                });
-              });
-              setTeam(INITIAL_TEAM);
-            } else {
-              setTeam([]);
-            }
-          }
-        }
-      } catch (e) {
-        console.warn('Team sync notice:', e);
-      }
-    })();
-
-    // 6. Orders (Runs in background)
-    (async () => {
-      try {
-        const { data: ords, error } = await supabase.from('orders').select('*');
-        if (!error && Array.isArray(ords)) {
-          if (ords.length > 0) {
-            safeSetStorage('kinomart_seeded_ords', true);
-            const fetchedOrders = ords.map(r => {
-              const dataObj = safeParseJson(r.data);
-              return {
-                ...dataObj,
-                id: String(r.id || dataObj.id),
-                orderNumber: String(dataObj.orderNumber || r.order_number || r.orderNumber || r.id),
-                customerName: String(dataObj.customerName || r.customer_name || r.customerName || ''),
-                customerPhone: String(dataObj.customerPhone || r.customer_phone || r.customerPhone || ''),
-                shippingAddress: String(dataObj.shippingAddress || r.shipping_address || ''),
-                deliveryArea: dataObj.deliveryArea || 'Inside Dhaka',
-                deliveryFee: Number(dataObj.deliveryFee ?? 0),
-                paymentMethod: dataObj.paymentMethod || 'COD',
-                items: Array.isArray(dataObj.items) ? dataObj.items : [],
-                subtotal: Number(dataObj.subtotal ?? 0),
-                discount: Number(dataObj.discount ?? 0),
-                totalPrice: Number(dataObj.totalPrice ?? r.total_price ?? 0),
-                status: dataObj.status || r.status || 'Pending',
-                callStatus: dataObj.callStatus || r.call_status || 'Not Called',
-                createdAt: dataObj.createdAt || r.created_at || new Date().toISOString()
-              } as Order;
-            });
-            fetchedOrders.sort((a, b) => {
-              const parseTime = (ord: Order) => {
-                if (ord.id && ord.id.startsWith('ord-')) {
-                  const num = Number(ord.id.replace('ord-', ''));
-                  if (!isNaN(num) && num > 1000000) return num;
-                }
-                if (ord.createdAt) {
-                  const parts = ord.createdAt.split(' ');
-                  if (parts.length >= 2 && parts[0].includes('/')) {
-                    const [d, m, y] = parts[0].split('/').map(Number);
-                    const [hh, mm] = (parts[1] || '00:00').split(':').map(Number);
-                    if (y && m && d) {
-                      return new Date(y, m - 1, d, hh || 0, mm || 0).getTime();
-                    }
-                  }
-                  const parsed = Date.parse(ord.createdAt);
-                  if (!isNaN(parsed)) return parsed;
-                }
-                if (ord.id) {
-                  const num = parseInt(ord.id.replace(/\D/g, ''), 10);
-                  if (!isNaN(num)) return num;
-                }
-                return 0;
+      // 7. Customer Profiles
+      if (profsRes.status === 'fulfilled' && !profsRes.value.error && profsRes.value.data) {
+        const profs = profsRes.value.data;
+        setCustomerProfiles(prev => {
+          const map: Record<string, CustomerProfile> = { ...prev };
+          profs.forEach(p => {
+            const dataObj = safeParseJson(p.data);
+            const phone = String(p.phone || dataObj.phone || '');
+            if (phone) {
+              map[phone] = {
+                name: dataObj.name || p.name || prev[phone]?.name || '',
+                phone: phone,
+                address: dataObj.address || p.address || prev[phone]?.address || ''
               };
-              return parseTime(b) - parseTime(a);
-            });
-            setOrders(fetchedOrders);
-          } else {
-            const isSeeded = safeGetStorage('kinomart_seeded_ords', false);
-            if (!isSeeded) {
-              safeSetStorage('kinomart_seeded_ords', true);
-              INITIAL_ORDERS.forEach(ord => {
-                smartUpsert('orders', {
-                  id: ord.id,
-                  order_number: ord.orderNumber,
-                  customer_name: ord.customerName,
-                  customer_phone: ord.customerPhone,
-                  total_price: ord.totalPrice,
-                  status: ord.status,
-                  call_status: ord.callStatus,
-                  data: ord
-                });
-              });
-              setOrders(INITIAL_ORDERS);
-            } else {
-              setOrders([]);
             }
-          }
-        }
-      } catch (e) {
-        console.warn('Orders sync notice:', e);
-      }
-    })();
-
-    // 7. Customer Profiles (Runs in background)
-    (async () => {
-      try {
-        const { data: profs, error } = await supabase.from('customer_profiles').select('*');
-        if (!error && profs && profs.length > 0) {
-          setCustomerProfiles(prev => {
-            const map: Record<string, CustomerProfile> = { ...prev };
-            profs.forEach(p => {
-              const dataObj = safeParseJson(p.data);
-              const phone = String(p.phone || dataObj.phone || '');
-              if (phone) {
-                map[phone] = {
-                  name: dataObj.name || p.name || prev[phone]?.name || '',
-                  phone: phone,
-                  address: dataObj.address || p.address || prev[phone]?.address || ''
-                };
-              }
-            });
-            return map;
           });
-        }
-      } catch (e) {
-        console.warn('Customer profiles sync notice:', e);
+          return map;
+        });
       }
-    })();
+
+      setDataError(null);
+    } catch (e: any) {
+      console.warn('Error refreshing Supabase data:', e);
+      setDataError(e?.message || 'সুপাবেস ডাটাবেস থেকে তথ্য লোড করতে ত্রুটি ঘটেছে।');
+    } finally {
+      setIsDataLoading(false);
+    }
   };
 
   // Auto sync credentials from settings if provided
@@ -1298,18 +1167,25 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const resetToDefaults = () => {
-    setProducts(INITIAL_PRODUCTS);
-    setCategories(INITIAL_CATEGORIES);
-    setOrders(INITIAL_ORDERS);
-    setCoupons(INITIAL_COUPONS);
-    setTeam(INITIAL_TEAM);
+    setProducts([]);
+    setCategories([]);
+    setOrders([]);
+    setCoupons([]);
+    setTeam([]);
     setSettings(INITIAL_SETTINGS);
-    localStorage.clear();
+    try {
+      localStorage.clear();
+    } catch {
+      // Ignore
+    }
+    refreshSupabaseData();
   };
 
   return (
     <StoreContext.Provider
       value={{
+        isDataLoading,
+        dataError,
         viewMode,
         setViewMode,
         activeClientPage,

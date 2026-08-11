@@ -104,8 +104,8 @@ export const AdminTeam: React.FC = () => {
 
       {/* Team Member Edit/Add Modal */}
       {isModalOpen && editingMember && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-xs p-4 overflow-y-auto">
-          <div className="bg-[#181B26] border border-[#2B3042] rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-xs p-2 sm:p-4 overflow-y-auto">
+          <div className="bg-[#181B26] border border-[#2B3042] rounded-3xl max-w-md w-full p-4 sm:p-6 space-y-4 shadow-2xl my-auto max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center border-b border-[#2B3042] pb-3">
               <h3 className="text-sm font-bold text-white flex items-center gap-2">
                 <Users className="w-4 h-4 text-[#2563EB]" />

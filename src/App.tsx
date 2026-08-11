@@ -42,7 +42,10 @@ const MainAppContent: React.FC = () => {
     setIsAdminModalOpen,
     isCustomerLoginModalOpen,
     setIsCustomerLoginModalOpen,
-    settings
+    settings,
+    isDataLoading,
+    dataError,
+    refreshSupabaseData
   } = useStore();
 
   const isInitialRouteRef = React.useRef(true);
@@ -305,18 +308,49 @@ const MainAppContent: React.FC = () => {
               )}
 
               {/* Product Cards Grid */}
-              <div id="product-grid" className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6 mt-6">
-                {displayedProducts.map((product) => (
-                  <ProductCard key={product.id} product={product} />
-                ))}
-              </div>
-
-              {displayedProducts.length === 0 && (
-                <div className="text-center py-12 bg-white rounded-3xl border border-[#E8E3D9] my-6">
-                  <p className="text-gray-500 text-sm">
-                    দুঃখিত! এই ক্যাটাগরিতে কোনো পণ্য পাওয়া যায়নি।
-                  </p>
+              {isDataLoading && products.length === 0 ? (
+                <div id="product-grid" className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6 mt-6">
+                  {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
+                    <div key={n} className="bg-[#FAF9F5] rounded-2xl border-2 border-[#E8E3D9] p-3 flex flex-col justify-between animate-pulse">
+                      <div>
+                        <div className="w-full aspect-square bg-[#E8E3D9] rounded-xl mb-3" />
+                        <div className="space-y-2">
+                          <div className="h-3 bg-[#E8E3D9] rounded-md w-1/3" />
+                          <div className="h-4 bg-[#E8E3D9] rounded-md w-3/4" />
+                          <div className="h-3 bg-[#E8E3D9] rounded-md w-1/2" />
+                          <div className="h-5 bg-[#E8E3D9] rounded-md w-2/5 mt-2" />
+                        </div>
+                      </div>
+                      <div className="pt-3">
+                        <div className="h-9 bg-[#E8E3D9] rounded-xl w-full" />
+                      </div>
+                    </div>
+                  ))}
                 </div>
+              ) : dataError && products.length === 0 ? (
+                <div className="text-center py-12 bg-white rounded-3xl border border-red-200 p-6 my-6">
+                  <p className="text-red-600 font-bold text-sm mb-1">ডাটাবেস কানেকশন ত্রুটি</p>
+                  <p className="text-gray-500 text-xs mb-4">{dataError}</p>
+                  <button onClick={() => refreshSupabaseData()} className="px-5 py-2.5 bg-[#5E7A3B] text-white rounded-xl text-xs font-bold hover:bg-[#4d6530] transition-colors cursor-pointer">
+                    পুনরায় চেষ্টা করুন
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <div id="product-grid" className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6 mt-6">
+                    {displayedProducts.map((product) => (
+                      <ProductCard key={product.id} product={product} />
+                    ))}
+                  </div>
+
+                  {displayedProducts.length === 0 && (
+                    <div className="text-center py-12 bg-white rounded-3xl border border-[#E8E3D9] my-6">
+                      <p className="text-gray-500 text-sm">
+                        দুঃখিত! এই ক্যাটাগরিতে কোনো পণ্য পাওয়া যায়নি।
+                      </p>
+                    </div>
+                  )}
+                </>
               )}
             </div>
 
@@ -329,11 +363,25 @@ const MainAppContent: React.FC = () => {
         )}
 
         {/* PRODUCT DETAIL PAGE */}
-        {activeClientPage === 'product-detail' && (selectedProduct || displayedProducts[0]) && (
-          <ProductDetailsModal
-            key={(selectedProduct || displayedProducts[0]).id}
-            product={selectedProduct || displayedProducts[0]}
-          />
+        {activeClientPage === 'product-detail' && (
+          selectedProduct ? (
+            <ProductDetailsModal
+              key={selectedProduct.id}
+              product={selectedProduct}
+            />
+          ) : isDataLoading ? (
+            <div className="max-w-7xl mx-auto px-4 py-16 text-center">
+              <div className="animate-spin w-8 h-8 border-4 border-[#5E7A3B] border-t-transparent rounded-full mx-auto mb-3" />
+              <p className="text-xs text-gray-500 font-bold">প্রোডাক্টের তথ্য লোড হচ্ছে...</p>
+            </div>
+          ) : (
+            <div className="max-w-7xl mx-auto px-4 py-12 text-center bg-white rounded-3xl border border-[#E8E3D9] my-6">
+              <p className="text-gray-500 text-sm font-bold">দুঃখিত! এই প্রোডাক্টটি পাওয়া যায়নি।</p>
+              <button onClick={() => setActiveClientPage('home')} className="mt-4 px-4 py-2 bg-[#5E7A3B] text-white rounded-xl text-xs font-bold hover:bg-[#4d6530] transition-colors cursor-pointer">
+                হোম পেজে ফিরুন
+              </button>
+            </div>
+          )
         )}
 
         {/* PRODUCTS PAGE */}
@@ -421,18 +469,49 @@ const MainAppContent: React.FC = () => {
               )}
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6">
-              {displayedProducts.map((product) => (
-                <ProductCard key={product.id} product={product} />
-              ))}
-            </div>
-
-            {displayedProducts.length === 0 && (
-              <div className="text-center py-12 bg-white rounded-3xl border border-[#E8E3D9] my-6">
-                <p className="text-gray-500 text-sm">
-                  দুঃখিত! এই ক্যাটাগরিতে কোনো পণ্য পাওয়া যায়নি।
-                </p>
+            {isDataLoading && products.length === 0 ? (
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6">
+                {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
+                  <div key={n} className="bg-[#FAF9F5] rounded-2xl border-2 border-[#E8E3D9] p-3 flex flex-col justify-between animate-pulse">
+                    <div>
+                      <div className="w-full aspect-square bg-[#E8E3D9] rounded-xl mb-3" />
+                      <div className="space-y-2">
+                        <div className="h-3 bg-[#E8E3D9] rounded-md w-1/3" />
+                        <div className="h-4 bg-[#E8E3D9] rounded-md w-3/4" />
+                        <div className="h-3 bg-[#E8E3D9] rounded-md w-1/2" />
+                        <div className="h-5 bg-[#E8E3D9] rounded-md w-2/5 mt-2" />
+                      </div>
+                    </div>
+                    <div className="pt-3">
+                      <div className="h-9 bg-[#E8E3D9] rounded-xl w-full" />
+                    </div>
+                  </div>
+                ))}
               </div>
+            ) : dataError && products.length === 0 ? (
+              <div className="text-center py-12 bg-white rounded-3xl border border-red-200 p-6 my-6">
+                <p className="text-red-600 font-bold text-sm mb-1">ডাটাবেস কানেকশন ত্রুটি</p>
+                <p className="text-gray-500 text-xs mb-4">{dataError}</p>
+                <button onClick={() => refreshSupabaseData()} className="px-5 py-2.5 bg-[#5E7A3B] text-white rounded-xl text-xs font-bold hover:bg-[#4d6530] transition-colors cursor-pointer">
+                  পুনরায় চেষ্টা করুন
+                </button>
+              </div>
+            ) : (
+              <>
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6">
+                  {displayedProducts.map((product) => (
+                    <ProductCard key={product.id} product={product} />
+                  ))}
+                </div>
+
+                {displayedProducts.length === 0 && (
+                  <div className="text-center py-12 bg-white rounded-3xl border border-[#E8E3D9] my-6">
+                    <p className="text-gray-500 text-sm">
+                      দুঃখিত! এই ক্যাটাগরিতে কোনো পণ্য পাওয়া যায়নি।
+                    </p>
+                  </div>
+                )}
+              </>
             )}
           </div>
         )}
