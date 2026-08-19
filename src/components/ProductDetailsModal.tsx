@@ -76,11 +76,15 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
     setSelectedBundleId(def?.id || '');
     setQuantity(def?.quantity || 1);
 
-    // Track view_item event
-    trackViewItem(product, def?.quantity || 1, product.colors && product.colors.length > 0 ? product.colors[0] : undefined);
+    // Track view_item event with Strict Mode protection
+    const timeoutId = setTimeout(() => {
+      trackViewItem(product, def?.quantity || 1, product.colors && product.colors.length > 0 ? product.colors[0] : undefined);
+    }, 100);
 
     // Ensure page scrolls to top on product selection
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+
+    return () => clearTimeout(timeoutId);
   }, [product]);
 
   const [reviewSlideIdx, setReviewSlideIdx] = useState<number>(0);

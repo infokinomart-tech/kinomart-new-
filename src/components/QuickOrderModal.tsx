@@ -73,13 +73,16 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({ product, onClo
   const deliveryFee = deliveryArea === 'Inside Dhaka' ? 60 : 120;
   const totalPrice = Math.max(0, subtotal - discountAmount + deliveryFee);
 
-  // Trigger begin_checkout event when modal opens
+  // Trigger begin_checkout event when modal opens with Strict Mode protection
   useEffect(() => {
-    trackBeginCheckout(
-      [{ product, quantity, selectedColor: selectedBundle ? selectedBundle.title : undefined }],
-      totalPrice,
-      appliedCoupon || undefined
-    );
+    const timeoutId = setTimeout(() => {
+      trackBeginCheckout(
+        [{ product, quantity, selectedColor: selectedBundle ? selectedBundle.title : undefined }],
+        totalPrice,
+        appliedCoupon || undefined
+      );
+    }, 100);
+    return () => clearTimeout(timeoutId);
   }, []);
 
   const handleCopyNumber = (num: string) => {

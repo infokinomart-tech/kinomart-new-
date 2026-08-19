@@ -8,11 +8,6 @@ declare global {
 }
 
 /**
- * Deduplication store for purchase transactions to prevent duplicate firing
- */
-const trackedTransactions = new Set<string>();
-
-/**
  * Initialize window.dataLayer if not present
  */
 export const initDataLayer = (): Record<string, any>[] => {
@@ -37,6 +32,46 @@ export const pushToDataLayer = (data: Record<string, any>): void => {
 };
 
 /**
+ * Clear the ecommerce object before pushing a new ecommerce event
+ * Strict GA4 Requirement
+ */
+export const clearEcommerceObject = (): void => {
+  pushToDataLayer({ ecommerce: null });
+};
+
+/**
+ * Get tracked transactions from localStorage
+ */
+const getTrackedTransactions = (): Set<string> => {
+  try {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('ga4_tracked_transactions');
+      if (stored) {
+        return new Set(JSON.parse(stored));
+      }
+    }
+  } catch (e) {
+    console.warn('Could not read tracked transactions', e);
+  }
+  return new Set();
+};
+
+/**
+ * Save tracked transaction to localStorage
+ */
+const saveTrackedTransaction = (transactionId: string): void => {
+  try {
+    if (typeof window !== 'undefined') {
+      const current = getTrackedTransactions();
+      current.add(transactionId);
+      localStorage.setItem('ga4_tracked_transactions', JSON.stringify(Array.from(current)));
+    }
+  } catch (e) {
+    console.warn('Could not save tracked transaction', e);
+  }
+};
+
+/**
  * Helper to format product into standard GA4 item structure
  */
 export const formatGA4Item = (
@@ -52,15 +87,15 @@ export const formatGA4Item = (
       quantity: quantity,
     };
   }
-  const price = product.discountPrice || product.price || 0;
+  const price = Number(product.discountPrice || product.price || 0);
   return {
-    item_id: product.id || '',
-    item_name: product.name || '',
+    item_id: String(product.id || ''),
+    item_name: String(product.name || ''),
     price: price,
-    quantity: quantity,
-    item_category: product.category || undefined,
-    item_category2: product.subCategory || undefined,
-    item_variant: selectedColor || (product.colors && product.colors[0]) || undefined,
+    quantity: Number(quantity),
+    item_category: product.category ? String(product.category) : undefined,
+    item_category2: product.subCategory ? String(product.subCategory) : undefined,
+    item_variant: selectedColor ? String(selectedColor) : (product.colors && product.colors[0] ? String(product.colors[0]) : undefined),
   };
 };
 
@@ -95,11 +130,13 @@ export const trackViewItem = (
   try {
     if (!product) return;
     const item = formatGA4Item(product, quantity, selectedColor);
+    
+    clearEcommerceObject();
     pushToDataLayer({
       event: 'view_item',
       ecommerce: {
         currency: 'BDT',
-        value: item.price * quantity,
+        value: Number(item.price * quantity),
         items: [item],
       },
     });
@@ -119,11 +156,13 @@ export const trackAddToCart = (
   try {
     if (!product) return;
     const item = formatGA4Item(product, quantity, selectedColor);
+    
+    clearEcommerceObject();
     pushToDataLayer({
       event: 'add_to_cart',
       ecommerce: {
         currency: 'BDT',
-        value: item.price * quantity,
+        value: Number(item.price * quantity),
         items: [item],
       },
     });
@@ -143,11 +182,13 @@ export const trackRemoveFromCart = (
   try {
     if (!product) return;
     const item = formatGA4Item(product, quantity, selectedColor);
+    
+    clearEcommerceObject();
     pushToDataLayer({
       event: 'remove_from_cart',
       ecommerce: {
         currency: 'BDT',
-        value: item.price * quantity,
+        value: Number(item.price * quantity),
         items: [item],
       },
     });
@@ -169,12 +210,13 @@ export const trackBeginCheckout = (
       formatGA4Item(i.product, i.quantity, i.selectedColor)
     );
 
+    clearEcommerceObject();
     pushToDataLayer({
       event: 'begin_checkout',
       ecommerce: {
         currency: 'BDT',
-        value: value,
-        coupon: couponCode || undefined,
+        value: Number(value),
+        coupon: couponCode ? String(couponCode) : undefined,
         items: formattedItems,
       },
     });
@@ -190,17 +232,18 @@ export const trackBeginCheckout = (
 export const trackPurchase = (order: Order): void => {
   try {
     if (!order) return;
-    const transactionId = order.orderNumber || order.id;
+    const transactionId = String(order.orderNumber || order.id);
 
     if (!transactionId) return;
 
-    // Prevent duplicate purchase events
+    // Prevent duplicate purchase events via localStorage
+    const trackedTransactions = getTrackedTransactions();
     if (trackedTransactions.has(transactionId)) {
       console.log(`[DataLayer] Purchase event for order ${transactionId} already tracked. Skipping duplicate.`);
       return;
     }
 
-    trackedTransactions.add(transactionId);
+    saveTrackedTransaction(transactionId);
 
     const formattedItems = (order.items || []).map((orderItem: OrderItem) =>
       formatGA4Item(
@@ -210,19 +253,52 @@ export const trackPurchase = (order: Order): void => {
       )
     );
 
-    pushToDataLayer({
+    // Provide user_data at the root level (not inside ecommerce)
+    const userData: any = {};
+    if (order.customerPhone) {
+      userData.phone_number = order.customerPhone; // Can be hashed depending on exact GA4 / Ads configuration
+    }
+    
+    if (order.customerName || order.deliveryArea) {
+      userData.address = {};
+      
+      if (order.customerName) {
+        // Only send first_name as requested
+        const nameParts = order.customerName.trim().split(' ');
+        userData.address.first_name = nameParts[0];
+      }
+
+      if (order.deliveryArea) {
+        // Derive city from deliveryArea if possible
+        if (order.deliveryArea === 'Inside Dhaka') {
+          userData.address.city = 'Dhaka';
+        }
+      }
+    }
+
+    clearEcommerceObject();
+    
+    const purchaseEvent: Record<string, any> = {
       event: 'purchase',
       ecommerce: {
         transaction_id: transactionId,
-        value: order.totalPrice,
+        value: Number(order.totalPrice),
         tax: 0,
-        shipping: order.deliveryFee || 0,
+        shipping: Number(order.deliveryFee || 0),
         currency: 'BDT',
-        coupon: order.couponCode || undefined,
+        coupon: order.couponCode ? String(order.couponCode) : undefined,
         items: formattedItems,
       },
-    });
+    };
+    
+    // Attach user_data if available
+    if (Object.keys(userData).length > 0) {
+      purchaseEvent.user_data = userData;
+    }
+
+    pushToDataLayer(purchaseEvent);
   } catch (err) {
     console.warn('[DataLayer Warning] trackPurchase error:', err);
   }
 };
+
