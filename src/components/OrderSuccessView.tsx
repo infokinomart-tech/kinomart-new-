@@ -1,9 +1,20 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useStore } from '../context/StoreContext';
 import { CheckCircle2, UserCheck, Package, ShoppingBag, ArrowRight } from 'lucide-react';
+import { trackPurchase } from '../lib/dataLayer';
 
 export const OrderSuccessView: React.FC = () => {
   const { completedOrder, setActiveClientPage } = useStore();
+
+  useEffect(() => {
+    if (completedOrder) {
+      // Fire purchase event with Strict Mode protection
+      const timeoutId = setTimeout(() => {
+        trackPurchase(completedOrder);
+      }, 100);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [completedOrder]);
 
   if (!completedOrder) {
     return (
