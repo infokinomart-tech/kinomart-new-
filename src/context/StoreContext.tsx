@@ -809,6 +809,9 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       setActiveClientPage('order-success');
     }
 
+    // Fire dataLayer purchase event
+    trackPurchase(newOrder);
+
     // Save order to Supabase asynchronously
     (async () => {
       const cleanOrder: Order = JSON.parse(JSON.stringify(newOrder));

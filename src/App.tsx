@@ -129,12 +129,8 @@ const MainAppContent: React.FC = () => {
       window.history.pushState({}, '', targetPath);
     }
 
-    // Trigger GA4 page_view event with Strict Mode protection
-    const timeoutId = setTimeout(() => {
-      trackPageView(document.title, window.location.href, targetPath);
-    }, 100);
-
-    return () => clearTimeout(timeoutId);
+    // Trigger GA4 page_view event
+    trackPageView(document.title, window.location.href, targetPath);
   }, [viewMode, activeClientPage, selectedProduct]);
 
   // Scroll to top of window whenever product is selected, view mode changes, or page changes

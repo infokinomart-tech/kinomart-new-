@@ -73,16 +73,13 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({ product, onClo
   const deliveryFee = deliveryArea === 'Inside Dhaka' ? 60 : 120;
   const totalPrice = Math.max(0, subtotal - discountAmount + deliveryFee);
 
-  // Trigger begin_checkout event when modal opens with Strict Mode protection
+  // Trigger begin_checkout event when modal opens
   useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      trackBeginCheckout(
-        [{ product, quantity, selectedColor: selectedBundle ? selectedBundle.title : undefined }],
-        totalPrice,
-        appliedCoupon || undefined
-      );
-    }, 100);
-    return () => clearTimeout(timeoutId);
+    trackBeginCheckout(
+      [{ product, quantity, selectedColor: selectedBundle ? selectedBundle.title : undefined }],
+      totalPrice,
+      appliedCoupon || undefined
+    );
   }, []);
 
   const handleCopyNumber = (num: string) => {
@@ -156,7 +153,10 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({ product, onClo
         totalPrice
       });
 
-      // Order created successfully
+      // Fire purchase event
+      if (createdOrder) {
+        trackPurchase(createdOrder);
+      }
     } catch (err) {
       console.error(err);
       setErrorMsg('অর্ডার সম্পন্ন করতে সমস্যা হয়েছে। আবার চেষ্টা করুন।');
@@ -218,6 +218,8 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({ product, onClo
           <BundleSelector
             bundles={effectiveBundles}
             selectedBundleId={selectedBundleId}
+            bannerTitle={product.bundleBannerTitle}
+            bannerSubtitle={product.bundleBannerSubtitle}
             onSelectBundle={(b) => {
               setSelectedBundleId(b.id);
               setQuantity(b.quantity);

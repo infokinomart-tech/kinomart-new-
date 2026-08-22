@@ -7,6 +7,7 @@ export interface ProductBundle {
   badgeText?: string;
   tagText?: string;
   isPopular?: boolean;
+  iconType?: 'green_dot' | 'gold_dot' | 'fire' | 'star';
 }
 
 export interface Specification {
@@ -43,6 +44,8 @@ export interface Product {
   longDescription?: string;
   specifications?: Specification[];
   bundles?: ProductBundle[];
+  bundleBannerTitle?: string;
+  bundleBannerSubtitle?: string;
   hasTimer?: boolean;
   timerTitle?: string;
   timerEndTime?: string;
