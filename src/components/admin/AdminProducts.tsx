@@ -3,6 +3,7 @@ import { useStore } from '../../context/StoreContext';
 import { Product, Specification, ProductBundle, Review } from '../../types';
 import { getDefaultBundles, generateDemoSixTiers, generateRadioCardBundles } from '../../lib/bundleUtils';
 import { BundleSelector, RadioCardBundleSection, BannerTableOfferSection } from '../BundleSelector';
+import { compressImageFile, isDataUrl, isHttpUrl } from '../../lib/imageUtils';
 import {
   Plus,
   Edit2,
@@ -16,7 +17,11 @@ import {
   Video,
   Clock,
   PackageCheck,
-  Zap
+  Zap,
+  Loader2,
+  UploadCloud,
+  CheckCircle2,
+  Sparkles
 } from 'lucide-react';
 
 export const AdminProducts: React.FC = () => {
@@ -25,6 +30,9 @@ export const AdminProducts: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [editingProduct, setEditingProduct] = useState<Partial<Product> | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isCompressingImage, setIsCompressingImage] = useState(false);
+  const [imageCompressionProgress, setImageCompressionProgress] = useState<string | null>(null);
+  const [newOnlineUrl, setNewOnlineUrl] = useState('');
 
   // Filtered products
   const filteredProducts = products.filter(
@@ -32,6 +40,112 @@ export const AdminProducts: React.FC = () => {
       p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       p.category.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const handleImageFilesUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const fileList = e.target.files;
+    if (!fileList || fileList.length === 0) return;
+
+    setIsCompressingImage(true);
+    setImageCompressionProgress(`১/${fileList.length} ছবি অপ্টিমাইজ হচ্ছে...`);
+
+    try {
+      const files = Array.from(fileList);
+      const compressedImages: string[] = [];
+
+      for (let i = 0; i < files.length; i++) {
+        setImageCompressionProgress(`${i + 1}/${files.length} ছবি দ্রুত অপ্টিমাইজ ও কমপ্রেস করা হচ্ছে...`);
+        const compressed = await compressImageFile(files[i], {
+          maxWidth: 1080,
+          maxHeight: 1080,
+          quality: 0.82,
+          format: 'image/jpeg'
+        });
+        compressedImages.push(compressed);
+      }
+
+      setEditingProduct((prev) => {
+        if (!prev) return prev;
+        let thumb = prev.thumbnail || '';
+        const gallery = [...(prev.gallery || [])];
+
+        for (const img of compressedImages) {
+          if (!thumb) {
+            thumb = img;
+          } else {
+            gallery.push(img);
+          }
+        }
+
+        return {
+          ...prev,
+          thumbnail: thumb,
+          gallery
+        };
+      });
+    } catch (err) {
+      console.error('Image compression failed:', err);
+    } finally {
+      setIsCompressingImage(false);
+      setImageCompressionProgress(null);
+      e.target.value = '';
+    }
+  };
+
+  const handleReviewImagesUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const fileList = e.target.files;
+    if (!fileList || fileList.length === 0) return;
+
+    setIsCompressingImage(true);
+    setImageCompressionProgress('রিভিউ স্ক্রিনশট অপ্টিমাইজ হচ্ছে...');
+
+    try {
+      const files = Array.from(fileList);
+      const compressedImages: string[] = [];
+
+      for (let i = 0; i < files.length; i++) {
+        const compressed = await compressImageFile(files[i], {
+          maxWidth: 800,
+          maxHeight: 800,
+          quality: 0.8,
+          format: 'image/jpeg'
+        });
+        compressedImages.push(compressed);
+      }
+
+      setEditingProduct((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          reviewImages: [...(prev.reviewImages || []), ...compressedImages]
+        };
+      });
+    } catch (err) {
+      console.error('Review image compression failed:', err);
+    } finally {
+      setIsCompressingImage(false);
+      setImageCompressionProgress(null);
+      e.target.value = '';
+    }
+  };
+
+  const handleAddOnlineImageUrl = () => {
+    if (!newOnlineUrl.trim() || !editingProduct) return;
+    const url = newOnlineUrl.trim();
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      alert('সঠিক ইমেজ URL দিন (https://...)');
+      return;
+    }
+
+    if (!editingProduct.thumbnail) {
+      setEditingProduct({ ...editingProduct, thumbnail: url });
+    } else {
+      setEditingProduct({
+        ...editingProduct,
+        gallery: [...(editingProduct.gallery || []), url]
+      });
+    }
+    setNewOnlineUrl('');
+  };
 
   const handleOpenAdd = () => {
     setEditingProduct({
@@ -457,129 +571,173 @@ export const AdminProducts: React.FC = () => {
               </div>
 
               {/* Product Images (Square Format) */}
-              <div className="space-y-2">
-                <label className="block text-[#CBD5E1] font-bold">
-                  প্রোডাক্ট ছবিসমূহ (১০৮০ × ১০৮০ স্কয়ার ফরম্যাট)
-                </label>
+              <div className="space-y-3 bg-[#0A101D] border border-[#1E293B] rounded-2xl p-4">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div>
+                    <label className="block text-[#CBD5E1] font-bold text-sm flex items-center gap-2">
+                      <ImageIcon className="w-4 h-4 text-blue-400" />
+                      <span>প্রোডাক্ট ছবিসমূহ (১০৮০ × ১০৮০ স্কয়ার ফরম্যাট)</span>
+                    </label>
+                    <p className="text-[11px] text-[#94A3B8] mt-0.5">
+                      ছবি স্বয়ংক্রিয়ভাবে অপ্টিমাইজ হয়ে যাবে, কোনো ল্যাগ বা হ্যাং হবে না
+                    </p>
+                  </div>
+
+                  {isCompressingImage && (
+                    <div className="flex items-center gap-2 bg-blue-950/80 border border-blue-500/50 text-blue-300 text-xs px-3 py-1.5 rounded-xl font-bold animate-pulse">
+                      <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-400" />
+                      <span>{imageCompressionProgress || 'ছবি দ্রুত প্রসেস হচ্ছে...'}</span>
+                    </div>
+                  )}
+                </div>
 
                 {/* Custom Upload Area */}
-                <div className="border-2 border-dashed border-[#1E293B] hover:border-[#2563EB] rounded-2xl p-4 text-center bg-[#050B18]/50 transition-colors">
-                  <label className="cursor-pointer flex flex-col items-center justify-center gap-2">
-                    <Upload className="w-6 h-6 text-[#2563EB]" />
-                    <span className="font-extrabold text-blue-400 hover:underline text-xs">
-                      ডিভাইস থেকে ছবি আপলোড করুন (Custom Image Upload)
+                <div className={`border-2 border-dashed rounded-2xl p-4 text-center transition-all ${
+                  isCompressingImage 
+                    ? 'border-blue-500/60 bg-blue-950/20' 
+                    : 'border-[#1E293B] hover:border-[#2563EB] bg-[#050B18]/60'
+                }`}>
+                  <label className="cursor-pointer flex flex-col items-center justify-center gap-2 select-none">
+                    {isCompressingImage ? (
+                      <Loader2 className="w-8 h-8 text-blue-400 animate-spin" />
+                    ) : (
+                      <UploadCloud className="w-8 h-8 text-blue-400 group-hover:scale-110 transition-transform" />
+                    )}
+                    <span className="font-extrabold text-blue-400 hover:underline text-sm">
+                      {isCompressingImage ? 'ছবি অপ্টিমাইজ করা হচ্ছে...' : 'ডিভাইস থেকে ছবি আপলোড করুন (Device Image Upload)'}
+                    </span>
+                    <span className="text-[11px] text-gray-400">
+                      JPG, PNG, WebP (একাধিক ছবি একসাথে নির্বাচন করতে পারেন)
                     </span>
                     <input
                       type="file"
                       accept="image/*"
                       multiple
+                      disabled={isCompressingImage}
                       className="hidden"
-                      onChange={(e) => {
-                        const fileList = e.target.files;
-                        if (!fileList) return;
-                        const files = Array.from(fileList) as File[];
-                        files.forEach((file: File) => {
-                          const reader = new FileReader();
-                          reader.onload = (evt) => {
-                            if (evt.target?.result) {
-                              const newImg = evt.target.result as string;
-                              setEditingProduct((prev) => {
-                                if (!prev) return prev;
-                                const existingThumbnail = prev.thumbnail || '';
-                                if (!existingThumbnail) {
-                                  return { ...prev, thumbnail: newImg };
-                                } else {
-                                  const gallery = prev.gallery || [];
-                                  return { ...prev, gallery: [...gallery, newImg] };
-                                }
-                              });
-                            }
-                          };
-                          reader.readAsDataURL(file);
-                        });
-                      }}
+                      onChange={handleImageFilesUpload}
                     />
                   </label>
                 </div>
 
-                {/* Thumbnail Previews */}
-                {editingProduct.thumbnail && (
-                  <div className="flex flex-wrap gap-2 pt-1">
-                    <div className="relative w-16 h-16 rounded-xl overflow-hidden border border-[#2563EB] group">
-                      <img
-                        src={editingProduct.thumbnail}
-                        alt="Thumbnail"
-                        className="w-full h-full object-cover"
-                        referrerPolicy="no-referrer"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const gallery = editingProduct.gallery || [];
-                          if (gallery.length > 0) {
-                            setEditingProduct({
-                              ...editingProduct,
-                              thumbnail: gallery[0],
-                              gallery: gallery.slice(1)
-                            });
-                          } else {
-                            setEditingProduct({ ...editingProduct, thumbnail: '' });
-                          }
-                        }}
-                        className="absolute top-1 right-1 bg-red-600 text-white rounded-full p-0.5 hover:bg-red-700 cursor-pointer"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    </div>
+                {/* Thumbnail Previews & Gallery Cards */}
+                {(editingProduct.thumbnail || (editingProduct.gallery && editingProduct.gallery.length > 0)) && (
+                  <div className="space-y-2 pt-1">
+                    <label className="block text-[11px] font-bold text-gray-300">
+                      বর্তমান প্রোডাক্ট ছবিসমূহ (গ্যালারি):
+                    </label>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-3">
+                      {/* Main Cover Image */}
+                      {editingProduct.thumbnail && (
+                        <div className="relative aspect-square rounded-xl overflow-hidden border-2 border-blue-500 bg-black/40 group shadow-md">
+                          <img
+                            src={editingProduct.thumbnail}
+                            alt="Cover Thumbnail"
+                            className="w-full h-full object-cover"
+                            referrerPolicy="no-referrer"
+                          />
+                          <div className="absolute top-1.5 left-1.5 bg-blue-600 text-white text-[9px] font-extrabold px-2 py-0.5 rounded-md shadow-sm">
+                            ★ মূল কভার
+                          </div>
+                          <button
+                            type="button"
+                            title="ছবিটি ডিলিট করুন"
+                            onClick={() => {
+                              const gallery = editingProduct.gallery || [];
+                              if (gallery.length > 0) {
+                                setEditingProduct({
+                                  ...editingProduct,
+                                  thumbnail: gallery[0],
+                                  gallery: gallery.slice(1)
+                                });
+                              } else {
+                                setEditingProduct({ ...editingProduct, thumbnail: '' });
+                              }
+                            }}
+                            className="absolute top-1.5 right-1.5 bg-red-600/90 hover:bg-red-600 text-white rounded-full p-1 transition-transform hover:scale-110 cursor-pointer shadow-sm"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      )}
 
-                    {(editingProduct.gallery || []).map((img, idx) => (
-                      <div key={idx} className="relative w-16 h-16 rounded-xl overflow-hidden border border-[#1E293B] group">
-                        <img
-                          src={img}
-                          alt={`Gallery ${idx}`}
-                          className="w-full h-full object-cover"
-                          referrerPolicy="no-referrer"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const newGallery = (editingProduct.gallery || []).filter((_, i) => i !== idx);
-                            setEditingProduct({ ...editingProduct, gallery: newGallery });
-                          }}
-                          className="absolute top-1 right-1 bg-red-600 text-white rounded-full p-0.5 hover:bg-red-700 cursor-pointer"
-                        >
-                          <X className="w-3 h-3" />
-                        </button>
-                      </div>
-                    ))}
+                      {/* Other Gallery Images */}
+                      {(editingProduct.gallery || []).map((img, idx) => (
+                        <div key={idx} className="relative aspect-square rounded-xl overflow-hidden border border-[#2B3042] bg-black/40 group hover:border-gray-400 transition-all shadow-sm">
+                          <img
+                            src={img}
+                            alt={`Gallery ${idx}`}
+                            className="w-full h-full object-cover"
+                            referrerPolicy="no-referrer"
+                          />
+                          
+                          {/* Hover Overlay with actions */}
+                          <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-between p-1.5">
+                            <button
+                              type="button"
+                              title="মূল কভার হিসেবে সেট করুন"
+                              onClick={() => {
+                                const prevCover = editingProduct.thumbnail || '';
+                                const newGallery = (editingProduct.gallery || []).filter((_, i) => i !== idx);
+                                if (prevCover) newGallery.push(prevCover);
+                                setEditingProduct({
+                                  ...editingProduct,
+                                  thumbnail: img,
+                                  gallery: newGallery
+                                });
+                              }}
+                              className="text-[10px] bg-emerald-600 text-white font-bold px-1.5 py-0.5 rounded shadow hover:bg-emerald-500 self-start"
+                            >
+                              ★ কভার বানান
+                            </button>
+                            <button
+                              type="button"
+                              title="ছবিটি ডিলিট করুন"
+                              onClick={() => {
+                                const newGallery = (editingProduct.gallery || []).filter((_, i) => i !== idx);
+                                setEditingProduct({ ...editingProduct, gallery: newGallery });
+                              }}
+                              className="bg-red-600 text-white rounded-full p-1 hover:bg-red-700 self-end transition-transform hover:scale-110"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
 
-                {/* Online Image URLs */}
-                <div>
-                  <label className="block text-[11px] text-[#94A3B8] font-bold mb-1">
-                    অথবা অনলাইন ইমেজ URL লিখুন (প্রতি লাইনে একটি করে):
+                {/* Safe Online Image URL Adder */}
+                <div className="pt-2 border-t border-[#1E293B]">
+                  <label className="block text-[11px] text-[#94A3B8] font-bold mb-1.5">
+                    অথবা অনলাইন ইমেজ লিঙ্ক (URL) যোগ করুন:
                   </label>
-                  <textarea
-                    rows={2}
-                    value={
-                      [editingProduct.thumbnail, ...(editingProduct.gallery || [])]
-                        .filter(Boolean)
-                        .join('\n')
-                    }
-                    onChange={(e) => {
-                      const lines = e.target.value.split('\n').map((l) => l.trim()).filter(Boolean);
-                      setEditingProduct({
-                        ...editingProduct,
-                        thumbnail: lines[0] || '',
-                        gallery: lines.slice(1)
-                      });
-                    }}
-                    placeholder="https://images.unsplash.com/photo-..."
-                    className="w-full bg-[#050B18] border border-[#1E293B] rounded-xl p-3 text-white font-mono text-[11px] focus:outline-none focus:border-[#2563EB]"
-                  />
-                  <p className="text-[11px] text-[#64748B] mt-0.5">
-                    প্রোডাক্ট পেজে এই ছবিগুলো ১০৮০×১০৮০ স্কয়ার গ্যালারিতে প্রদর্শিত হবে
+                  <div className="flex gap-2">
+                    <input
+                      type="url"
+                      value={newOnlineUrl}
+                      onChange={(e) => setNewOnlineUrl(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleAddOnlineImageUrl();
+                        }
+                      }}
+                      placeholder="https://images.unsplash.com/photo-..."
+                      className="flex-1 bg-[#050B18] border border-[#1E293B] rounded-xl px-3 py-2 text-white font-mono text-xs focus:outline-none focus:border-[#2563EB]"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAddOnlineImageUrl}
+                      className="bg-[#1E293B] hover:bg-[#2563EB] text-white font-bold text-xs px-3.5 py-2 rounded-xl transition-colors shrink-0 flex items-center gap-1.5"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>URL যোগ করুন</span>
+                    </button>
+                  </div>
+                  <p className="text-[10px] text-[#64748B] mt-1">
+                    টিপস: যেকোনো ওয়েব ইমেজের ডিরেক্ট লিংক (যেমন: Unsplash, Imgur, বা CDN) পেস্ট করে যোগ করতে পারেন
                   </p>
                 </div>
               </div>
@@ -808,47 +966,33 @@ export const AdminProducts: React.FC = () => {
                   <label className="block text-xs text-[#CBD5E1] font-bold mb-1">
                     অথবা কাস্টমার মেসেজ/রিভিউ এর স্ক্রিনশট ছবি আপলোড করুন:
                   </label>
-                  <div className="border border-dashed border-[#1E293B] rounded-xl p-3 text-center bg-[#050B18]/50">
-                    <label className="cursor-pointer flex items-center justify-center gap-2 text-xs text-emerald-400 font-bold hover:underline">
+                  <div className="border border-dashed border-[#1E293B] hover:border-emerald-500/60 rounded-xl p-3 text-center bg-[#050B18]/50 transition-colors">
+                    <label className="cursor-pointer flex items-center justify-center gap-2 text-xs text-emerald-400 font-bold hover:underline select-none">
                       <Upload className="w-4 h-4" />
-                      <span>রিভিউ স্ক্রিনশট আপলোড</span>
+                      <span>{isCompressingImage ? 'রিভিউ স্ক্রিনশট প্রসেস হচ্ছে...' : 'রিভিউ স্ক্রিনশট আপলোড করুন'}</span>
                       <input
                         type="file"
                         accept="image/*"
                         multiple
+                        disabled={isCompressingImage}
                         className="hidden"
-                        onChange={(e) => {
-                          const fileList = e.target.files;
-                          if (!fileList) return;
-                          Array.from(fileList).forEach((file) => {
-                            const reader = new FileReader();
-                            reader.onload = (evt) => {
-                              if (evt.target?.result) {
-                                const newImg = evt.target.result as string;
-                                setEditingProduct((prev) => {
-                                  if (!prev) return prev;
-                                  return { ...prev, reviewImages: [...(prev.reviewImages || []), newImg] };
-                                });
-                              }
-                            };
-                            reader.readAsDataURL(file);
-                          });
-                        }}
+                        onChange={handleReviewImagesUpload}
                       />
                     </label>
                   </div>
                   {(editingProduct.reviewImages || []).length > 0 && (
                     <div className="flex flex-wrap gap-2 pt-2">
                       {(editingProduct.reviewImages || []).map((img, idx) => (
-                        <div key={idx} className="relative w-16 h-16 rounded-xl overflow-hidden border border-emerald-500/40 bg-black">
+                        <div key={idx} className="relative w-16 h-16 rounded-xl overflow-hidden border border-emerald-500/40 bg-black group">
                           <img src={img} alt={`Review ${idx}`} className="w-full h-full object-cover" />
                           <button
                             type="button"
+                            title="মুছে ফেলুন"
                             onClick={() => {
                               const newImgs = (editingProduct.reviewImages || []).filter((_, i) => i !== idx);
                               setEditingProduct({ ...editingProduct, reviewImages: newImgs });
                             }}
-                            className="absolute top-0.5 right-0.5 bg-red-600 text-white rounded-full p-0.5"
+                            className="absolute top-0.5 right-0.5 bg-red-600 text-white rounded-full p-0.5 hover:bg-red-700 cursor-pointer"
                           >
                             <X className="w-3 h-3" />
                           </button>
