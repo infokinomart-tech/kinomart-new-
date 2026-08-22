@@ -23,10 +23,10 @@ export const BundleSelector: React.FC<BundleSelectorProps> = ({
   const defaultTitle = 'একাধিক ফ্লেভার কিনলে পাবেন বিশেষ ছাড়';
 
   return (
-    <div className="my-3.5 rounded-2xl overflow-hidden border-2 border-[#15803D] bg-white shadow-md">
-      {/* Top Rich Green Banner */}
-      <div className="bg-gradient-to-r from-[#15803D] via-[#166534] to-[#15803D] text-white py-3 px-4 text-center select-none shadow-inner">
-        <p className="text-[11px] sm:text-xs font-semibold tracking-wide text-emerald-100 flex items-center justify-center gap-1.5 opacity-95">
+    <div className="my-3.5 rounded-2xl sm:rounded-3xl overflow-hidden border-2 border-[#5E6A45] bg-white shadow-md">
+      {/* Top Website-Matched Signature Green Banner */}
+      <div className="bg-gradient-to-r from-[#5E6A45] via-[#4B5637] to-[#5E6A45] text-white py-3 px-4 text-center select-none shadow-inner">
+        <p className="text-[11px] sm:text-xs font-semibold tracking-wide text-[#E7EFE0] flex items-center justify-center gap-1.5 opacity-95">
           <span>🎉</span>
           <span>{bannerSubtitle || defaultSub}</span>
         </p>
@@ -36,7 +36,7 @@ export const BundleSelector: React.FC<BundleSelectorProps> = ({
       </div>
 
       {/* List of Bundle Tiers */}
-      <div className="divide-y divide-gray-100">
+      <div className="divide-y divide-[#E8E3D9]">
         {bundles.map((bundle, idx) => {
           const isSelected = selectedBundleId === bundle.id;
 
@@ -61,8 +61,8 @@ export const BundleSelector: React.FC<BundleSelectorProps> = ({
               onClick={() => onSelectBundle(bundle)}
               className={`flex items-center justify-between gap-3 px-3 sm:px-4 py-3 cursor-pointer transition-all select-none ${
                 isSelected
-                  ? 'bg-[#EBF7EE] border-l-4 border-l-[#15803D]'
-                  : 'bg-white hover:bg-gray-50/80'
+                  ? 'bg-[#F2F7EC] border-l-4 border-l-[#5E6A45]'
+                  : 'bg-white hover:bg-[#FAF8F5]'
               }`}
             >
               {/* Left Column: Icon + Title & Tag + Subtitle */}
@@ -78,18 +78,18 @@ export const BundleSelector: React.FC<BundleSelectorProps> = ({
                   ) : isGoldDot ? (
                     <span className="w-4.5 h-4.5 rounded-full bg-gradient-to-br from-[#F59E0B] via-[#D97706] to-[#B45309] shadow-sm border border-amber-300 block" />
                   ) : (
-                    <span className="w-4.5 h-4.5 rounded-full bg-gradient-to-br from-[#34D399] via-[#10B981] to-[#059669] shadow-sm border border-emerald-300 block" />
+                    <span className="w-4.5 h-4.5 rounded-full bg-gradient-to-br from-[#8FA36B] via-[#5E6A45] to-[#434D31] shadow-sm border border-[#A8BC85] block" />
                   )}
                 </div>
 
                 {/* Text info */}
                 <div className="min-w-0">
                   <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className={`font-extrabold text-xs sm:text-sm ${isSelected ? 'text-[#0F172A]' : 'text-gray-900'}`}>
+                    <span className={`font-extrabold text-xs sm:text-sm ${isSelected ? 'text-[#1F241E]' : 'text-gray-900'}`}>
                       {bundle.title}
                     </span>
                     {bundle.tagText && (
-                      <span className="text-[#15803D] text-[11px] sm:text-xs font-black">
+                      <span className="text-[#5E6A45] text-[11px] sm:text-xs font-black">
                         {bundle.tagText}
                       </span>
                     )}
@@ -105,12 +105,12 @@ export const BundleSelector: React.FC<BundleSelectorProps> = ({
 
               {/* Right Column: Price + Discount Badge */}
               <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-                <span className="font-black text-sm sm:text-base text-[#15803D] tracking-tight">
+                <span className="font-black text-sm sm:text-base text-[#5E6A45] tracking-tight">
                   ৳{bundle.price.toLocaleString('bn-BD')}
                 </span>
 
                 {discountText && (
-                  <span className="bg-rose-50 border border-rose-200 text-[#E11D48] text-[10px] sm:text-[11px] font-black px-1.5 sm:px-2 py-0.5 rounded-md whitespace-nowrap">
+                  <span className="bg-[#FFF1F2] border border-[#FECDD3] text-[#E11D48] text-[10px] sm:text-[11px] font-black px-1.5 sm:px-2 py-0.5 rounded-md whitespace-nowrap">
                     {discountText}
                   </span>
                 )}

@@ -669,18 +669,6 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
               </div>
             ) : (
               <>
-                {/* Bundle Package Deals Selection */}
-                <BundleSelector
-                  bundles={effectiveBundles}
-                  selectedBundleId={selectedBundleId}
-                  bannerTitle={product.bundleBannerTitle}
-                  bannerSubtitle={product.bundleBannerSubtitle}
-                  onSelectBundle={(b) => {
-                    setSelectedBundleId(b.id);
-                    setQuantity(b.quantity);
-                  }}
-                />
-
                 {/* Quantity Selector & Total Price matching demo image */}
                 <div className="space-y-1.5 pt-2 pb-1">
                   <label className="block text-xs sm:text-sm font-extrabold text-[#1F241E]">
@@ -763,6 +751,22 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
           </div>
         </div>
       </div>
+
+      {/* Bundle Package Deals Selection - Placed right above "প্রোডাক্টের বিস্তারিত তথ্য ও বিবরণ" */}
+      {effectiveBundles && effectiveBundles.length > 0 && !isOutOfStock && (
+        <div className="w-full">
+          <BundleSelector
+            bundles={effectiveBundles}
+            selectedBundleId={selectedBundleId}
+            bannerTitle={product.bundleBannerTitle}
+            bannerSubtitle={product.bundleBannerSubtitle}
+            onSelectBundle={(b) => {
+              setSelectedBundleId(b.id);
+              setQuantity(b.quantity);
+            }}
+          />
+        </div>
+      )}
 
       {/* Product Details Tabs Container */}
       {hasAnyDetails && (
