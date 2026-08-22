@@ -100,6 +100,7 @@ export const INITIAL_PRODUCTS: Product[] = [
       { key: 'চার্জিং সময়', value: '১.৫ ঘন্টা (Type-C High Speed)' },
       { key: 'ওয়াটারপ্রুফ', value: 'IPX5 Sweat-proof' }
     ],
+    bundleStyle: 'radio_cards',
     bundles: [
       {
         id: 'b-1',
@@ -245,6 +246,42 @@ export const INITIAL_PRODUCTS: Product[] = [
     thumbnail: 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=800&auto=format&fit=crop&q=80',
     gallery: ['https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=800&auto=format&fit=crop&q=80'],
     shortDescription: 'প্রাকৃতিক ভেষজ নির্যাস সমৃদ্ধ ইনহেলার, তাৎক্ষণিক রিফ্রেশমেন্ট ও স্বস্তি।',
+    bundleStyle: 'banner_table',
+    bundleBannerSubtitle: 'একসাথে বেশি কিনুন – বেশি সাশ্রয় করুন!',
+    bundleBannerTitle: 'একাধিক ফ্লেভার কিনলে পাবেন বিশেষ ছাড়',
+    bundles: [
+      {
+        id: 'b-inhaler-1',
+        title: '১টি পণ্য',
+        quantity: 1,
+        price: 390,
+        originalPrice: 650,
+        iconType: 'green_dot',
+        isPopular: false
+      },
+      {
+        id: 'b-inhaler-2',
+        title: '২টি পণ্য',
+        quantity: 2,
+        price: 690,
+        originalPrice: 1300,
+        badgeText: '১৮% ছাড়',
+        tagText: '(বেশি বিক্রিত)',
+        iconType: 'gold_dot',
+        isPopular: true
+      },
+      {
+        id: 'b-inhaler-3',
+        title: '৪টি পণ্য',
+        quantity: 4,
+        price: 1090,
+        originalPrice: 2600,
+        badgeText: '৩৫% ছাড়',
+        tagText: '(মেগা সেভার)',
+        iconType: 'fire',
+        isPopular: false
+      }
+    ],
     rating: 4.7,
     reviewsCount: 62,
     status: 'ACTIVE'

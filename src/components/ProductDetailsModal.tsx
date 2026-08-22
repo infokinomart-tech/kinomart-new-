@@ -26,7 +26,7 @@ import {
   X
 } from 'lucide-react';
 import { ProductCard } from './ProductCard';
-import { BundleSelector } from './BundleSelector';
+import { BundleSelector, RadioCardBundleSection, BannerTableOfferSection } from './BundleSelector';
 import { getEffectiveBundles } from '../lib/bundleUtils';
 import { trackViewItem, trackAddToCart } from '../lib/dataLayer';
 
@@ -669,6 +669,20 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
               </div>
             ) : (
               <>
+                {/* Radio Cards Bundle Selector (Image 1 style) if enabled or in both mode */}
+                {effectiveBundles && effectiveBundles.length > 0 && (product.bundleStyle === 'radio_cards' || product.bundleStyle === 'both' || !product.bundleStyle) && (
+                  <div className="pt-2">
+                    <RadioCardBundleSection
+                      bundles={effectiveBundles}
+                      selectedBundleId={selectedBundleId}
+                      onSelectBundle={(b) => {
+                        setSelectedBundleId(b.id);
+                        setQuantity(b.quantity);
+                      }}
+                    />
+                  </div>
+                )}
+
                 {/* Quantity Selector & Total Price matching demo image */}
                 <div className="space-y-1.5 pt-2 pb-1">
                   <label className="block text-xs sm:text-sm font-extrabold text-[#1F241E]">
@@ -752,10 +766,10 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
         </div>
       </div>
 
-      {/* Bundle Package Deals Selection - Placed right above "প্রোডাক্টের বিস্তারিত তথ্য ও বিবরণ" */}
-      {effectiveBundles && effectiveBundles.length > 0 && !isOutOfStock && (
+      {/* Dedicated Special Discount Offer Banner Table (Image 2) */}
+      {effectiveBundles && effectiveBundles.length > 0 && !isOutOfStock && (product.bundleStyle === 'banner_table' || product.bundleStyle === 'both' || product.showBannerTableSection) && (
         <div className="w-full">
-          <BundleSelector
+          <BannerTableOfferSection
             bundles={effectiveBundles}
             selectedBundleId={selectedBundleId}
             bannerTitle={product.bundleBannerTitle}

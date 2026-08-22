@@ -1,5 +1,55 @@
 import { Product, ProductBundle } from '../types';
 
+export function generateRadioCardBundles(price: number): ProductBundle[] {
+  const basePrice = Math.max(10, Math.round(price));
+  const orig1 = Math.round(basePrice * 1.315);
+
+  const price2 = Math.round(basePrice * 1.82);
+  const orig2 = Math.round(orig1 * 2);
+  const save2 = Math.max(50, Math.round(basePrice * 2 - price2));
+
+  const price4 = Math.round(basePrice * 3.538);
+  const orig4 = Math.round(orig1 * 4);
+  const save4 = Math.max(100, Math.round(basePrice * 4 - price4));
+
+  return [
+    {
+      id: `b-radio-1-${Date.now()}`,
+      title: '1 Pc',
+      quantity: 1,
+      price: basePrice,
+      originalPrice: orig1,
+      tagText: 'ক্যাশ অন ডেলিভারী',
+      badgeText: '',
+      isPopular: false
+    },
+    {
+      id: `b-radio-2-${Date.now()}`,
+      title: '2 Pc',
+      quantity: 2,
+      price: price2,
+      originalPrice: orig2,
+      tagText: 'ক্যাশ অন ডেলিভারী',
+      badgeText: `🔥 SAVE ${save2} TK`,
+      isPopular: true
+    },
+    {
+      id: `b-radio-3-${Date.now()}`,
+      title: '4 Pc',
+      quantity: 4,
+      price: price4,
+      originalPrice: orig4,
+      tagText: 'ক্যাশ অন ডেলিভারী',
+      badgeText: `🔥 SAVE ${save4} TK`,
+      isPopular: false
+    }
+  ];
+}
+
+export function generateBannerTableBundles(price: number): ProductBundle[] {
+  return getDefaultBundles(price);
+}
+
 export function generateDemoSixTiers(price: number): ProductBundle[] {
   const basePrice = Math.max(10, Math.round(price));
   const orig1 = Math.round(basePrice * 1.666);

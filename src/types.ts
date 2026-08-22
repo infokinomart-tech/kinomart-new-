@@ -44,8 +44,11 @@ export interface Product {
   longDescription?: string;
   specifications?: Specification[];
   bundles?: ProductBundle[];
+  bundleStyle?: 'radio_cards' | 'banner_table' | 'both';
+  showBannerTableSection?: boolean;
   bundleBannerTitle?: string;
   bundleBannerSubtitle?: string;
+  bannerTablePosition?: 'top' | 'above_details' | 'both';
   hasTimer?: boolean;
   timerTitle?: string;
   timerEndTime?: string;

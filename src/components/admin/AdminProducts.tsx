@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useStore } from '../../context/StoreContext';
 import { Product, Specification, ProductBundle, Review } from '../../types';
-import { getDefaultBundles, generateDemoSixTiers } from '../../lib/bundleUtils';
+import { getDefaultBundles, generateDemoSixTiers, generateRadioCardBundles } from '../../lib/bundleUtils';
+import { BundleSelector, RadioCardBundleSection, BannerTableOfferSection } from '../BundleSelector';
 import {
   Plus,
   Edit2,
@@ -100,11 +101,40 @@ export const AdminProducts: React.FC = () => {
   };
 
   // Bundle package handlers
+  const handleGenerateImage1Style = () => {
+    if (editingProduct) {
+      const price = editingProduct.discountPrice || editingProduct.price || 989;
+      const gen = generateRadioCardBundles(price);
+      setEditingProduct({
+        ...editingProduct,
+        bundleStyle: 'radio_cards',
+        bundles: gen
+      });
+    }
+  };
+
+  const handleGenerateImage2Style = () => {
+    if (editingProduct) {
+      const price = editingProduct.discountPrice || editingProduct.price || 850;
+      const gen = getDefaultBundles(price);
+      setEditingProduct({
+        ...editingProduct,
+        bundleStyle: 'banner_table',
+        bundles: gen,
+        bundleBannerSubtitle: editingProduct.bundleBannerSubtitle || 'একসাথে বেশি কিনুন – বেশি সাশ্রয় করুন!',
+        bundleBannerTitle: editingProduct.bundleBannerTitle || 'একাধিক পণ্য কিনলে পাবেন বিশেষ ছাড়'
+      });
+    }
+  };
+
   const handleGenerateDefaultBundles = () => {
     if (editingProduct) {
       const price = editingProduct.discountPrice || editingProduct.price || 1000;
       const gen = getDefaultBundles(price);
-      setEditingProduct({ ...editingProduct, bundles: gen });
+      setEditingProduct({
+        ...editingProduct,
+        bundles: gen
+      });
     }
   };
 
@@ -114,6 +144,7 @@ export const AdminProducts: React.FC = () => {
       const gen = generateDemoSixTiers(price);
       setEditingProduct({
         ...editingProduct,
+        bundleStyle: 'banner_table',
         bundles: gen,
         bundleBannerSubtitle: editingProduct.bundleBannerSubtitle || 'একসাথে বেশি কিনুন – বেশি সাশ্রয় করুন!',
         bundleBannerTitle: editingProduct.bundleBannerTitle || 'একাধিক ফ্লেভার কিনলে পাবেন বিশেষ ছাড়'
@@ -921,19 +952,27 @@ export const AdminProducts: React.FC = () => {
                   <div className="flex flex-wrap items-center gap-2">
                     <button
                       type="button"
-                      onClick={handleGenerateSixTiers}
-                      className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black px-3 py-2 rounded-xl flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
+                      onClick={handleGenerateImage1Style}
+                      className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-black px-3 py-2 rounded-xl flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
                     >
                       <Zap className="w-3.5 h-3.5" />
-                      <span>⚡ ১-৬টি প্যাকেজ ডিল (স্ক্রিনশট স্টাইল)</span>
+                      <span>⚡ ইমেজ ১ স্টাইল (1 Pc, 2 Pc, 4 Pc)</span>
                     </button>
                     <button
                       type="button"
-                      onClick={handleGenerateDefaultBundles}
-                      className="bg-[#334155] hover:bg-slate-600 text-white text-xs font-bold px-3 py-2 rounded-xl flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
+                      onClick={handleGenerateImage2Style}
+                      className="bg-[#5E6A45] hover:bg-[#4B5637] text-white text-xs font-bold px-3 py-2 rounded-xl flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
                     >
                       <Zap className="w-3.5 h-3.5" />
-                      <span>⚡ ৩টি বান্ডেল</span>
+                      <span>⚡ ইমেজ ২ স্টাইল (ব্যানার টেবিল)</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleGenerateSixTiers}
+                      className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-3 py-2 rounded-xl flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
+                    >
+                      <Zap className="w-3.5 h-3.5" />
+                      <span>⚡ ১-৬টি প্যাকেজ ডিল</span>
                     </button>
                     <button
                       type="button"
@@ -946,11 +985,94 @@ export const AdminProducts: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Banner Customization Fields (if bundles exist) */}
+                {/* Bundle Display Style Choice Selector & Standalone Banner Toggle */}
+                {editingProduct.bundles && editingProduct.bundles.length > 0 && (
+                  <div className="bg-[#050B18] border border-[#1E293B] rounded-xl p-3.5 space-y-3">
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                      <label className="block text-xs font-bold text-gray-300">
+                        লেআউট ডিসপ্লে স্টাইল নির্বাচন করুন:
+                      </label>
+                      <label className="flex items-center gap-2 bg-[#0B1220] border border-emerald-800/60 px-3 py-1.5 rounded-lg cursor-pointer text-emerald-300 text-xs font-bold">
+                        <input
+                          type="checkbox"
+                          checked={editingProduct.showBannerTableSection !== false}
+                          onChange={(e) => setEditingProduct({ ...editingProduct, showBannerTableSection: e.target.checked })}
+                          className="accent-emerald-500 rounded cursor-pointer"
+                        />
+                        <span>🌟 আলাদা বিশেষ ছাড় ব্যানার সেকশন প্রদর্শন করুন</span>
+                      </label>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                      <div
+                        onClick={() => setEditingProduct({ ...editingProduct, bundleStyle: 'radio_cards' })}
+                        className={`p-3 rounded-xl border cursor-pointer transition-all ${
+                          (editingProduct.bundleStyle || 'radio_cards') === 'radio_cards'
+                            ? 'border-indigo-500 bg-indigo-950/40 text-white shadow-sm'
+                            : 'border-[#1E293B] bg-[#0B1220] text-gray-400 hover:border-gray-600'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 font-bold text-xs">
+                          <span className="w-2.5 h-2.5 rounded-full bg-indigo-400" />
+                          <span>ইমেজ ১ স্টাইল (Radio Cards)</span>
+                        </div>
+                        <p className="text-[11px] text-gray-400 mt-1">
+                          1 Pc, 2 Pc, 4 Pc + ক্যাশ অন ডেলিভারী + 🔥 SAVE TK ব্যাজ
+                        </p>
+                      </div>
+
+                      <div
+                        onClick={() => setEditingProduct({ ...editingProduct, bundleStyle: 'banner_table', showBannerTableSection: true })}
+                        className={`p-3 rounded-xl border cursor-pointer transition-all ${
+                          editingProduct.bundleStyle === 'banner_table'
+                            ? 'border-emerald-500 bg-emerald-950/40 text-white shadow-sm'
+                            : 'border-[#1E293B] bg-[#0B1220] text-gray-400 hover:border-gray-600'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 font-bold text-xs">
+                          <span className="w-2.5 h-2.5 rounded-full bg-[#5E6A45]" />
+                          <span>ইমেজ ২ স্টাইল (Banner Table)</span>
+                        </div>
+                        <p className="text-[11px] text-gray-400 mt-1">
+                          সবুজ অফার ব্যানার ও ডিল টেবিল তালিকা
+                        </p>
+                      </div>
+
+                      <div
+                        onClick={() => setEditingProduct({ ...editingProduct, bundleStyle: 'both', showBannerTableSection: true })}
+                        className={`p-3 rounded-xl border cursor-pointer transition-all ${
+                          editingProduct.bundleStyle === 'both'
+                            ? 'border-amber-500 bg-amber-950/40 text-white shadow-sm'
+                            : 'border-[#1E293B] bg-[#0B1220] text-gray-400 hover:border-gray-600'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 font-bold text-xs">
+                          <span className="w-2.5 h-2.5 rounded-full bg-amber-400" />
+                          <span>উভয় স্টাইল একসাথে (Both)</span>
+                        </div>
+                        <p className="text-[11px] text-gray-400 mt-1">
+                          রেডিও কার্ড ও সবুজ ব্যানার ডিল উভয়ই প্রদর্শিত হবে
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Dedicated Banner Customization Fields */}
                 {editingProduct.bundles && editingProduct.bundles.length > 0 && (
                   <div className="bg-[#050B18] border border-emerald-800/40 rounded-xl p-3.5 space-y-3">
-                    <div className="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
-                      <span>🎨 অফার ব্যানার কাস্টমাইজেশন (Green Header Banner)</span>
+                    <div className="flex items-center justify-between flex-wrap gap-2 text-xs font-bold text-emerald-400">
+                      <span className="flex items-center gap-1.5">
+                        <span>🎨 বিশেষ ছাড় অফার ব্যানার কাস্টমাইজেশন (Green Header Banner)</span>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={handleGenerateImage2Style}
+                        className="text-xs bg-emerald-700/60 hover:bg-emerald-600 text-white px-2.5 py-1 rounded-md transition-colors flex items-center gap-1"
+                      >
+                        <Zap className="w-3 h-3" />
+                        <span>১-ক্লিকে ডেমো ব্যানার টেক্সট ও ছাড় লোড করুন</span>
+                      </button>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                       <div>
@@ -973,7 +1095,7 @@ export const AdminProducts: React.FC = () => {
                           type="text"
                           value={editingProduct.bundleBannerTitle || ''}
                           onChange={(e) => setEditingProduct({ ...editingProduct, bundleBannerTitle: e.target.value })}
-                          placeholder="একাধিক ফ্লেভার কিনলে পাবেন বিশেষ ছাড়"
+                          placeholder="একাধিক পণ্য কিনলে পাবেন বিশেষ ছাড়"
                           className="w-full bg-[#0B1220] border border-[#1E293B] rounded-lg p-2 text-white focus:border-emerald-500"
                         />
                       </div>
@@ -996,19 +1118,27 @@ export const AdminProducts: React.FC = () => {
                     <div className="pt-2 flex items-center justify-center flex-wrap gap-2.5">
                       <button
                         type="button"
-                        onClick={handleGenerateSixTiers}
-                        className="bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs px-4 py-2.5 rounded-xl transition-all cursor-pointer shadow-md flex items-center gap-1.5"
+                        onClick={handleGenerateImage1Style}
+                        className="bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-xs px-4 py-2.5 rounded-xl transition-all cursor-pointer shadow-md flex items-center gap-1.5"
                       >
                         <Zap className="w-4 h-4" />
-                        <span>১-ক্লিকে ১ থেকে ৬টি প্যাকেজ তৈরি করুন (স্ক্রিনশট স্টাইল)</span>
+                        <span>১-ক্লিকে ইমেজ ১ স্টাইল তৈরি করুন (1 Pc, 2 Pc, 4 Pc)</span>
                       </button>
                       <button
                         type="button"
-                        onClick={handleGenerateDefaultBundles}
-                        className="bg-slate-700 hover:bg-slate-600 text-white font-bold text-xs px-3.5 py-2.5 rounded-xl transition-all cursor-pointer shadow-md flex items-center gap-1.5"
+                        onClick={handleGenerateImage2Style}
+                        className="bg-[#5E6A45] hover:bg-[#4B5637] text-white font-bold text-xs px-3.5 py-2.5 rounded-xl transition-all cursor-pointer shadow-md flex items-center gap-1.5"
                       >
                         <Zap className="w-3.5 h-3.5" />
-                        <span>৩টি স্ট্যান্ডার্ড বান্ডেল</span>
+                        <span>ইমেজ ২ স্টাইল (সবুজ ব্যানার)</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleGenerateSixTiers}
+                        className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-3.5 py-2.5 rounded-xl transition-all cursor-pointer shadow-md flex items-center gap-1.5"
+                      >
+                        <Zap className="w-3.5 h-3.5" />
+                        <span>১-৬টি ফুল প্যাকেজ</span>
                       </button>
                       <button
                         type="button"
@@ -1074,7 +1204,7 @@ export const AdminProducts: React.FC = () => {
                               type="text"
                               value={bundle.title}
                               onChange={(e) => handleUpdateBundleRow(idx, 'title', e.target.value)}
-                              placeholder="১টি পণ্য / ২টির বান্ডেল"
+                              placeholder="1 Pc / ২টি পণ্য"
                               className="w-full bg-[#0B1220] border border-[#1E293B] rounded-lg p-2 text-white focus:border-[#2563EB]"
                             />
                           </div>
@@ -1098,7 +1228,7 @@ export const AdminProducts: React.FC = () => {
                               type="number"
                               value={bundle.price}
                               onChange={(e) => handleUpdateBundleRow(idx, 'price', Number(e.target.value))}
-                              placeholder="390"
+                              placeholder="989"
                               className="w-full bg-[#0B1220] border border-[#1E293B] rounded-lg p-2 text-emerald-300 font-bold focus:border-[#2563EB]"
                             />
                           </div>
@@ -1110,7 +1240,7 @@ export const AdminProducts: React.FC = () => {
                               type="number"
                               value={bundle.originalPrice || ''}
                               onChange={(e) => handleUpdateBundleRow(idx, 'originalPrice', Number(e.target.value))}
-                              placeholder="650"
+                              placeholder="1300"
                               className="w-full bg-[#0B1220] border border-[#1E293B] rounded-lg p-2 text-gray-300 focus:border-[#2563EB]"
                             />
                           </div>
@@ -1122,7 +1252,7 @@ export const AdminProducts: React.FC = () => {
                               type="text"
                               value={bundle.badgeText || ''}
                               onChange={(e) => handleUpdateBundleRow(idx, 'badgeText', e.target.value)}
-                              placeholder="18% ছাড়"
+                              placeholder="🔥 SAVE 179 TK / 18% ছাড়"
                               className="w-full bg-[#0B1220] border border-[#1E293B] rounded-lg p-2 text-red-300 focus:border-[#2563EB]"
                             />
                           </div>
@@ -1134,7 +1264,7 @@ export const AdminProducts: React.FC = () => {
                               type="text"
                               value={bundle.tagText || ''}
                               onChange={(e) => handleUpdateBundleRow(idx, 'tagText', e.target.value)}
-                              placeholder="(সেরা ডিল!)"
+                              placeholder="ক্যাশ অন ডেলিভারী / (বেশি বিক্রিত)"
                               className="w-full bg-[#0B1220] border border-[#1E293B] rounded-lg p-2 text-emerald-300 focus:border-[#2563EB]"
                             />
                           </div>
@@ -1156,6 +1286,26 @@ export const AdminProducts: React.FC = () => {
                         </div>
                       </div>
                     ))}
+
+                    {/* Live Preview Box */}
+                    <div className="bg-[#FAF8F5] border-2 border-dashed border-[#D5DCBF] rounded-2xl p-4 mt-4">
+                      <div className="flex items-center justify-between text-xs font-bold text-gray-600 mb-2 border-b border-gray-200 pb-2">
+                        <span className="flex items-center gap-1.5 text-[#5E6A45]">
+                          <span>👁️ লাইভ প্রিভিউ (গ্রাহক যেভাবে দেখবে)</span>
+                        </span>
+                        <span className="text-[11px] bg-white px-2 py-0.5 rounded border border-gray-200 text-gray-500">
+                          স্টাইল: {editingProduct.bundleStyle || 'radio_cards'}
+                        </span>
+                      </div>
+                      <BundleSelector
+                        bundles={editingProduct.bundles}
+                        selectedBundleId={editingProduct.bundles.find(b => b.isPopular)?.id || editingProduct.bundles[0]?.id || ''}
+                        onSelectBundle={() => {}}
+                        styleMode={editingProduct.bundleStyle || 'radio_cards'}
+                        bannerTitle={editingProduct.bundleBannerTitle}
+                        bannerSubtitle={editingProduct.bundleBannerSubtitle}
+                      />
+                    </div>
                   </div>
                 )}
               </div>

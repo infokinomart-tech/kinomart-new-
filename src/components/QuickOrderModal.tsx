@@ -218,6 +218,7 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({ product, onClo
           <BundleSelector
             bundles={effectiveBundles}
             selectedBundleId={selectedBundleId}
+            styleMode={product.bundleStyle || 'radio_cards'}
             bannerTitle={product.bundleBannerTitle}
             bannerSubtitle={product.bundleBannerSubtitle}
             onSelectBundle={(b) => {
