@@ -3,15 +3,22 @@ import { Product } from '../types';
 import { useStore } from '../context/StoreContext';
 import { Star, Zap, BellRing } from 'lucide-react';
 import { trackAddToCart } from '../lib/dataLayer';
+import { getOptimizedImageUrl } from '../lib/imageUtils';
 
 interface ProductCardProps {
   product: Product;
+  index?: number;
+  priority?: boolean;
 }
 
-export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
+export const ProductCard: React.FC<ProductCardProps> = React.memo(({ product, index = 0, priority = false }) => {
   const { setSelectedProduct, setQuickOrderProduct, setIsQuickOrderOpen, setActiveClientPage } = useStore();
 
   const isOutOfStock = product.stock <= 0 || product.status === 'INACTIVE';
+  const isHighPriority = priority || index < 4;
+
+  const rawImageUrl = product.thumbnail || product.gallery?.[0] || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500';
+  const optimizedSrc = getOptimizedImageUrl(rawImageUrl, { width: 440, quality: 82 });
 
   const handleCardClick = () => {
     setSelectedProduct(product);
@@ -45,6 +52,16 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
     }
   };
 
+  const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
+    const target = e.currentTarget;
+    // If the optimized render URL failed (e.g. Supabase Free tier without image transformation), revert to original raw URL
+    if (target.src.includes('/render/image/public/')) {
+      target.src = rawImageUrl;
+    } else {
+      target.src = 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500';
+    }
+  };
+
   return (
     <div
       onClick={handleCardClick}
@@ -52,15 +69,14 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
     >
       {/* Image Area */}
       <div>
-        <div className="relative w-full aspect-square bg-white rounded-xl overflow-hidden flex items-center justify-center mb-3 border border-[#E8E3D9]">
+        <div className="relative w-full aspect-square bg-[#EFECE6] rounded-xl overflow-hidden flex items-center justify-center mb-3 border border-[#E8E3D9]">
           <img
-            src={product.thumbnail || product.gallery?.[0] || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500'}
+            src={optimizedSrc}
             alt={product.name || 'প্রোডাক্ট'}
-            loading="lazy"
+            loading={isHighPriority ? 'eager' : 'lazy'}
             decoding="async"
-            onError={(e) => {
-              (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500';
-            }}
+            fetchPriority={isHighPriority ? 'high' : 'auto'}
+            onError={handleImageError}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
             referrerPolicy="no-referrer"
           />
@@ -168,4 +184,5 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
       </div>
     </div>
   );
-};
+});
+

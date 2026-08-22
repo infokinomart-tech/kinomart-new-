@@ -1,25 +1,34 @@
-import React, { useState } from 'react';
+import React, { useState, Suspense, lazy } from 'react';
 import { StoreProvider, useStore } from './context/StoreContext';
 import { Header } from './components/Header';
 import { HeroSlider } from './components/HeroSlider';
 import { ProductCard } from './components/ProductCard';
-import { ProductDetailsModal } from './components/ProductDetailsModal';
-import { QuickOrderModal } from './components/QuickOrderModal';
-import { OrderSuccessView } from './components/OrderSuccessView';
-import { OrderTrackView } from './components/OrderTrackView';
-import { ContactView } from './components/ContactView';
-import { AboutView } from './components/AboutView';
-import { CustomerProfileView } from './components/CustomerProfileView';
-import { CustomerLoginModal } from './components/CustomerLoginModal';
 import { PromoBanner } from './components/PromoBanner';
 import { BenefitsGrid } from './components/BenefitsGrid';
 import { FloatingContacts } from './components/FloatingContacts';
 import { Footer } from './components/Footer';
-import { AdminLayout } from './components/admin/AdminLayout';
-import { AdminLoginModal } from './components/admin/AdminLoginModal';
 import { trackPageView } from './lib/dataLayer';
 import { getProductSlug, findProductBySlugOrId } from './lib/slugUtils';
 import { Filter, ShoppingBag, Phone, Mail, MapPin, Sparkles, Flame, ArrowRight } from 'lucide-react';
+
+// Lazy-loaded routes & heavy admin / modal components for instant initial visitor render
+const ProductDetailsModal = lazy(() => import('./components/ProductDetailsModal').then(m => ({ default: m.ProductDetailsModal })));
+const QuickOrderModal = lazy(() => import('./components/QuickOrderModal').then(m => ({ default: m.QuickOrderModal })));
+const OrderSuccessView = lazy(() => import('./components/OrderSuccessView').then(m => ({ default: m.OrderSuccessView })));
+const OrderTrackView = lazy(() => import('./components/OrderTrackView').then(m => ({ default: m.OrderTrackView })));
+const ContactView = lazy(() => import('./components/ContactView').then(m => ({ default: m.ContactView })));
+const AboutView = lazy(() => import('./components/AboutView').then(m => ({ default: m.AboutView })));
+const CustomerProfileView = lazy(() => import('./components/CustomerProfileView').then(m => ({ default: m.CustomerProfileView })));
+const CustomerLoginModal = lazy(() => import('./components/CustomerLoginModal').then(m => ({ default: m.CustomerLoginModal })));
+const AdminLayout = lazy(() => import('./components/admin/AdminLayout').then(m => ({ default: m.AdminLayout })));
+const AdminLoginModal = lazy(() => import('./components/admin/AdminLoginModal').then(m => ({ default: m.AdminLoginModal })));
+
+const ViewLoadingSpinner = () => (
+  <div className="max-w-7xl mx-auto px-4 py-16 text-center">
+    <div className="animate-spin w-8 h-8 border-3 border-[#5E7A3B] border-t-transparent rounded-full mx-auto mb-2.5" />
+    <p className="text-xs text-gray-500 font-bold">তথ্য লোড হচ্ছে...</p>
+  </div>
+);
 
 const MainAppContent: React.FC = () => {
   const {
@@ -207,19 +216,25 @@ const MainAppContent: React.FC = () => {
   // If in Admin Mode
   if (viewMode === 'admin') {
     if (isAdminAuthenticated) {
-      return <AdminLayout />;
+      return (
+        <Suspense fallback={<ViewLoadingSpinner />}>
+          <AdminLayout />
+        </Suspense>
+      );
     }
     return (
       <div className="min-h-screen bg-[#070C18] text-white flex flex-col items-center justify-center p-4">
-        <AdminLoginModal
-          onClose={() => {
-            setIsAdminModalOpen(false);
-            setViewMode('client');
-            if (window.location.pathname.includes('/admin')) {
-              window.history.pushState({}, '', '/');
-            }
-          }}
-        />
+        <Suspense fallback={<ViewLoadingSpinner />}>
+          <AdminLoginModal
+            onClose={() => {
+              setIsAdminModalOpen(false);
+              setViewMode('client');
+              if (window.location.pathname.includes('/admin')) {
+                window.history.pushState({}, '', '/');
+              }
+            }}
+          />
+        </Suspense>
       </div>
     );
   }
@@ -365,10 +380,12 @@ const MainAppContent: React.FC = () => {
         {/* PRODUCT DETAIL PAGE */}
         {activeClientPage === 'product-detail' && (
           selectedProduct ? (
-            <ProductDetailsModal
-              key={selectedProduct.id}
-              product={selectedProduct}
-            />
+            <Suspense fallback={<ViewLoadingSpinner />}>
+              <ProductDetailsModal
+                key={selectedProduct.id}
+                product={selectedProduct}
+              />
+            </Suspense>
           ) : isDataLoading ? (
             <div className="max-w-7xl mx-auto px-4 py-16 text-center">
               <div className="animate-spin w-8 h-8 border-4 border-[#5E7A3B] border-t-transparent rounded-full mx-auto mb-3" />
@@ -517,19 +534,39 @@ const MainAppContent: React.FC = () => {
         )}
 
         {/* ORDER SUCCESS PAGE */}
-        {activeClientPage === 'order-success' && <OrderSuccessView />}
+        {activeClientPage === 'order-success' && (
+          <Suspense fallback={<ViewLoadingSpinner />}>
+            <OrderSuccessView />
+          </Suspense>
+        )}
 
         {/* ORDER TRACK PAGE */}
-        {activeClientPage === 'order-track' && <OrderTrackView />}
+        {activeClientPage === 'order-track' && (
+          <Suspense fallback={<ViewLoadingSpinner />}>
+            <OrderTrackView />
+          </Suspense>
+        )}
 
         {/* CUSTOMER PROFILE PAGE */}
-        {activeClientPage === 'customer-profile' && <CustomerProfileView />}
+        {activeClientPage === 'customer-profile' && (
+          <Suspense fallback={<ViewLoadingSpinner />}>
+            <CustomerProfileView />
+          </Suspense>
+        )}
 
         {/* ABOUT US PAGE */}
-        {activeClientPage === 'about' && <AboutView />}
+        {activeClientPage === 'about' && (
+          <Suspense fallback={<ViewLoadingSpinner />}>
+            <AboutView />
+          </Suspense>
+        )}
 
         {/* CONTACT US PAGE */}
-        {activeClientPage === 'contact' && <ContactView />}
+        {activeClientPage === 'contact' && (
+          <Suspense fallback={<ViewLoadingSpinner />}>
+            <ContactView />
+          </Suspense>
+        )}
       </main>
 
       {/* Main Footer */}
@@ -540,24 +577,30 @@ const MainAppContent: React.FC = () => {
 
       {/* Customer Login Modal */}
       {isCustomerLoginModalOpen && (
-        <CustomerLoginModal onClose={() => setIsCustomerLoginModalOpen(false)} />
+        <Suspense fallback={null}>
+          <CustomerLoginModal onClose={() => setIsCustomerLoginModalOpen(false)} />
+        </Suspense>
       )}
 
       {/* Quick Order Modal */}
       {quickOrderProduct && (
-        <QuickOrderModal
-          product={quickOrderProduct}
-          onClose={() => setQuickOrderProduct(null)}
-        />
+        <Suspense fallback={null}>
+          <QuickOrderModal
+            product={quickOrderProduct}
+            onClose={() => setQuickOrderProduct(null)}
+          />
+        </Suspense>
       )}
 
       {/* Admin Login Modal */}
       {isAdminModalOpen && (
-        <AdminLoginModal
-          onClose={() => {
-            setIsAdminModalOpen(false);
-          }}
-        />
+        <Suspense fallback={null}>
+          <AdminLoginModal
+            onClose={() => {
+              setIsAdminModalOpen(false);
+            }}
+          />
+        </Suspense>
       )}
     </div>
   );

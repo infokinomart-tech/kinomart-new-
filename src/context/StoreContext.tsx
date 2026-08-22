@@ -424,9 +424,11 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   };
 
-  // Supabase Data Refresh Function
-  // Supabase Data Refresh Function (Single Source of Truth)
-  const refreshSupabaseData = async () => {
+  // Supabase Data Refresh Function (Optimized Tiered Strategy)
+  const isFetchingRef = React.useRef(false);
+  const lastFetchTimeRef = React.useRef(0);
+
+  const refreshSupabaseData = async (options?: { full?: boolean; force?: boolean }) => {
     const supabase = getSupabaseClient();
     if (!supabase) {
       setIsDataLoading(false);
@@ -434,18 +436,42 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       return;
     }
 
+    const now = Date.now();
+    // Prevent overlapping concurrent requests unless forced
+    if (isFetchingRef.current && !options?.force) {
+      return;
+    }
+    // Throttle duplicate requests within 1.5 seconds unless forced
+    if (!options?.force && now - lastFetchTimeRef.current < 1500) {
+      return;
+    }
+
+    isFetchingRef.current = true;
+    lastFetchTimeRef.current = now;
+
+    const shouldFetchFull = Boolean(options?.full || isAdminLoggedIn);
+
     try {
-      const [prodsRes, catsRes, stgRes, cpnRes, tmRes, ordsRes, profsRes] = await Promise.allSettled([
+      // Tier 1: Critical Customer-Facing Data (Products, Categories, Settings)
+      const criticalPromises = [
         supabase.from('products').select('*'),
         supabase.from('categories').select('*'),
-        supabase.from('settings').select('*'),
-        supabase.from('coupons').select('*'),
-        supabase.from('team').select('*'),
-        supabase.from('orders').select('*'),
-        supabase.from('customer_profiles').select('*')
-      ]);
+        supabase.from('settings').select('*')
+      ];
 
-      // 1. Products
+      // Tier 2: Deferred / Admin Data (Only fetch when in admin mode or explicitly requested)
+      const secondaryPromises = shouldFetchFull
+        ? [
+            supabase.from('coupons').select('*'),
+            supabase.from('team').select('*'),
+            supabase.from('orders').select('*'),
+            supabase.from('customer_profiles').select('*')
+          ]
+        : [];
+
+      const [prodsRes, catsRes, stgRes] = await Promise.allSettled(criticalPromises);
+
+      // 1. Products Processing
       if (prodsRes.status === 'fulfilled' && !prodsRes.value.error && Array.isArray(prodsRes.value.data)) {
         const prods = prodsRes.value.data;
         const fetchedProducts = prods.map(r => {
@@ -480,7 +506,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setProducts(fetchedProducts);
       }
 
-      // 2. Categories
+      // 2. Categories Processing
       if (catsRes.status === 'fulfilled' && !catsRes.value.error && Array.isArray(catsRes.value.data)) {
         const cats = catsRes.value.data;
         const fetchedCats = cats.map(r => {
@@ -516,7 +542,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setCategories(fetchedCats);
       }
 
-      // 3. Settings
+      // 3. Settings Processing
       if (stgRes.status === 'fulfilled' && !stgRes.value.error && stgRes.value.data && stgRes.value.data.length > 0) {
         const fetchedStg = safeParseJson(stgRes.value.data[0].data);
         if (fetchedStg && typeof fetchedStg === 'object' && Object.keys(fetchedStg).length > 0) {
@@ -524,107 +550,115 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         }
       }
 
-      // 4. Coupons
-      if (cpnRes.status === 'fulfilled' && !cpnRes.value.error && Array.isArray(cpnRes.value.data)) {
-        const cpn = cpnRes.value.data;
-        const fetchedCoupons = cpn.map(r => {
-          const dataObj = safeParseJson(r.data);
-          return {
-            ...dataObj,
-            id: String(r.id || dataObj.id),
-            code: String(dataObj.code || r.code || ''),
-            type: (dataObj.type || r.discount_type || 'FIXED') as 'PERCENTAGE' | 'FIXED',
-            value: Number(dataObj.value ?? r.discount_amount ?? 0),
-            minOrderAmount: dataObj.minOrderAmount,
-            isActive: Boolean(dataObj.isActive ?? true)
-          } as Coupon;
-        });
-        setCoupons(fetchedCoupons);
-      }
-
-      // 5. Team
-      if (tmRes.status === 'fulfilled' && !tmRes.value.error && Array.isArray(tmRes.value.data)) {
-        const tm = tmRes.value.data;
-        const fetchedTeam = tm.map(r => {
-          const dataObj = safeParseJson(r.data);
-          return {
-            ...dataObj,
-            id: String(r.id || dataObj.id),
-            name: String(dataObj.name || r.name || ''),
-            role: String(dataObj.role || r.role || ''),
-            image: dataObj.image || '',
-            phone: dataObj.phone || '',
-            email: dataObj.email || ''
-          } as TeamMember;
-        });
-        setTeam(fetchedTeam);
-      }
-
-      // 6. Orders
-      if (ordsRes.status === 'fulfilled' && !ordsRes.value.error && Array.isArray(ordsRes.value.data)) {
-        const ords = ordsRes.value.data;
-        const fetchedOrders = ords.map(r => {
-          const dataObj = safeParseJson(r.data);
-          return {
-            ...dataObj,
-            id: String(r.id || dataObj.id),
-            orderNumber: String(dataObj.orderNumber || r.order_number || r.orderNumber || r.id),
-            customerName: String(dataObj.customerName || r.customer_name || r.customerName || ''),
-            customerPhone: String(dataObj.customerPhone || r.customer_phone || r.customerPhone || ''),
-            shippingAddress: String(dataObj.shippingAddress || r.shipping_address || ''),
-            deliveryArea: dataObj.deliveryArea || 'Inside Dhaka',
-            deliveryFee: Number(dataObj.deliveryFee ?? 0),
-            paymentMethod: dataObj.paymentMethod || 'COD',
-            items: Array.isArray(dataObj.items) ? dataObj.items : [],
-            subtotal: Number(dataObj.subtotal ?? 0),
-            discount: Number(dataObj.discount ?? 0),
-            totalPrice: Number(dataObj.totalPrice ?? r.total_price ?? 0),
-            status: dataObj.status || r.status || 'Pending',
-            callStatus: dataObj.callStatus || r.call_status || 'Not Called',
-            createdAt: dataObj.createdAt || r.created_at || new Date().toISOString()
-          } as Order;
-        });
-
-        const parseTime = (ord: Order) => {
-          if (ord.id && ord.id.startsWith('ord-')) {
-            const num = Number(ord.id.replace('ord-', ''));
-            if (!isNaN(num) && num > 1000000) return num;
-          }
-          if (ord.createdAt) {
-            const parsed = Date.parse(ord.createdAt);
-            if (!isNaN(parsed)) return parsed;
-          }
-          return 0;
-        };
-        fetchedOrders.sort((a, b) => parseTime(b) - parseTime(a));
-        setOrders(fetchedOrders);
-      }
-
-      // 7. Customer Profiles
-      if (profsRes.status === 'fulfilled' && !profsRes.value.error && profsRes.value.data) {
-        const profs = profsRes.value.data;
-        setCustomerProfiles(prev => {
-          const map: Record<string, CustomerProfile> = { ...prev };
-          profs.forEach(p => {
-            const dataObj = safeParseJson(p.data);
-            const phone = String(p.phone || dataObj.phone || '');
-            if (phone) {
-              map[phone] = {
-                name: dataObj.name || p.name || prev[phone]?.name || '',
-                phone: phone,
-                address: dataObj.address || p.address || prev[phone]?.address || ''
-              };
-            }
-          });
-          return map;
-        });
-      }
-
+      // Immediate UI unblock after Critical Tier is ready
+      setIsDataLoading(false);
       setDataError(null);
+
+      // Process Tier 2 if requested
+      if (secondaryPromises.length > 0) {
+        const [cpnRes, tmRes, ordsRes, profsRes] = await Promise.allSettled(secondaryPromises);
+
+        // 4. Coupons
+        if (cpnRes && cpnRes.status === 'fulfilled' && !cpnRes.value.error && Array.isArray(cpnRes.value.data)) {
+          const cpn = cpnRes.value.data;
+          const fetchedCoupons = cpn.map(r => {
+            const dataObj = safeParseJson(r.data);
+            return {
+              ...dataObj,
+              id: String(r.id || dataObj.id),
+              code: String(dataObj.code || r.code || ''),
+              type: (dataObj.type || r.discount_type || 'FIXED') as 'PERCENTAGE' | 'FIXED',
+              value: Number(dataObj.value ?? r.discount_amount ?? 0),
+              minOrderAmount: dataObj.minOrderAmount,
+              isActive: Boolean(dataObj.isActive ?? true)
+            } as Coupon;
+          });
+          setCoupons(fetchedCoupons);
+        }
+
+        // 5. Team
+        if (tmRes && tmRes.status === 'fulfilled' && !tmRes.value.error && Array.isArray(tmRes.value.data)) {
+          const tm = tmRes.value.data;
+          const fetchedTeam = tm.map(r => {
+            const dataObj = safeParseJson(r.data);
+            return {
+              ...dataObj,
+              id: String(r.id || dataObj.id),
+              name: String(dataObj.name || r.name || ''),
+              role: String(dataObj.role || r.role || ''),
+              image: dataObj.image || '',
+              phone: dataObj.phone || '',
+              email: dataObj.email || ''
+            } as TeamMember;
+          });
+          setTeam(fetchedTeam);
+        }
+
+        // 6. Orders
+        if (ordsRes && ordsRes.status === 'fulfilled' && !ordsRes.value.error && Array.isArray(ordsRes.value.data)) {
+          const ords = ordsRes.value.data;
+          const fetchedOrders = ords.map(r => {
+            const dataObj = safeParseJson(r.data);
+            return {
+              ...dataObj,
+              id: String(r.id || dataObj.id),
+              orderNumber: String(dataObj.orderNumber || r.order_number || r.orderNumber || r.id),
+              customerName: String(dataObj.customerName || r.customer_name || r.customerName || ''),
+              customerPhone: String(dataObj.customerPhone || r.customer_phone || r.customerPhone || ''),
+              shippingAddress: String(dataObj.shippingAddress || r.shipping_address || ''),
+              deliveryArea: dataObj.deliveryArea || 'Inside Dhaka',
+              deliveryFee: Number(dataObj.deliveryFee ?? 0),
+              paymentMethod: dataObj.paymentMethod || 'COD',
+              items: Array.isArray(dataObj.items) ? dataObj.items : [],
+              subtotal: Number(dataObj.subtotal ?? 0),
+              discount: Number(dataObj.discount ?? 0),
+              totalPrice: Number(dataObj.totalPrice ?? r.total_price ?? 0),
+              status: dataObj.status || r.status || 'Pending',
+              callStatus: dataObj.callStatus || r.call_status || 'Not Called',
+              createdAt: dataObj.createdAt || r.created_at || new Date().toISOString()
+            } as Order;
+          });
+
+          const parseTime = (ord: Order) => {
+            if (ord.id && ord.id.startsWith('ord-')) {
+              const num = Number(ord.id.replace('ord-', ''));
+              if (!isNaN(num) && num > 1000000) return num;
+            }
+            if (ord.createdAt) {
+              const parsed = Date.parse(ord.createdAt);
+              if (!isNaN(parsed)) return parsed;
+            }
+            return 0;
+          };
+          fetchedOrders.sort((a, b) => parseTime(b) - parseTime(a));
+          setOrders(fetchedOrders);
+        }
+
+        // 7. Customer Profiles
+        if (profsRes && profsRes.status === 'fulfilled' && !profsRes.value.error && profsRes.value.data) {
+          const profs = profsRes.value.data;
+          setCustomerProfiles(prev => {
+            const map: Record<string, CustomerProfile> = { ...prev };
+            profs.forEach(p => {
+              const dataObj = safeParseJson(p.data);
+              const phone = String(p.phone || dataObj.phone || '');
+              if (phone) {
+                map[phone] = {
+                  name: dataObj.name || p.name || prev[phone]?.name || '',
+                  phone: phone,
+                  address: dataObj.address || p.address || prev[phone]?.address || ''
+                };
+              }
+            });
+            return map;
+          });
+        }
+      }
     } catch (e: any) {
       console.warn('Error refreshing Supabase data:', e);
       setDataError(e?.message || 'সুপাবেস ডাটাবেস থেকে তথ্য লোড করতে ত্রুটি ঘটেছে।');
     } finally {
+      isFetchingRef.current = false;
       setIsDataLoading(false);
     }
   };
@@ -638,68 +672,71 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // Initial Fetch & Real-time Auto-Sync across devices
   useEffect(() => {
-    refreshSupabaseData();
+    // Immediate Fast-Path Initial Load
+    refreshSupabaseData({ full: isAdminLoggedIn, force: true });
 
-    // Periodic polling every 5 seconds for multi-device synchronization
-    const interval = setInterval(() => {
-      refreshSupabaseData();
-    }, 5000);
+    // Multi-tab cross-synchronization listener
+    const handleStorageEvent = (e: StorageEvent) => {
+      if (e.key === 'kinomart_products' && e.newValue) {
+        try {
+          const updated = JSON.parse(e.newValue);
+          if (Array.isArray(updated)) setProducts(updated);
+        } catch {
+          // Ignore parse errors
+        }
+      }
+    };
+    window.addEventListener('storage', handleStorageEvent);
 
-    // Refetch when browser window regains focus
+    // Window focus refresh (only if stale > 30s)
     const handleFocus = () => {
-      refreshSupabaseData();
+      if (Date.now() - lastFetchTimeRef.current > 30000) {
+        refreshSupabaseData({ full: isAdminLoggedIn });
+      }
     };
     window.addEventListener('focus', handleFocus);
 
-    // Subscribe to Postgres Changes via Supabase Realtime
+    // Low-frequency gentle background fallback sync (every 45s)
+    const interval = setInterval(() => {
+      refreshSupabaseData({ full: isAdminLoggedIn });
+    }, 45000);
+
+    // Real-time Postgres Changes via Supabase Channel
     let channel: any;
     const client = getSupabaseClient();
     if (client) {
       try {
-        channel = client.channel('store-all-changes')
-          .on('postgres_changes', { event: '*', schema: 'public' }, () => {
-            refreshSupabaseData();
+        channel = client.channel('store-live-updates')
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, () => {
+            refreshSupabaseData({ full: false, force: true });
+          })
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'categories' }, () => {
+            refreshSupabaseData({ full: false, force: true });
+          })
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'settings' }, () => {
+            refreshSupabaseData({ full: false, force: true });
+          })
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => {
+            if (isAdminLoggedIn) {
+              refreshSupabaseData({ full: true, force: true });
+            }
           })
           .subscribe();
       } catch (err) {
-        console.warn('Realtime channel notice:', err);
+        console.warn('Realtime channel subscription error:', err);
       }
     }
 
     return () => {
       clearInterval(interval);
+      window.removeEventListener('storage', handleStorageEvent);
       window.removeEventListener('focus', handleFocus);
       const activeClient = getSupabaseClient();
       if (channel && activeClient) {
         activeClient.removeChannel(channel);
       }
     };
-  }, []);
-
-  // Sync state to LocalStorage safely
-  useEffect(() => {
-    safeSetStorage('kinomart_products', products);
-  }, [products]);
-
-  useEffect(() => {
-    safeSetStorage('kinomart_categories', categories);
-  }, [categories]);
-
-  useEffect(() => {
-    safeSetStorage('kinomart_orders', orders);
-  }, [orders]);
-
-  useEffect(() => {
-    safeSetStorage('kinomart_coupons', coupons);
-  }, [coupons]);
-
-  useEffect(() => {
-    safeSetStorage('kinomart_team', team);
-  }, [team]);
-
-  useEffect(() => {
-    safeSetStorage('kinomart_settings', settings);
-  }, [settings]);
+  }, [isAdminLoggedIn]);
 
   // Admin Auth
   const loginAdmin = (username: string, pass: string): boolean => {
@@ -908,7 +945,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         ];
 
         await smartUpsert('orders', primary, fallbacks);
-        await refreshSupabaseData();
+        await refreshSupabaseData({ full: true, force: true });
       })();
     }
   };
@@ -921,7 +958,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     });
     const ok = await smartDelete('orders', orderId);
     if (ok) {
-      await refreshSupabaseData();
+      await refreshSupabaseData({ full: true, force: true });
     }
   };
 
@@ -1001,7 +1038,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
       const ok = await smartUpsert('products', primary, fallbacks);
       if (ok) {
-        await refreshSupabaseData();
+        await refreshSupabaseData({ force: true });
       }
     })();
   };
@@ -1014,7 +1051,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     });
     const ok = await smartDelete('products', productId);
     if (ok) {
-      await refreshSupabaseData();
+      await refreshSupabaseData({ force: true });
     }
   };
 
