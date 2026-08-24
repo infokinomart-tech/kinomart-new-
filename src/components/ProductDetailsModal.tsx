@@ -1177,35 +1177,23 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
             {/* Real Product Gallery Posters / Photos */}
             {hasGallery && (
               <div className="space-y-4 border-t border-[#E8E3D9] pt-6">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <h3 className="font-black text-[#1F241E] text-base sm:text-lg flex items-center gap-2">
-                    <ImageIcon className="w-5 h-5 text-[#5E6A45]" />
-                    <span>প্রোডাক্টের বাস্তব ছবিসমূহ (গ্যালারি)</span>
-                  </h3>
-                  <span className="text-xs text-gray-500 font-medium bg-[#FAF8F5] border border-[#E8E3D9] px-2.5 py-1 rounded-full">
-                    ছবিতে ট্যাপ করে সম্পূর্ণ বড় আকারে দেখুন
-                  </span>
-                </div>
+                <h3 className="font-black text-[#1F241E] text-base sm:text-lg flex items-center gap-2">
+                  <ImageIcon className="w-5 h-5 text-[#5E6A45]" />
+                  <span>প্রোডাক্টের বাস্তব ছবিসমূহ (গ্যালারি)</span>
+                </h3>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 items-start">
                   {validGallery.map((img, idx) => (
                     <div
                       key={idx}
-                      onClick={() => setExpandedReviewImage(img)}
-                      className="w-full rounded-2xl overflow-hidden border border-[#E8E3D9] bg-[#FAF8F5] shadow-xs hover:shadow-lg transition-all group relative cursor-pointer"
+                      className="w-full rounded-2xl overflow-hidden border border-[#E8E3D9] bg-[#FAF8F5] shadow-xs"
                     >
                       <img
                         src={img}
                         alt={`Product Photo ${idx + 1}`}
-                        className="w-full h-auto object-contain block mx-auto group-hover:scale-[1.01] transition-transform duration-200"
+                        className="w-full h-auto object-contain block mx-auto"
                         referrerPolicy="no-referrer"
                       />
-                      <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                        <span className="bg-black/80 text-white px-3.5 py-2 rounded-full text-xs font-bold flex items-center gap-2 shadow-lg backdrop-blur-xs">
-                          <Maximize2 className="w-4 h-4 text-[#FFDC33]" />
-                          <span>সম্পূর্ণ ছবি দেখুন</span>
-                        </span>
-                      </div>
                     </div>
                   ))}
                 </div>
