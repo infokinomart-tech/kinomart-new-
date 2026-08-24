@@ -1177,23 +1177,35 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
             {/* Real Product Gallery Posters / Photos */}
             {hasGallery && (
               <div className="space-y-4 border-t border-[#E8E3D9] pt-6">
-                <h3 className="font-black text-[#1F241E] text-base sm:text-lg flex items-center gap-2">
-                  <ImageIcon className="w-5 h-5 text-[#5E6A45]" />
-                  <span>প্রোডাক্টের বাস্তব ছবিসমূহ (গ্যালারি)</span>
-                </h3>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h3 className="font-black text-[#1F241E] text-base sm:text-lg flex items-center gap-2">
+                    <ImageIcon className="w-5 h-5 text-[#5E6A45]" />
+                    <span>প্রোডাক্টের বাস্তব ছবিসমূহ (গ্যালারি)</span>
+                  </h3>
+                  <span className="text-xs text-gray-500 font-medium bg-[#FAF8F5] border border-[#E8E3D9] px-2.5 py-1 rounded-full">
+                    ছবিতে ট্যাপ করে সম্পূর্ণ বড় আকারে দেখুন
+                  </span>
+                </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 items-start">
                   {validGallery.map((img, idx) => (
                     <div
                       key={idx}
-                      className="aspect-square w-full rounded-2xl overflow-hidden border border-[#E8E3D9] bg-[#FAF8F5] shadow-2xs hover:shadow-md transition-shadow"
+                      onClick={() => setExpandedReviewImage(img)}
+                      className="w-full rounded-2xl overflow-hidden border border-[#E8E3D9] bg-[#FAF8F5] shadow-xs hover:shadow-lg transition-all group relative cursor-pointer"
                     >
                       <img
                         src={img}
-                        alt={`Real Photo ${idx + 1}`}
-                        className="w-full h-full object-cover"
+                        alt={`Product Photo ${idx + 1}`}
+                        className="w-full h-auto object-contain block mx-auto group-hover:scale-[1.01] transition-transform duration-200"
                         referrerPolicy="no-referrer"
                       />
+                      <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <span className="bg-black/80 text-white px-3.5 py-2 rounded-full text-xs font-bold flex items-center gap-2 shadow-lg backdrop-blur-xs">
+                          <Maximize2 className="w-4 h-4 text-[#FFDC33]" />
+                          <span>সম্পূর্ণ ছবি দেখুন</span>
+                        </span>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -1223,28 +1235,30 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
         </div>
       )}
 
-      {/* Expanded Review Image Modal / Lightbox */}
+      {/* Expanded Review & Gallery Image Modal / Lightbox */}
       {expandedReviewImage && (
         <div
-          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200"
+          className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 animate-in fade-in duration-200"
           onClick={() => setExpandedReviewImage(null)}
         >
           <div
-            className="relative max-w-xl w-full bg-[#181B26] p-2 rounded-3xl border border-white/20 shadow-2xl overflow-hidden"
+            className="relative max-w-4xl max-h-[92vh] w-full flex flex-col items-center justify-center"
             onClick={(e) => e.stopPropagation()}
           >
             <button
               type="button"
               onClick={() => setExpandedReviewImage(null)}
-              className="absolute top-4 right-4 z-10 bg-black/70 hover:bg-black text-white p-2 rounded-full cursor-pointer transition-all shadow-lg"
+              className="absolute -top-12 right-0 sm:top-2 sm:right-2 z-20 bg-black/70 hover:bg-black text-white p-2.5 rounded-full cursor-pointer transition-all shadow-lg border border-white/20"
+              title="বন্ধ করুন"
             >
               <X className="w-5 h-5" />
             </button>
-            <div className="aspect-square w-full rounded-2xl overflow-hidden bg-black/40">
+            <div className="w-full max-h-[85vh] overflow-auto flex items-center justify-center rounded-2xl p-1 bg-black/40 border border-white/10 shadow-2xl">
               <img
                 src={expandedReviewImage}
-                alt="Review Image Expanded"
-                className="w-full h-full object-contain mx-auto"
+                alt="Product Photo Full View"
+                className="max-w-full max-h-[82vh] w-auto h-auto object-contain rounded-xl"
+                referrerPolicy="no-referrer"
               />
             </div>
           </div>
