@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useStore } from '../../context/StoreContext';
 import { Category } from '../../types';
+import { processImageForPlaceholder } from '../../lib/imageUtils';
 import { Tags, Plus, Edit2, Trash2, X, Check, Eye } from 'lucide-react';
 
 export const AdminCategories: React.FC = () => {
@@ -190,16 +191,15 @@ export const AdminCategories: React.FC = () => {
                       type="file"
                       accept="image/*"
                       className="hidden"
-                      onChange={(e) => {
+                      onChange={async (e) => {
                         const file = e.target.files?.[0];
                         if (file) {
-                          const reader = new FileReader();
-                          reader.onload = (evt) => {
-                            if (evt.target?.result) {
-                              setEditingCategory({ ...editingCategory, image: evt.target.result as string });
-                            }
-                          };
-                          reader.readAsDataURL(file);
+                          try {
+                            const compressed = await processImageForPlaceholder(file, 'category_icon');
+                            setEditingCategory({ ...editingCategory, image: compressed });
+                          } catch (err) {
+                            console.error('Category image upload error:', err);
+                          }
                         }
                       }}
                     />

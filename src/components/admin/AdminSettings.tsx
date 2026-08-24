@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useStore } from '../../context/StoreContext';
 import { getSupabaseConfig, isSupabaseConfigured, getSupabaseClient, setSupabaseCredentials } from '../../lib/supabase';
+import { processImageForPlaceholder } from '../../lib/imageUtils';
 import {
   Settings,
   Save,
@@ -274,16 +275,15 @@ GRANT ALL ON ALL TABLES IN SCHEMA public TO anon, authenticated, postgres, servi
                       type="file"
                       accept="image/*"
                       className="hidden"
-                      onChange={(e) => {
+                      onChange={async (e) => {
                         const file = e.target.files?.[0];
                         if (file) {
-                          const reader = new FileReader();
-                          reader.onload = (evt) => {
-                            if (evt.target?.result) {
-                              setFormData({ ...formData, logoUrl: evt.target.result as string });
-                            }
-                          };
-                          reader.readAsDataURL(file);
+                          try {
+                            const compressed = await processImageForPlaceholder(file, 'logo');
+                            setFormData({ ...formData, logoUrl: compressed });
+                          } catch (err) {
+                            console.error('Logo upload error:', err);
+                          }
                         }
                       }}
                     />
@@ -312,16 +312,15 @@ GRANT ALL ON ALL TABLES IN SCHEMA public TO anon, authenticated, postgres, servi
                       type="file"
                       accept="image/*"
                       className="hidden"
-                      onChange={(e) => {
+                      onChange={async (e) => {
                         const file = e.target.files?.[0];
                         if (file) {
-                          const reader = new FileReader();
-                          reader.onload = (evt) => {
-                            if (evt.target?.result) {
-                              setFormData({ ...formData, faviconUrl: evt.target.result as string });
-                            }
-                          };
-                          reader.readAsDataURL(file);
+                          try {
+                            const compressed = await processImageForPlaceholder(file, 'favicon');
+                            setFormData({ ...formData, faviconUrl: compressed });
+                          } catch (err) {
+                            console.error('Favicon upload error:', err);
+                          }
                         }
                       }}
                     />

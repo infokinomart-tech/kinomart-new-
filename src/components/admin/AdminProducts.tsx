@@ -3,7 +3,7 @@ import { useStore } from '../../context/StoreContext';
 import { Product, Specification, ProductBundle, Review } from '../../types';
 import { getDefaultBundles, generateDemoSixTiers, generateRadioCardBundles } from '../../lib/bundleUtils';
 import { BundleSelector, RadioCardBundleSection, BannerTableOfferSection } from '../BundleSelector';
-import { compressImageFile, isDataUrl, isHttpUrl } from '../../lib/imageUtils';
+import { processImageForPlaceholder, compressImageFile, isDataUrl, isHttpUrl } from '../../lib/imageUtils';
 import {
   Plus,
   Edit2,
@@ -53,13 +53,8 @@ export const AdminProducts: React.FC = () => {
       const compressedImages: string[] = [];
 
       for (let i = 0; i < files.length; i++) {
-        setImageCompressionProgress(`${i + 1}/${files.length} ছবি দ্রুত অপ্টিমাইজ ও কমপ্রেস করা হচ্ছে...`);
-        const compressed = await compressImageFile(files[i], {
-          maxWidth: 1080,
-          maxHeight: 1080,
-          quality: 0.82,
-          format: 'image/jpeg'
-        });
+        setImageCompressionProgress(`${i + 1}/${files.length} ছবি হাই-রেজুলেশন সহ অপ্টিমাইজ হচ্ছে...`);
+        const compressed = await processImageForPlaceholder(files[i], 'product_cover');
         compressedImages.push(compressed);
       }
 
@@ -103,12 +98,7 @@ export const AdminProducts: React.FC = () => {
       const compressedImages: string[] = [];
 
       for (let i = 0; i < files.length; i++) {
-        const compressed = await compressImageFile(files[i], {
-          maxWidth: 800,
-          maxHeight: 800,
-          quality: 0.8,
-          format: 'image/jpeg'
-        });
+        const compressed = await processImageForPlaceholder(files[i], 'review_screenshot');
         compressedImages.push(compressed);
       }
 
@@ -896,17 +886,16 @@ export const AdminProducts: React.FC = () => {
                           type="file"
                           accept="image/*"
                           className="hidden"
-                          onChange={(e) => {
+                          onChange={async (e) => {
                             const file = e.target.files?.[0];
                             if (!file) return;
-                            const reader = new FileReader();
-                            reader.onload = (evt) => {
-                              if (evt.target?.result) {
-                                const imgEl = document.getElementById('new-rev-image') as HTMLInputElement;
-                                if (imgEl) imgEl.value = evt.target.result as string;
-                              }
-                            };
-                            reader.readAsDataURL(file);
+                            try {
+                              const compressed = await processImageForPlaceholder(file, 'review_avatar');
+                              const imgEl = document.getElementById('new-rev-image') as HTMLInputElement;
+                              if (imgEl) imgEl.value = compressed;
+                            } catch (err) {
+                              console.error('Review avatar processing error:', err);
+                            }
                           }}
                         />
                       </label>
