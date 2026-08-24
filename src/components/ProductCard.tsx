@@ -44,6 +44,14 @@ export const ProductCard: React.FC<ProductCardProps> = React.memo(({ product, in
 
   const displayPrice = (product.discountPrice || product.price || 0);
 
+  const reviewCount = (product.reviews && product.reviews.length > 0)
+    ? product.reviews.length
+    : (typeof product.reviewsCount === 'number' && product.reviewsCount > 0 ? product.reviewsCount : ((product.reviews && product.reviews.length > 0) ? product.reviews.length : 1));
+
+  const productRating = (product.reviews && product.reviews.length > 0)
+    ? Number((product.reviews.reduce((acc, r) => acc + (r.rating || 5), 0) / product.reviews.length).toFixed(1))
+    : (product.rating || 5.0);
+
   const formatPrice = (val: number) => {
     try {
       return (val || 0).toLocaleString('bn-BD');
@@ -133,7 +141,7 @@ export const ProductCard: React.FC<ProductCardProps> = React.memo(({ product, in
                 <Star
                   key={i}
                   className={`w-3 h-3 ${
-                    i < Math.floor(product.rating || 5)
+                    i < Math.floor(productRating)
                       ? 'fill-[#F59E0B]'
                       : 'fill-gray-200 text-gray-200'
                   }`}
@@ -141,7 +149,7 @@ export const ProductCard: React.FC<ProductCardProps> = React.memo(({ product, in
               ))}
             </div>
             <span className="font-semibold text-gray-700 ml-1">
-              {product.rating ? product.rating.toFixed(1) : '5.0'} ({product.reviewsCount || 1})
+              {productRating.toFixed(1)} ({reviewCount})
             </span>
           </div>
 

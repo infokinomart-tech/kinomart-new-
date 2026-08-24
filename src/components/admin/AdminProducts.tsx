@@ -182,7 +182,20 @@ export const AdminProducts: React.FC = () => {
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
     if (editingProduct && editingProduct.name) {
-      saveProduct(editingProduct as Product);
+      const validReviews = (editingProduct.reviews || []).filter(
+        (r) => r && (r.userName?.trim() || r.comment?.trim())
+      );
+      const totalCount = validReviews.length > 0 ? validReviews.length : (editingProduct.reviewsCount || 0);
+      const avgRating = validReviews.length > 0
+        ? Number((validReviews.reduce((sum, r) => sum + (r.rating || 5), 0) / validReviews.length).toFixed(1))
+        : (editingProduct.rating || 5.0);
+
+      saveProduct({
+        ...editingProduct,
+        reviews: validReviews,
+        reviewsCount: totalCount,
+        rating: avgRating
+      } as Product);
       setIsModalOpen(false);
       setEditingProduct(null);
     }
@@ -775,43 +788,54 @@ export const AdminProducts: React.FC = () => {
 
                 {/* Existing Review Cards */}
                 {(editingProduct.reviews || []).length > 0 && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {(editingProduct.reviews || []).map((rev, idx) => (
-                      <div key={rev.id || idx} className="bg-[#050B18] border border-[#1E293B] rounded-xl p-3 space-y-2 relative group">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const updated = (editingProduct.reviews || []).filter((_, i) => i !== idx);
-                            setEditingProduct({ ...editingProduct, reviews: updated });
-                          }}
-                          className="absolute top-2 right-2 text-red-400 hover:text-red-300 bg-red-950/60 p-1 rounded-lg cursor-pointer"
-                          title="মুছে ফেলুন"
-                        >
-                          <X className="w-3.5 h-3.5" />
-                        </button>
-                        <div className="flex items-center gap-1 text-amber-400">
-                          {[1, 2, 3, 4, 5].map((s) => (
-                            <Star key={s} className={`w-3 h-3 ${s <= rev.rating ? 'fill-amber-400' : 'text-slate-600'}`} />
-                          ))}
-                        </div>
-                        <p className="text-xs text-slate-200 italic line-clamp-2">
-                          "{rev.comment}"
-                        </p>
-                        <div className="flex items-center gap-2 pt-1 border-t border-slate-800 text-[11px]">
-                          {rev.image ? (
-                            <img src={rev.image} alt={rev.userName} className="w-6 h-6 rounded-full object-cover" />
-                          ) : (
-                            <div className="w-6 h-6 rounded-full bg-emerald-700 text-white font-bold flex items-center justify-center text-[10px]">
-                              {rev.userName.charAt(0)}
+                  <div className="max-h-80 overflow-y-auto pr-1 space-y-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {(editingProduct.reviews || []).map((rev, idx) => (
+                        <div key={rev.id || idx} className="bg-[#050B18] border border-[#1E293B] hover:border-emerald-500/40 rounded-xl p-3 space-y-2 relative group transition-all">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const updated = (editingProduct.reviews || []).filter((_, i) => i !== idx);
+                              const updatedRating = updated.length > 0
+                                ? Number((updated.reduce((sum, r) => sum + (r.rating || 5), 0) / updated.length).toFixed(1))
+                                : 5.0;
+                              setEditingProduct({
+                                ...editingProduct,
+                                reviews: updated,
+                                reviewsCount: updated.length,
+                                rating: updatedRating
+                              });
+                            }}
+                            className="absolute top-2 right-2 text-red-400 hover:text-red-300 bg-red-950/60 p-1 rounded-lg cursor-pointer"
+                            title="মুছে ফেলুন"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                          <div className="flex items-center gap-1 text-amber-400">
+                            {[1, 2, 3, 4, 5].map((s) => (
+                              <Star key={s} className={`w-3 h-3 ${s <= rev.rating ? 'fill-amber-400' : 'text-slate-600'}`} />
+                            ))}
+                            <span className="text-[10px] text-slate-400 font-bold ml-1">{rev.rating}★</span>
+                          </div>
+                          <p className="text-xs text-slate-200 italic line-clamp-3">
+                            "{rev.comment}"
+                          </p>
+                          <div className="flex items-center gap-2 pt-1 border-t border-slate-800 text-[11px]">
+                            {rev.image ? (
+                              <img src={rev.image} alt={rev.userName} className="w-6 h-6 rounded-full object-cover shrink-0" />
+                            ) : (
+                              <div className="w-6 h-6 rounded-full bg-emerald-700 text-white font-bold flex items-center justify-center text-[10px] shrink-0">
+                                {rev.userName.charAt(0)}
+                              </div>
+                            )}
+                            <div className="truncate">
+                              <span className="font-bold text-white block truncate">{rev.userName}</span>
+                              {rev.userRole && <span className="text-[9px] text-slate-400 block truncate">{rev.userRole}</span>}
                             </div>
-                          )}
-                          <div className="truncate">
-                            <span className="font-bold text-white block truncate">{rev.userName}</span>
-                            {rev.userRole && <span className="text-[9px] text-slate-400 block truncate">{rev.userRole}</span>}
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
                 )}
 
@@ -943,9 +967,14 @@ export const AdminProducts: React.FC = () => {
                           isVerifiedPurchase: true
                         };
 
+                        const updatedReviews = [...(editingProduct.reviews || []), newRev];
+                        const updatedRating = Number((updatedReviews.reduce((sum, r) => sum + (r.rating || 5), 0) / updatedReviews.length).toFixed(1));
+
                         setEditingProduct({
                           ...editingProduct,
-                          reviews: [...(editingProduct.reviews || []), newRev]
+                          reviews: updatedReviews,
+                          reviewsCount: updatedReviews.length,
+                          rating: updatedRating
                         });
 
                         nameEl.value = '';
@@ -1129,22 +1158,22 @@ export const AdminProducts: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Bundle Display Style Choice Selector & Standalone Banner Toggle */}
+                {/* Bundle Display Style Choice Selector */}
                 {editingProduct.bundles && editingProduct.bundles.length > 0 && (
                   <div className="bg-[#050B18] border border-[#1E293B] rounded-xl p-3.5 space-y-3">
                     <div className="flex items-center justify-between flex-wrap gap-2">
-                      <label className="block text-xs font-bold text-gray-300">
-                        লেআউট ডিসপ্লে স্টাইল নির্বাচন করুন:
+                      <label className="block text-xs font-bold text-gray-200">
+                        লেআউট ডিসপ্লে স্টাইল নির্বাচন করুন (যেটি নির্বাচন করবেন শুধুমাত্র সেটিই কাস্টমার পেজে দেখাবে):
                       </label>
-                      <label className="flex items-center gap-2 bg-[#0B1220] border border-emerald-800/60 px-3 py-1.5 rounded-lg cursor-pointer text-emerald-300 text-xs font-bold">
-                        <input
-                          type="checkbox"
-                          checked={editingProduct.showBannerTableSection !== false}
-                          onChange={(e) => setEditingProduct({ ...editingProduct, showBannerTableSection: e.target.checked })}
-                          className="accent-emerald-500 rounded cursor-pointer"
-                        />
-                        <span>🌟 আলাদা বিশেষ ছাড় ব্যানার সেকশন প্রদর্শন করুন</span>
-                      </label>
+                      <span className="text-[11px] font-bold text-emerald-400 bg-emerald-950/60 border border-emerald-800/40 px-2.5 py-1 rounded-lg">
+                        বর্তমান সক্রিয়: {
+                          (editingProduct.bundleStyle === 'banner_table')
+                            ? 'ইমেজ ২ স্টাইল (ব্যানার টেবিল)'
+                            : (editingProduct.bundleStyle === 'both')
+                            ? 'উভয় স্টাইল একসাথে'
+                            : 'ইমেজ ১ স্টাইল (Radio Cards)'
+                        }
+                      </span>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
@@ -1152,49 +1181,61 @@ export const AdminProducts: React.FC = () => {
                         onClick={() => setEditingProduct({ ...editingProduct, bundleStyle: 'radio_cards' })}
                         className={`p-3 rounded-xl border cursor-pointer transition-all ${
                           (editingProduct.bundleStyle || 'radio_cards') === 'radio_cards'
-                            ? 'border-indigo-500 bg-indigo-950/40 text-white shadow-sm'
+                            ? 'border-indigo-500 bg-indigo-950/50 text-white shadow-md ring-1 ring-indigo-500'
                             : 'border-[#1E293B] bg-[#0B1220] text-gray-400 hover:border-gray-600'
                         }`}
                       >
                         <div className="flex items-center gap-2 font-bold text-xs">
-                          <span className="w-2.5 h-2.5 rounded-full bg-indigo-400" />
-                          <span>ইমেজ ১ স্টাইল (Radio Cards)</span>
+                          <span className={`w-3 h-3 rounded-full flex items-center justify-center border ${
+                            (editingProduct.bundleStyle || 'radio_cards') === 'radio_cards' ? 'border-indigo-400 bg-indigo-500' : 'border-gray-500'
+                          }`}>
+                            {(editingProduct.bundleStyle || 'radio_cards') === 'radio_cards' && <span className="w-1.5 h-1.5 rounded-full bg-white" />}
+                          </span>
+                          <span className="text-indigo-300">ইমেজ ১ স্টাইল (Radio Cards)</span>
                         </div>
-                        <p className="text-[11px] text-gray-400 mt-1">
+                        <p className="text-[11px] text-gray-400 mt-1 pl-5">
                           1 Pc, 2 Pc, 4 Pc + ক্যাশ অন ডেলিভারী + 🔥 SAVE TK ব্যাজ
                         </p>
                       </div>
 
                       <div
-                        onClick={() => setEditingProduct({ ...editingProduct, bundleStyle: 'banner_table', showBannerTableSection: true })}
+                        onClick={() => setEditingProduct({ ...editingProduct, bundleStyle: 'banner_table' })}
                         className={`p-3 rounded-xl border cursor-pointer transition-all ${
                           editingProduct.bundleStyle === 'banner_table'
-                            ? 'border-emerald-500 bg-emerald-950/40 text-white shadow-sm'
+                            ? 'border-emerald-500 bg-emerald-950/50 text-white shadow-md ring-1 ring-emerald-500'
                             : 'border-[#1E293B] bg-[#0B1220] text-gray-400 hover:border-gray-600'
                         }`}
                       >
                         <div className="flex items-center gap-2 font-bold text-xs">
-                          <span className="w-2.5 h-2.5 rounded-full bg-[#5E6A45]" />
-                          <span>ইমেজ ২ স্টাইল (Banner Table)</span>
+                          <span className={`w-3 h-3 rounded-full flex items-center justify-center border ${
+                            editingProduct.bundleStyle === 'banner_table' ? 'border-emerald-400 bg-emerald-500' : 'border-gray-500'
+                          }`}>
+                            {editingProduct.bundleStyle === 'banner_table' && <span className="w-1.5 h-1.5 rounded-full bg-white" />}
+                          </span>
+                          <span className="text-emerald-300">ইমেজ ২ স্টাইল (Banner Table)</span>
                         </div>
-                        <p className="text-[11px] text-gray-400 mt-1">
+                        <p className="text-[11px] text-gray-400 mt-1 pl-5">
                           সবুজ অফার ব্যানার ও ডিল টেবিল তালিকা
                         </p>
                       </div>
 
                       <div
-                        onClick={() => setEditingProduct({ ...editingProduct, bundleStyle: 'both', showBannerTableSection: true })}
+                        onClick={() => setEditingProduct({ ...editingProduct, bundleStyle: 'both' })}
                         className={`p-3 rounded-xl border cursor-pointer transition-all ${
                           editingProduct.bundleStyle === 'both'
-                            ? 'border-amber-500 bg-amber-950/40 text-white shadow-sm'
+                            ? 'border-amber-500 bg-amber-950/50 text-white shadow-md ring-1 ring-amber-500'
                             : 'border-[#1E293B] bg-[#0B1220] text-gray-400 hover:border-gray-600'
                         }`}
                       >
                         <div className="flex items-center gap-2 font-bold text-xs">
-                          <span className="w-2.5 h-2.5 rounded-full bg-amber-400" />
-                          <span>উভয় স্টাইল একসাথে (Both)</span>
+                          <span className={`w-3 h-3 rounded-full flex items-center justify-center border ${
+                            editingProduct.bundleStyle === 'both' ? 'border-amber-400 bg-amber-500' : 'border-gray-500'
+                          }`}>
+                            {editingProduct.bundleStyle === 'both' && <span className="w-1.5 h-1.5 rounded-full bg-white" />}
+                          </span>
+                          <span className="text-amber-300">উভয় স্টাইল একসাথে (Both)</span>
                         </div>
-                        <p className="text-[11px] text-gray-400 mt-1">
+                        <p className="text-[11px] text-gray-400 mt-1 pl-5">
                           রেডিও কার্ড ও সবুজ ব্যানার ডিল উভয়ই প্রদর্শিত হবে
                         </p>
                       </div>

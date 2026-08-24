@@ -23,6 +23,8 @@ import {
   FileText,
   Maximize2,
   MessageSquareQuote,
+  LayoutGrid,
+  SlidersHorizontal,
   X
 } from 'lucide-react';
 import { ProductCard } from './ProductCard';
@@ -35,12 +37,15 @@ interface ProductDetailsModalProps {
   onClose?: () => void;
 }
 
-const toBnNum = (n: number | string): string => {
+const toBnNum = (n: number | string, padZero = false): string => {
   const bn = ['০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯'];
-  return String(n)
-    .padStart(2, '0')
+  const val = padZero ? String(n).padStart(2, '0') : String(n);
+  return val
     .split('')
-    .map((char) => bn[parseInt(char, 10)] ?? char)
+    .map((char) => {
+      const parsed = parseInt(char, 10);
+      return isNaN(parsed) ? char : (bn[parsed] ?? char);
+    })
     .join('');
 };
 
@@ -258,11 +263,24 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
   const productReviews = (product.reviews || []).filter(
     (r) => r && (r.userName?.trim() || r.comment?.trim())
   );
-  const hasReviews = productReviews.length > 0;
+  const reviewScreenshots = (product.reviewImages || []).filter(
+    (img) => img && typeof img === 'string' && img.trim() !== ''
+  );
+  const hasReviews = productReviews.length > 0 || reviewScreenshots.length > 0;
 
-  const hasAnyDetails = hasDescription || hasSpecs || hasGallery || hasVideo || hasReviews;
+  const totalReviewsCount = productReviews.length > 0
+    ? productReviews.length
+    : (typeof product.reviewsCount === 'number' && product.reviewsCount > 0 ? product.reviewsCount : (productReviews.length > 0 ? productReviews.length : 1));
+
+  const displayRating = productReviews.length > 0
+    ? Number((productReviews.reduce((acc, r) => acc + (r.rating || 5), 0) / productReviews.length).toFixed(1))
+    : (product.rating || 5.0);
+
+  const hasInfoContent = hasDescription || hasSpecs || hasGallery || hasVideo;
+  const hasAnyDetails = hasInfoContent || hasReviews;
 
   const [currentReviewIndex, setCurrentReviewIndex] = useState(0);
+  const [reviewViewMode, setReviewViewMode] = useState<'slider' | 'grid'>('slider');
   const [expandedReviewImage, setExpandedReviewImage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -270,12 +288,12 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
   }, [product.id]);
 
   useEffect(() => {
-    if (productReviews.length <= 1) return;
+    if (productReviews.length <= 1 || reviewViewMode !== 'slider') return;
     const interval = setInterval(() => {
       setCurrentReviewIndex((prev) => (prev + 1) % productReviews.length);
     }, 6000);
     return () => clearInterval(interval);
-  }, [productReviews.length]);
+  }, [productReviews.length, reviewViewMode]);
 
   const handlePrevReview = () => {
     if (productReviews.length === 0) return;
@@ -486,15 +504,15 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
                   <Star
                     key={i}
                     className={`w-4 h-4 ${
-                      i < Math.floor(product.rating || 5) ? 'fill-[#F59E0B]' : 'text-gray-200 fill-gray-200'
+                      i < Math.floor(displayRating) ? 'fill-[#F59E0B]' : 'text-gray-200 fill-gray-200'
                     }`}
                   />
                 ))}
               </div>
               <span className="font-extrabold text-[#1F241E] text-sm">
-                {product.rating ? product.rating.toFixed(1) : '5.0'}
+                {displayRating.toFixed(1)}
               </span>
-              <span className="text-gray-500 font-semibold">({toBnNum(product.reviewsCount || 1)} টি রিভিউ)</span>
+              <span className="text-gray-500 font-semibold">({toBnNum(totalReviewsCount)} টি রিভিউ)</span>
             </div>
 
             {/* Large Price Box */}
@@ -669,17 +687,30 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
               </div>
             ) : (
               <>
-                {/* Radio Cards Bundle Selector (Image 1 style) if enabled or in both mode */}
-                {effectiveBundles && effectiveBundles.length > 0 && (product.bundleStyle === 'radio_cards' || product.bundleStyle === 'both' || !product.bundleStyle) && (
+                {/* Bundle Deals Selector (Strictly respecting selected bundleStyle) */}
+                {effectiveBundles && effectiveBundles.length > 0 && (
                   <div className="pt-2">
-                    <RadioCardBundleSection
-                      bundles={effectiveBundles}
-                      selectedBundleId={selectedBundleId}
-                      onSelectBundle={(b) => {
-                        setSelectedBundleId(b.id);
-                        setQuantity(b.quantity);
-                      }}
-                    />
+                    {product.bundleStyle === 'banner_table' ? (
+                      <BannerTableOfferSection
+                        bundles={effectiveBundles}
+                        selectedBundleId={selectedBundleId}
+                        bannerTitle={product.bundleBannerTitle}
+                        bannerSubtitle={product.bundleBannerSubtitle}
+                        onSelectBundle={(b) => {
+                          setSelectedBundleId(b.id);
+                          setQuantity(b.quantity);
+                        }}
+                      />
+                    ) : (
+                      <RadioCardBundleSection
+                        bundles={effectiveBundles}
+                        selectedBundleId={selectedBundleId}
+                        onSelectBundle={(b) => {
+                          setSelectedBundleId(b.id);
+                          setQuantity(b.quantity);
+                        }}
+                      />
+                    )}
                   </div>
                 )}
 
@@ -766,8 +797,8 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
         </div>
       </div>
 
-      {/* Dedicated Special Discount Offer Banner Table (Image 2) */}
-      {effectiveBundles && effectiveBundles.length > 0 && !isOutOfStock && (product.bundleStyle === 'banner_table' || product.bundleStyle === 'both' || product.showBannerTableSection) && (
+      {/* Dedicated Special Discount Offer Banner Table (Only in 'both' mode where both radio cards and lower banner table are shown) */}
+      {effectiveBundles && effectiveBundles.length > 0 && !isOutOfStock && product.bundleStyle === 'both' && (
         <div className="w-full">
           <BannerTableOfferSection
             bundles={effectiveBundles}
@@ -782,8 +813,329 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
         </div>
       )}
 
+      {/* Customer Reviews & Ratings Section (Rendered Above Product Details) */}
+      {hasReviews && (
+        <div className="bg-white border border-[#E8E3D9] rounded-3xl p-4 sm:p-8 shadow-xs space-y-5">
+          {/* Section Title & Rating Summary & View Switcher */}
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#E8E3D9] pb-4">
+            <div>
+              <h3 className="font-black text-[#1F241E] text-base sm:text-lg flex items-center gap-2">
+                <MessageSquareQuote className="w-5 h-5 text-[#5E6A45]" />
+                <span>কাস্টমার রিভিউ ও ফিডব্যাক ({toBnNum(totalReviewsCount)})</span>
+              </h3>
+              <p className="text-[11px] sm:text-xs text-gray-500 mt-0.5 font-medium">
+                আমাদের সম্মানিত ক্রেতাদের বাস্তব অভিজ্ঞতা ও মতামত
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 bg-[#FAF8F5] border border-[#E8E3D9] px-3 py-1.5 rounded-full text-xs font-bold text-[#1F241E]">
+                <div className="flex items-center text-amber-500">
+                  {[1, 2, 3, 4, 5].map((s) => (
+                    <Star key={s} className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                  ))}
+                </div>
+                <span>{displayRating.toFixed(1)} / 5.0</span>
+              </div>
+
+              {/* View Switcher if multiple reviews */}
+              {productReviews.length > 1 && (
+                <div className="flex items-center bg-[#FAF8F5] p-1 border border-[#E8E3D9] rounded-full text-xs font-bold">
+                  <button
+                    type="button"
+                    onClick={() => setReviewViewMode('slider')}
+                    className={`flex items-center gap-1 px-2.5 py-1 rounded-full transition-all cursor-pointer ${
+                      reviewViewMode === 'slider'
+                        ? 'bg-[#5E6A45] text-white shadow-xs'
+                        : 'text-gray-600 hover:text-[#1F241E]'
+                    }`}
+                    title="স্লাইডার ভিউ"
+                  >
+                    <SlidersHorizontal className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">স্লাইডার</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setReviewViewMode('grid')}
+                    className={`flex items-center gap-1 px-2.5 py-1 rounded-full transition-all cursor-pointer ${
+                      reviewViewMode === 'grid'
+                        ? 'bg-[#5E6A45] text-white shadow-xs'
+                        : 'text-gray-600 hover:text-[#1F241E]'
+                    }`}
+                    title="সকল রিভিউ একসাথে দেখুন"
+                  >
+                    <LayoutGrid className="w-3.5 h-3.5" />
+                    <span>সকল রিভিউ ({toBnNum(productReviews.length)})</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* SLIDER VIEW MODE */}
+          {reviewViewMode === 'slider' && productReviews.length > 0 && (
+            <div className="relative bg-gradient-to-br from-[#FAF8F5] via-white to-[#F5F2EC] border border-[#E8E3D9] rounded-3xl p-4 sm:p-7 shadow-xs overflow-hidden">
+              {/* Top counter for slider */}
+              {productReviews.length > 1 && (
+                <div className="flex items-center justify-between mb-3 text-xs font-bold text-gray-500 px-2">
+                  <span className="bg-white/80 border border-[#E8E3D9] px-2.5 py-0.5 rounded-full text-[11px] text-[#5E6A45]">
+                    রিভিউ {toBnNum((currentReviewIndex % productReviews.length) + 1)} / {toBnNum(productReviews.length)}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setReviewViewMode('grid')}
+                    className="text-[#5E6A45] hover:underline cursor-pointer flex items-center gap-1 text-[11px]"
+                  >
+                    সবগুলো একসাথে দেখুন
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
+
+              {/* Left Navigation Arrow */}
+              {productReviews.length > 1 && (
+                <button
+                  type="button"
+                  onClick={handlePrevReview}
+                  className="absolute left-2 sm:left-3 top-1/2 -translate-y-1/2 z-20 bg-white/90 hover:bg-[#5E6A45] hover:text-white text-[#1F241E] border border-[#E8E3D9] p-2 sm:p-2.5 rounded-full shadow-md transition-all active:scale-90 cursor-pointer"
+                  aria-label="Previous Review"
+                >
+                  <ChevronLeft className="w-4 h-4 sm:w-5 h-5" />
+                </button>
+              )}
+
+              {/* Right Navigation Arrow */}
+              {productReviews.length > 1 && (
+                <button
+                  type="button"
+                  onClick={handleNextReview}
+                  className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 z-20 bg-white/90 hover:bg-[#5E6A45] hover:text-white text-[#1F241E] border border-[#E8E3D9] p-2 sm:p-2.5 rounded-full shadow-md transition-all active:scale-90 cursor-pointer"
+                  aria-label="Next Review"
+                >
+                  <ChevronRight className="w-4 h-4 sm:w-5 h-5" />
+                </button>
+              )}
+
+              {/* Slide Content with Animation */}
+              <div className="px-5 sm:px-10">
+                <AnimatePresence mode="wait">
+                  {(() => {
+                    const activeRev = productReviews[currentReviewIndex % productReviews.length];
+                    if (!activeRev) return null;
+
+                    return (
+                      <motion.div
+                        key={`rev-card-${activeRev.id || currentReviewIndex}`}
+                        initial={{ opacity: 0, x: 25 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -25 }}
+                        transition={{ duration: 0.3, ease: 'easeOut' }}
+                        className="flex flex-col sm:flex-row gap-5 sm:gap-6 items-center sm:items-start"
+                      >
+                        {/* 1:1 Customer Image if present */}
+                        {activeRev.image && (
+                          <div className="shrink-0 relative group">
+                            <div className="w-32 sm:w-40 md:w-44 aspect-square rounded-2xl overflow-hidden border-2 border-[#5E6A45]/30 bg-black/5 shadow-md">
+                              <img
+                                src={activeRev.image}
+                                alt={activeRev.userName}
+                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                referrerPolicy="no-referrer"
+                              />
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setExpandedReviewImage(activeRev.image!)}
+                              className="absolute bottom-2 right-2 bg-black/70 hover:bg-black text-white p-1.5 rounded-lg text-xs opacity-90 group-hover:opacity-100 transition-opacity cursor-pointer flex items-center gap-1 shadow-md"
+                              title="বড় করে দেখুন"
+                            >
+                              <ZoomIn className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        )}
+
+                        {/* Review Details */}
+                        <div className="flex-1 space-y-3 text-center sm:text-left">
+                          {/* Rating Stars & Verified Badge */}
+                          <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
+                            <div className="flex items-center text-amber-400">
+                              {[1, 2, 3, 4, 5].map((s) => (
+                                <Star
+                                  key={s}
+                                  className={`w-4 h-4 ${s <= (activeRev.rating || 5) ? 'fill-amber-400 text-amber-400' : 'text-gray-300'}`}
+                                />
+                              ))}
+                            </div>
+                            {activeRev.isVerifiedPurchase !== false && (
+                              <span className="inline-flex items-center gap-1 text-[11px] font-bold bg-emerald-100 text-emerald-800 px-2.5 py-0.5 rounded-full">
+                                <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                                <span>ভেরিফাইড ক্রেতা</span>
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Comment Quote */}
+                          <blockquote className="text-xs sm:text-sm text-[#2C3328] font-semibold leading-relaxed italic relative">
+                            "{activeRev.comment}"
+                          </blockquote>
+
+                          {/* Customer Info & Date */}
+                          <div className="pt-2 border-t border-[#E8E3D9]/80 flex flex-wrap items-center justify-center sm:justify-between gap-2 text-xs">
+                            <div>
+                              <span className="font-extrabold text-[#1F241E] block text-sm">{activeRev.userName}</span>
+                              {activeRev.userRole && (
+                                <span className="text-[11px] text-[#5E6A45] font-medium">{activeRev.userRole}</span>
+                              )}
+                            </div>
+                            {activeRev.date && (
+                              <span className="text-[11px] text-[#6B7264] font-medium">{activeRev.date}</span>
+                            )}
+                          </div>
+                        </div>
+                      </motion.div>
+                    );
+                  })()}
+                </AnimatePresence>
+              </div>
+
+              {/* Dots Indicator */}
+              {productReviews.length > 1 && (
+                <div className="flex items-center justify-center gap-1.5 pt-4">
+                  {productReviews.map((_, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => setCurrentReviewIndex(idx)}
+                      className={`h-2 rounded-full transition-all cursor-pointer ${
+                        idx === (currentReviewIndex % productReviews.length)
+                          ? 'w-6 bg-[#5E6A45]'
+                          : 'w-2 bg-[#D3CDC0] hover:bg-[#A39C8E]'
+                      }`}
+                      aria-label={`Go to review ${idx + 1}`}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ALL REVIEWS GRID VIEW MODE */}
+          {reviewViewMode === 'grid' && productReviews.length > 0 && (
+            <div className="space-y-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                {productReviews.map((rev, idx) => (
+                  <div
+                    key={rev.id || idx}
+                    className="bg-[#FAF8F5] border border-[#E8E3D9] rounded-2xl p-4 sm:p-5 flex flex-col justify-between space-y-3 hover:shadow-sm transition-all"
+                  >
+                    <div className="space-y-2.5">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center text-amber-400">
+                          {[1, 2, 3, 4, 5].map((s) => (
+                            <Star
+                              key={s}
+                              className={`w-3.5 h-3.5 ${s <= (rev.rating || 5) ? 'fill-amber-400 text-amber-400' : 'text-gray-300'}`}
+                            />
+                          ))}
+                        </div>
+                        {rev.isVerifiedPurchase !== false && (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                            <span>ভেরিফাইড</span>
+                          </span>
+                        )}
+                      </div>
+
+                      <p className="text-xs sm:text-sm text-[#2C3328] font-medium leading-relaxed italic">
+                        "{rev.comment}"
+                      </p>
+
+                      {rev.image && (
+                        <div className="pt-1">
+                          <div className="w-20 h-20 rounded-xl overflow-hidden border border-[#E8E3D9] relative group">
+                            <img
+                              src={rev.image}
+                              alt={rev.userName}
+                              className="w-full h-full object-cover"
+                              referrerPolicy="no-referrer"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setExpandedReviewImage(rev.image!)}
+                              className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white transition-opacity cursor-pointer"
+                            >
+                              <ZoomIn className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="pt-2.5 border-t border-[#E8E3D9] flex items-center justify-between text-xs text-gray-500">
+                      <div>
+                        <span className="font-bold text-[#1F241E] block">{rev.userName}</span>
+                        {rev.userRole && (
+                          <span className="text-[10px] text-[#5E6A45] font-medium">{rev.userRole}</span>
+                        )}
+                      </div>
+                      {rev.date && (
+                        <span className="text-[10px] text-gray-400">{rev.date}</span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="text-center pt-2">
+                <button
+                  type="button"
+                  onClick={() => setReviewViewMode('slider')}
+                  className="text-xs font-bold text-[#5E6A45] bg-[#FAF8F5] border border-[#E8E3D9] px-4 py-2 rounded-xl hover:bg-white transition-all cursor-pointer inline-flex items-center gap-1.5"
+                >
+                  <SlidersHorizontal className="w-3.5 h-3.5" />
+                  <span>স্লাইডার আকারে দেখুন</span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Review Screenshot Images Gallery (from customer chat/messages) */}
+          {reviewScreenshots.length > 0 && (
+            <div className="pt-4 border-t border-[#E8E3D9] space-y-3">
+              <div className="flex items-center justify-between">
+                <h4 className="font-extrabold text-[#1F241E] text-xs sm:text-sm flex items-center gap-1.5">
+                  <ImageIcon className="w-4 h-4 text-[#5E6A45]" />
+                  <span>কাস্টমার চ্যাট ও ফিডব্যাক স্ক্রিনশট ({toBnNum(reviewScreenshots.length)} টি)</span>
+                </h4>
+                <span className="text-[11px] text-gray-500">ছবিতে ট্যাপ করে বড় করে দেখুন</span>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                {reviewScreenshots.map((img, idx) => (
+                  <div
+                    key={idx}
+                    onClick={() => setExpandedReviewImage(img)}
+                    className="aspect-square rounded-2xl overflow-hidden border border-[#E8E3D9] bg-[#FAF8F5] relative group cursor-pointer shadow-2xs hover:shadow-md transition-all"
+                  >
+                    <img
+                      src={img}
+                      alt={`Review Screenshot ${idx + 1}`}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      referrerPolicy="no-referrer"
+                    />
+                    <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white transition-opacity">
+                      <ZoomIn className="w-5 h-5 drop-shadow" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Product Details Tabs Container */}
-      {hasAnyDetails && (
+      {hasInfoContent && (
         <div className="bg-white border border-[#E8E3D9] rounded-3xl p-4 sm:p-8 shadow-xs space-y-6">
           {/* Section Header */}
           <div className="border-b border-[#E8E3D9] pb-3">
@@ -864,155 +1216,6 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                     allowFullScreen
                   />
-                </div>
-              </div>
-            )}
-
-            {/* Customer Reviews & Ratings Animated Slider */}
-            {hasReviews && (
-              <div className="space-y-4 border-t border-[#E8E3D9] pt-6">
-                {/* Section Title & Rating Summary */}
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <h3 className="font-black text-[#1F241E] text-base sm:text-lg flex items-center gap-2">
-                    <MessageSquareQuote className="w-5 h-5 text-[#5E6A45]" />
-                    <span>কাস্টমার রিভিউ ও ফিডব্যাক ({productReviews.length})</span>
-                  </h3>
-                  <div className="flex items-center gap-1.5 bg-[#FAF8F5] border border-[#E8E3D9] px-3 py-1 rounded-full text-xs font-bold text-[#1F241E]">
-                    <div className="flex items-center text-amber-500">
-                      {[1, 2, 3, 4, 5].map((s) => (
-                        <Star key={s} className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-                      ))}
-                    </div>
-                    <span>{product.rating || 5.0} / 5.0</span>
-                  </div>
-                </div>
-
-                {/* Animated Carousel Container with Arrows on Left and Right */}
-                <div className="relative bg-gradient-to-br from-[#FAF8F5] via-white to-[#F5F2EC] border border-[#E8E3D9] rounded-3xl p-4 sm:p-7 shadow-xs overflow-hidden">
-                  {/* Left Navigation Arrow */}
-                  {productReviews.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={handlePrevReview}
-                      className="absolute left-2 sm:left-3 top-1/2 -translate-y-1/2 z-20 bg-white/90 hover:bg-[#5E6A45] hover:text-white text-[#1F241E] border border-[#E8E3D9] p-2 sm:p-2.5 rounded-full shadow-md transition-all active:scale-90 cursor-pointer"
-                      aria-label="Previous Review"
-                    >
-                      <ChevronLeft className="w-4 h-4 sm:w-5 h-5" />
-                    </button>
-                  )}
-
-                  {/* Right Navigation Arrow */}
-                  {productReviews.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={handleNextReview}
-                      className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 z-20 bg-white/90 hover:bg-[#5E6A45] hover:text-white text-[#1F241E] border border-[#E8E3D9] p-2 sm:p-2.5 rounded-full shadow-md transition-all active:scale-90 cursor-pointer"
-                      aria-label="Next Review"
-                    >
-                      <ChevronRight className="w-4 h-4 sm:w-5 h-5" />
-                    </button>
-                  )}
-
-                  {/* Slide Content with Framer Motion Animation */}
-                  <div className="px-5 sm:px-10">
-                    <AnimatePresence mode="wait">
-                      {(() => {
-                        const activeRev = productReviews[currentReviewIndex % productReviews.length];
-                        if (!activeRev) return null;
-
-                        return (
-                          <motion.div
-                            key={`rev-card-${activeRev.id || currentReviewIndex}`}
-                            initial={{ opacity: 0, x: 25 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            exit={{ opacity: 0, x: -25 }}
-                            transition={{ duration: 0.3, ease: 'easeOut' }}
-                            className="flex flex-col sm:flex-row gap-5 sm:gap-6 items-center sm:items-start"
-                          >
-                            {/* 1:1 Aspect Ratio Customer Image */}
-                            {activeRev.image && (
-                              <div className="shrink-0 relative group">
-                                <div className="w-32 sm:w-40 md:w-44 aspect-square rounded-2xl overflow-hidden border-2 border-[#5E6A45]/30 bg-black/5 shadow-md">
-                                  <img
-                                    src={activeRev.image}
-                                    alt={activeRev.userName}
-                                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                                    referrerPolicy="no-referrer"
-                                  />
-                                </div>
-                                <button
-                                  type="button"
-                                  onClick={() => setExpandedReviewImage(activeRev.image!)}
-                                  className="absolute bottom-2 right-2 bg-black/70 hover:bg-black text-white p-1.5 rounded-lg text-xs opacity-90 group-hover:opacity-100 transition-opacity cursor-pointer flex items-center gap-1 shadow-md"
-                                  title="বড় করে দেখুন"
-                                >
-                                  <ZoomIn className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
-                            )}
-
-                            {/* Review Details */}
-                            <div className="flex-1 space-y-3 text-center sm:text-left">
-                              {/* Rating Stars & Verified Badge */}
-                              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
-                                <div className="flex items-center text-amber-400">
-                                  {[1, 2, 3, 4, 5].map((s) => (
-                                    <Star
-                                      key={s}
-                                      className={`w-4 h-4 ${s <= (activeRev.rating || 5) ? 'fill-amber-400 text-amber-400' : 'text-gray-300'}`}
-                                    />
-                                  ))}
-                                </div>
-                                {activeRev.isVerifiedPurchase !== false && (
-                                  <span className="inline-flex items-center gap-1 text-[11px] font-bold bg-emerald-100 text-emerald-800 px-2.5 py-0.5 rounded-full">
-                                    <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                                    <span>ভেরিফাইড ক্রেতা</span>
-                                  </span>
-                                )}
-                              </div>
-
-                              {/* Comment Quote */}
-                              <blockquote className="text-xs sm:text-sm text-[#2C3328] font-semibold leading-relaxed italic relative">
-                                "{activeRev.comment}"
-                              </blockquote>
-
-                              {/* Customer Info & Date */}
-                              <div className="pt-2 border-t border-[#E8E3D9]/80 flex flex-wrap items-center justify-center sm:justify-between gap-2 text-xs">
-                                <div>
-                                  <span className="font-extrabold text-[#1F241E] block text-sm">{activeRev.userName}</span>
-                                  {activeRev.userRole && (
-                                    <span className="text-[11px] text-[#5E6A45] font-medium">{activeRev.userRole}</span>
-                                  )}
-                                </div>
-                                {activeRev.date && (
-                                  <span className="text-[11px] text-[#6B7264] font-medium">{activeRev.date}</span>
-                                )}
-                              </div>
-                            </div>
-                          </motion.div>
-                        );
-                      })()}
-                    </AnimatePresence>
-                  </div>
-
-                  {/* Dots Indicator */}
-                  {productReviews.length > 1 && (
-                    <div className="flex items-center justify-center gap-1.5 pt-4">
-                      {productReviews.map((_, idx) => (
-                        <button
-                          key={idx}
-                          type="button"
-                          onClick={() => setCurrentReviewIndex(idx)}
-                          className={`h-2 rounded-full transition-all cursor-pointer ${
-                            idx === (currentReviewIndex % productReviews.length)
-                              ? 'w-6 bg-[#5E6A45]'
-                              : 'w-2 bg-[#D3CDC0] hover:bg-[#A39C8E]'
-                          }`}
-                          aria-label={`Go to review ${idx + 1}`}
-                        />
-                      ))}
-                    </div>
-                  )}
                 </div>
               </div>
             )}

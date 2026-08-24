@@ -208,7 +208,7 @@ export const Header: React.FC = () => {
 
       {/* Categories Sub-Navbar (Dark Black / Deep Forest Green) - Hidden on Mobile, Visible on Desktop */}
       <div className="hidden lg:block bg-[#09100C] text-white border-t border-[#18231B]">
-        <div className="max-w-7xl mx-auto px-4 flex items-center justify-between text-xs sm:text-sm font-bold gap-4 sm:gap-6 whitespace-nowrap">
+        <div className="max-w-7xl mx-auto px-4 flex items-center justify-start text-xs sm:text-sm font-bold gap-6 sm:gap-8 whitespace-nowrap overflow-x-auto scrollbar-none">
           {categories.map((cat) => {
             const isCategorySelected = selectedCategory === cat.name;
             const isSubSelected = cat.subCategories?.includes(selectedCategory || '');
