@@ -3,7 +3,8 @@ import { Product } from '../types';
 import { useStore } from '../context/StoreContext';
 import { Truck, X, Plus, Minus, Check, Tag, ShieldCheck, Copy, Zap } from 'lucide-react';
 import { BundleSelector } from './BundleSelector';
-import { getEffectiveBundles } from '../lib/bundleUtils';
+import { FlavorSelector } from './FlavorSelector';
+import { getEffectiveBundles, calculateProductPrice } from '../lib/bundleUtils';
 import { trackBeginCheckout, trackPurchase } from '../lib/dataLayer';
 
 interface QuickOrderModalProps {
@@ -29,9 +30,32 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({ product, onClo
   const defaultBundle = effectiveBundles.find((b) => b.isPopular) || effectiveBundles[0];
 
   const [selectedBundleId, setSelectedBundleId] = useState<string>(defaultBundle?.id || '');
-  const selectedBundle = effectiveBundles.find((b) => b.id === selectedBundleId) || defaultBundle;
+  const [quantity, setQuantity] = useState<number>(defaultBundle?.quantity || 1);
+  const [selectedFlavors, setSelectedFlavors] = useState<{ [flavorName: string]: number }>(() => {
+    if (product.hasFlavors && product.flavors && product.flavors.length > 0) {
+      const firstFlv = product.flavors[0]?.name || 'Grape';
+      return { [firstFlv]: defaultBundle?.quantity || 1 };
+    }
+    return {};
+  });
 
-  const [quantity, setQuantity] = useState<number>(selectedBundle?.quantity || 1);
+  const handleFlavorsChange = (newFlavors: { [flavorName: string]: number }, totalCount: number) => {
+    setSelectedFlavors(newFlavors);
+    const newQty = Math.max(1, totalCount);
+    setQuantity(newQty);
+    const matched = effectiveBundles.find((b) => b.quantity === newQty);
+    if (matched) {
+      setSelectedBundleId(matched.id);
+    } else {
+      setSelectedBundleId('');
+    }
+  };
+
+  // Dynamic price calculation
+  const priceResult = calculateProductPrice(product, quantity, selectedBundleId);
+  const selectedBundle = priceResult.activeBundle;
+  const activeBundleId = priceResult.activeBundleId;
+  const subtotal = priceResult.totalPrice;
   const customerNameInitial = '';
   const [customerName, setCustomerName] = useState<string>(customerNameInitial);
   const [customerPhone, setCustomerPhone] = useState<string>('');
@@ -67,9 +91,6 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({ product, onClo
   const [errorMsg, setErrorMsg] = useState<string>('');
 
   const unitPrice = product.discountPrice || product.price;
-  const subtotal = (selectedBundle && selectedBundle.quantity === quantity)
-    ? selectedBundle.price
-    : (unitPrice * quantity);
   const deliveryFee = deliveryArea === 'Inside Dhaka' ? 60 : 120;
   const totalPrice = Math.max(0, subtotal - discountAmount + deliveryFee);
 
@@ -132,6 +153,11 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({ product, onClo
     setIsSubmitting(true);
 
     try {
+      const flavorSummary = Object.entries(selectedFlavors)
+        .filter(([_, q]) => q > 0)
+        .map(([name, q]) => `${name} (${q})`)
+        .join(', ');
+
       const createdOrder = createOrder({
         customerName: customerName.trim(),
         customerPhone: customerPhone.trim(),
@@ -144,7 +170,10 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({ product, onClo
         items: [
           {
             product,
-            quantity
+            quantity,
+            selectedFlavors: product.hasFlavors ? selectedFlavors : undefined,
+            flavorSummary: product.hasFlavors ? flavorSummary : undefined,
+            selectedBundle: selectedBundle?.title
           }
         ],
         subtotal,
@@ -214,10 +243,22 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({ product, onClo
             </div>
           </div>
 
+          {/* Flavor Selection Section if product has flavors */}
+          {product.hasFlavors && product.flavors && product.flavors.length > 0 && (
+            <div className="pt-1">
+              <FlavorSelector
+                flavors={product.flavors}
+                title={product.flavorTitle || 'ফ্লেভার নির্বাচন করুন'}
+                selectedFlavors={selectedFlavors}
+                onChange={handleFlavorsChange}
+              />
+            </div>
+          )}
+
           {/* Bundle Package Deals Selection */}
           <BundleSelector
             bundles={effectiveBundles}
-            selectedBundleId={selectedBundleId}
+            selectedBundleId={activeBundleId}
             styleMode={product.bundleStyle || 'radio_cards'}
             bannerTitle={product.bundleBannerTitle}
             bannerSubtitle={product.bundleBannerSubtitle}

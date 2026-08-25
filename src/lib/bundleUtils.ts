@@ -188,3 +188,94 @@ export function getEffectiveBundles(product: Product): ProductBundle[] {
   return [];
 }
 
+export interface PriceCalculationResult {
+  totalPrice: number;
+  originalPrice?: number | null;
+  activeBundle?: ProductBundle;
+  activeBundleId: string;
+  isCustomQuantity: boolean;
+}
+
+/**
+ * Calculates total price and active bundle seamlessly for any quantity,
+ * ensuring prices correctly scale when quantity > 3 or exceeds bundle tiers.
+ */
+export function calculateProductPrice(
+  product: Product,
+  quantity: number,
+  selectedBundleId?: string
+): PriceCalculationResult {
+  const effectiveBundles = getEffectiveBundles(product);
+  const unitPrice = product.discountPrice || product.price;
+  const unitOriginalPrice = product.discountPrice ? product.price : null;
+
+  const validQty = Math.max(1, quantity || 1);
+
+  // 1. If explicit bundle matches both ID and quantity
+  if (selectedBundleId && effectiveBundles.length > 0) {
+    const explicitBundle = effectiveBundles.find((b) => b.id === selectedBundleId);
+    if (explicitBundle && explicitBundle.quantity === validQty) {
+      return {
+        totalPrice: explicitBundle.price,
+        originalPrice: explicitBundle.originalPrice || (unitOriginalPrice ? unitOriginalPrice * validQty : null),
+        activeBundle: explicitBundle,
+        activeBundleId: explicitBundle.id,
+        isCustomQuantity: false
+      };
+    }
+  }
+
+  // 2. If any bundle has exactly this quantity
+  if (effectiveBundles.length > 0) {
+    const exactBundle = effectiveBundles.find((b) => b.quantity === validQty);
+    if (exactBundle) {
+      return {
+        totalPrice: exactBundle.price,
+        originalPrice: exactBundle.originalPrice || (unitOriginalPrice ? unitOriginalPrice * validQty : null),
+        activeBundle: exactBundle,
+        activeBundleId: exactBundle.id,
+        isCustomQuantity: false
+      };
+    }
+  }
+
+  // 3. If quantity exceeds the highest tier bundle
+  if (effectiveBundles.length > 0) {
+    const sorted = [...effectiveBundles].sort((a, b) => b.quantity - a.quantity);
+    const maxBundle = sorted[0];
+
+    if (validQty > maxBundle.quantity) {
+      // Calculate bulk price pro-rated from highest tier package offer
+      const perPieceRate = maxBundle.price / maxBundle.quantity;
+      const calculatedPrice = Math.round(perPieceRate * validQty);
+
+      let calcOrigPrice: number | null = null;
+      if (maxBundle.originalPrice) {
+        calcOrigPrice = Math.round((maxBundle.originalPrice / maxBundle.quantity) * validQty);
+      } else if (unitOriginalPrice) {
+        calcOrigPrice = unitOriginalPrice * validQty;
+      }
+
+      return {
+        totalPrice: calculatedPrice,
+        originalPrice: calcOrigPrice,
+        activeBundle: undefined,
+        activeBundleId: '',
+        isCustomQuantity: true
+      };
+    }
+  }
+
+  // 4. Fallback: Standard unit price multiplication
+  const standardPrice = unitPrice * validQty;
+  const standardOrig = unitOriginalPrice ? unitOriginalPrice * validQty : null;
+
+  return {
+    totalPrice: standardPrice,
+    originalPrice: standardOrig,
+    activeBundle: undefined,
+    activeBundleId: '',
+    isCustomQuantity: true
+  };
+}
+

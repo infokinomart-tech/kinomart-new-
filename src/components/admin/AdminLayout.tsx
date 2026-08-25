@@ -6,6 +6,7 @@ import {
   Tags,
   Ticket,
   Users,
+  Image as ImageIcon,
   Settings,
   ExternalLink,
   LogOut,
@@ -18,6 +19,7 @@ import { AdminProducts } from './AdminProducts';
 import { AdminCategories } from './AdminCategories';
 import { AdminCoupons } from './AdminCoupons';
 import { AdminTeam } from './AdminTeam';
+import { AdminBanners } from './AdminBanners';
 import { AdminSettings } from './AdminSettings';
 
 export const AdminLayout: React.FC = () => {
@@ -121,6 +123,18 @@ export const AdminLayout: React.FC = () => {
             </button>
 
             <button
+              onClick={() => setActiveAdminTab('banners')}
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-lg transition-all ${
+                activeAdminTab === 'banners'
+                  ? 'bg-[#2563EB] text-white font-bold shadow-sm'
+                  : 'text-[#94A3B8] hover:bg-[#222736] hover:text-white'
+              }`}
+            >
+              <ImageIcon className="w-4 h-4" />
+              <span>ব্যানার ও স্লাইডার (Banners)</span>
+            </button>
+
+            <button
               onClick={() => setActiveAdminTab('settings')}
               className={`flex items-center gap-1.5 px-3 py-2 rounded-lg transition-all ${
                 activeAdminTab === 'settings'
@@ -204,6 +218,7 @@ export const AdminLayout: React.FC = () => {
         {activeAdminTab === 'categories' && <AdminCategories />}
         {activeAdminTab === 'coupons' && <AdminCoupons />}
         {activeAdminTab === 'team' && <AdminTeam />}
+        {activeAdminTab === 'banners' && <AdminBanners />}
         {activeAdminTab === 'settings' && <AdminSettings />}
       </main>
     </div>

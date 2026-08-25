@@ -482,10 +482,22 @@ export const AdminOrders: React.FC = () => {
                     </td>
 
                     {/* Products */}
-                    <td className="p-3 max-w-[220px]">
+                    <td className="p-3 max-w-[240px]">
                       {ord.items.map((item, idx) => (
-                        <div key={idx} className="line-clamp-1 text-[11px] text-[#E2E8F0]">
-                          • {item.product.name} ×{item.quantity}
+                        <div key={idx} className="text-[11px] text-[#E2E8F0] space-y-0.5 mb-1 last:mb-0">
+                          <div className="font-semibold line-clamp-1">
+                            • {item.product.name} ×{item.quantity}
+                          </div>
+                          {item.flavorSummary && (
+                            <div className="text-[10px] text-purple-300 bg-purple-500/15 border border-purple-500/25 px-1.5 py-0.5 rounded flex items-center gap-1 inline-flex">
+                              <span>✨ ফ্লেভার: {item.flavorSummary}</span>
+                            </div>
+                          )}
+                          {item.selectedBundle && (
+                            <div className="text-[10px] text-amber-300 bg-amber-500/15 border border-amber-500/25 px-1.5 py-0.5 rounded flex items-center gap-1 inline-flex ml-1">
+                              <span>📦 {typeof item.selectedBundle === 'string' ? item.selectedBundle : item.selectedBundle.title}</span>
+                            </div>
+                          )}
                         </div>
                       ))}
                     </td>
@@ -551,10 +563,24 @@ export const AdminOrders: React.FC = () => {
                     {newStatus}
                   </span>
                 </div>
-                <p className="text-xs text-[#94A3B8] mt-1 font-medium">
-                  Total Items:{' '}
-                  {editingOrder.items.map((i) => `${i.product.name} (${i.quantity})`).join(', ')}
-                </p>
+                <div className="text-xs text-[#94A3B8] mt-1 space-y-1">
+                  <div>
+                    <span className="font-semibold text-gray-300">Items: </span>
+                    {editingOrder.items.map((i) => (
+                      <span key={i.product.id} className="inline-block mr-2">
+                        {i.product.name} ({i.quantity})
+                        {i.flavorSummary && (
+                          <span className="text-purple-300 ml-1">[{i.flavorSummary}]</span>
+                        )}
+                        {i.selectedBundle && (
+                          <span className="text-amber-300 ml-1">
+                            ({typeof i.selectedBundle === 'string' ? i.selectedBundle : i.selectedBundle.title})
+                          </span>
+                        )}
+                      </span>
+                    ))}
+                  </div>
+                </div>
               </div>
               <button
                 onClick={() => setEditingOrder(null)}

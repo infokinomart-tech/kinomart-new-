@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { useStore } from '../../context/StoreContext';
-import { Product, Specification, ProductBundle, Review } from '../../types';
+import { Product, Specification, ProductBundle, Review, ProductFlavor } from '../../types';
 import { getDefaultBundles, generateDemoSixTiers, generateRadioCardBundles } from '../../lib/bundleUtils';
 import { BundleSelector, RadioCardBundleSection, BannerTableOfferSection } from '../BundleSelector';
+import { FlavorSelector } from '../FlavorSelector';
 import { processImageForPlaceholder, compressImageFile, isDataUrl, isHttpUrl } from '../../lib/imageUtils';
 import {
   Plus,
@@ -298,6 +299,111 @@ export const AdminProducts: React.FC = () => {
     if (editingProduct) {
       const bundles = (editingProduct.bundles || []).filter((_, i) => i !== index);
       setEditingProduct({ ...editingProduct, bundles });
+    }
+  };
+
+  // Flavor management handlers
+  const handleLoadInhalerFlavors = () => {
+    if (editingProduct) {
+      const defaultPrice = editingProduct.discountPrice || editingProduct.price || 390;
+      const demoFlavors: ProductFlavor[] = [
+        {
+          id: `flv-${Date.now()}-1`,
+          name: 'Grape',
+          icon: '🍇',
+          bgColor: '#F3E8FF',
+          textColor: '#7E22CE',
+          price: defaultPrice,
+          inStock: true
+        },
+        {
+          id: `flv-${Date.now()}-2`,
+          name: 'Watermelon',
+          icon: '🍉',
+          bgColor: '#FFE4E6',
+          textColor: '#BE123C',
+          price: defaultPrice,
+          inStock: true
+        },
+        {
+          id: `flv-${Date.now()}-3`,
+          name: 'Mint',
+          icon: '🌿',
+          bgColor: '#DCFCE7',
+          textColor: '#15803D',
+          price: defaultPrice,
+          inStock: true
+        },
+        {
+          id: `flv-${Date.now()}-4`,
+          name: 'Peace',
+          icon: '🍑',
+          bgColor: '#FFEDD5',
+          textColor: '#C2410C',
+          price: defaultPrice,
+          inStock: true
+        },
+        {
+          id: `flv-${Date.now()}-5`,
+          name: 'Lemon',
+          icon: '🍋',
+          bgColor: '#FEF9C3',
+          textColor: '#A16207',
+          price: defaultPrice,
+          inStock: true
+        },
+        {
+          id: `flv-${Date.now()}-6`,
+          name: 'RedBull',
+          icon: '🐂',
+          bgColor: '#FEE2E2',
+          textColor: '#B91C1C',
+          price: defaultPrice,
+          inStock: true
+        }
+      ];
+
+      setEditingProduct({
+        ...editingProduct,
+        hasFlavors: true,
+        flavorTitle: editingProduct.flavorTitle || 'ফ্লেভার নির্বাচন করুন',
+        flavors: demoFlavors
+      });
+    }
+  };
+
+  const handleAddFlavorRow = () => {
+    if (editingProduct) {
+      const current = editingProduct.flavors || [];
+      const newFlv: ProductFlavor = {
+        id: `flv-${Date.now()}`,
+        name: `নতুন ফ্লেভার ${current.length + 1}`,
+        icon: '🌿',
+        bgColor: '#DCFCE7',
+        textColor: '#15803D',
+        price: editingProduct.discountPrice || editingProduct.price || 390,
+        inStock: true
+      };
+      setEditingProduct({
+        ...editingProduct,
+        hasFlavors: true,
+        flavors: [...current, newFlv]
+      });
+    }
+  };
+
+  const handleUpdateFlavorRow = (index: number, field: keyof ProductFlavor, value: any) => {
+    if (editingProduct) {
+      const list = [...(editingProduct.flavors || [])];
+      list[index] = { ...list[index], [field]: value };
+      setEditingProduct({ ...editingProduct, flavors: list });
+    }
+  };
+
+  const handleRemoveFlavorRow = (index: number) => {
+    if (editingProduct) {
+      const list = (editingProduct.flavors || []).filter((_, i) => i !== index);
+      setEditingProduct({ ...editingProduct, flavors: list });
     }
   };
 
@@ -1484,6 +1590,236 @@ export const AdminProducts: React.FC = () => {
                 )}
               </div>
 
+              {/* Product Flavors & Pricing Management Section (New Feature) */}
+              <div className="bg-[#0B1220] border border-[#1E293B] rounded-2xl p-4 text-white space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#1E293B] pb-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-purple-500/15 border border-purple-500/30 text-purple-400 flex items-center justify-center shrink-0">
+                      <Sparkles className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-sm sm:text-base text-white flex items-center gap-2">
+                        <span>ফ্লেভার ও ভ্যারিয়েন্ট ম্যানেজমেন্ট (Flavors & Pricing)</span>
+                        {editingProduct.hasFlavors && (
+                          <span className="text-[10px] bg-purple-600 text-white font-black px-2 py-0.5 rounded-full">
+                            {(editingProduct.flavors || []).length} টি ফ্লেভার সক্রিয়
+                          </span>
+                        )}
+                      </h3>
+                      <p className="text-xs text-gray-400">
+                        ইনহেলার বা অন্যান্য পণ্যের আলাদা ফ্লেভার, আইকন ও দাম কাস্টমাইজ করুন
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 self-end sm:self-auto">
+                    <span className="text-xs text-gray-300 font-bold">
+                      {editingProduct.hasFlavors ? 'চালু আছে' : 'বন্ধ আছে'}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const newHas = !editingProduct.hasFlavors;
+                        if (newHas && (!editingProduct.flavors || editingProduct.flavors.length === 0)) {
+                          handleLoadInhalerFlavors();
+                        } else {
+                          setEditingProduct({ ...editingProduct, hasFlavors: newHas });
+                        }
+                      }}
+                      className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors cursor-pointer shrink-0 ${
+                        editingProduct.hasFlavors ? 'bg-purple-600' : 'bg-slate-700'
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${
+                          editingProduct.hasFlavors ? 'translate-x-6' : 'translate-x-1'
+                        }`}
+                      />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Sub-section when Flavors is Active */}
+                {editingProduct.hasFlavors && (
+                  <div className="space-y-4">
+                    {/* Action Bar */}
+                    <div className="flex flex-wrap items-center justify-between gap-2.5 bg-[#050B18] p-3 rounded-xl border border-[#1E293B]">
+                      <div className="flex-1 min-w-[200px]">
+                        <label className="block text-[11px] text-gray-400 font-bold mb-1">
+                          ফ্লেভার সেকশন টাইটেল (Section Title):
+                        </label>
+                        <input
+                          type="text"
+                          value={editingProduct.flavorTitle || 'ফ্লেভার নির্বাচন করুন'}
+                          onChange={(e) => setEditingProduct({ ...editingProduct, flavorTitle: e.target.value })}
+                          placeholder="ফ্লেভার নির্বাচন করুন"
+                          className="w-full bg-[#0B1220] border border-[#1E293B] rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-purple-500"
+                        />
+                      </div>
+
+                      <div className="flex items-center gap-2 pt-3 sm:pt-0">
+                        <button
+                          type="button"
+                          onClick={handleLoadInhalerFlavors}
+                          className="bg-purple-700/60 hover:bg-purple-600 text-white text-xs font-bold px-3 py-2 rounded-xl flex items-center gap-1.5 transition-all cursor-pointer shadow-xs"
+                          title="ডেমো ৬টি ইনহেলার ফ্লেভার লোড করুন"
+                        >
+                          <Zap className="w-3.5 h-3.5" />
+                          <span>⚡ ৬টি ইনহেলার ফ্লেভার লোড করুন</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={handleAddFlavorRow}
+                          className="bg-[#2563EB] hover:bg-blue-600 text-white text-xs font-bold px-3 py-2 rounded-xl flex items-center gap-1 transition-all cursor-pointer shadow-xs"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>+ নতুন ফ্লেভার</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Flavors List */}
+                    {(!editingProduct.flavors || editingProduct.flavors.length === 0) ? (
+                      <div className="text-center py-6 px-4 bg-[#050B18] rounded-xl border border-dashed border-[#1E293B] text-gray-400 text-xs space-y-2">
+                        <p>কোনো ফ্লেভার যোগ করা হয়নি।</p>
+                        <button
+                          type="button"
+                          onClick={handleLoadInhalerFlavors}
+                          className="bg-purple-600 hover:bg-purple-500 text-white font-bold px-3.5 py-1.5 rounded-lg text-xs cursor-pointer"
+                        >
+                          ইনহেলার ৬টি ফ্লেভার লোড করুন
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          {editingProduct.flavors.map((flv, idx) => (
+                            <div
+                              key={flv.id || idx}
+                              className="bg-[#050B18] border border-[#1E293B] hover:border-purple-500/40 rounded-xl p-3 space-y-2.5 transition-all relative group"
+                            >
+                              <div className="flex items-center justify-between border-b border-[#1E293B] pb-1.5 text-xs font-bold">
+                                <div className="flex items-center gap-2">
+                                  <span
+                                    className="w-6 h-6 rounded-full flex items-center justify-center text-sm"
+                                    style={{ backgroundColor: flv.bgColor || '#F3E8FF' }}
+                                  >
+                                    {flv.icon || '🌿'}
+                                  </span>
+                                  <span className="text-white">ফ্লেভার #{idx + 1}</span>
+                                </div>
+
+                                <div className="flex items-center gap-2">
+                                  <label className="flex items-center gap-1 cursor-pointer text-[10px] text-gray-400">
+                                    <input
+                                      type="checkbox"
+                                      checked={flv.inStock !== false}
+                                      onChange={(e) => handleUpdateFlavorRow(idx, 'inStock', e.target.checked)}
+                                      className="accent-emerald-500 rounded cursor-pointer"
+                                    />
+                                    <span>স্টকে আছে</span>
+                                  </label>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveFlavorRow(idx)}
+                                    className="text-red-400 hover:text-red-300 p-1 cursor-pointer"
+                                    title="মুছে ফেলুন"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              </div>
+
+                              <div className="grid grid-cols-2 gap-2 text-xs">
+                                <div>
+                                  <label className="block text-[10px] text-gray-400 font-bold mb-1">
+                                    ফ্লেভারের নাম (Name)
+                                  </label>
+                                  <input
+                                    type="text"
+                                    value={flv.name}
+                                    onChange={(e) => handleUpdateFlavorRow(idx, 'name', e.target.value)}
+                                    placeholder="যেমন: Grape / Mint"
+                                    className="w-full bg-[#0B1220] border border-[#1E293B] rounded-lg p-2 text-white text-xs focus:border-purple-500"
+                                  />
+                                </div>
+
+                                <div>
+                                  <label className="block text-[10px] text-gray-400 font-bold mb-1">
+                                    আইকন বা ইমোজি (Emoji)
+                                  </label>
+                                  <input
+                                    type="text"
+                                    value={flv.icon || '🌿'}
+                                    onChange={(e) => handleUpdateFlavorRow(idx, 'icon', e.target.value)}
+                                    placeholder="🍇, 🍉, 🌿, 🍑, 🍋, 🐂"
+                                    className="w-full bg-[#0B1220] border border-[#1E293B] rounded-lg p-2 text-white text-xs focus:border-purple-500"
+                                  />
+                                </div>
+
+                                <div>
+                                  <label className="block text-[10px] text-emerald-400 font-bold mb-1">
+                                    প্রতিটির মূল্য (৳ Price)
+                                  </label>
+                                  <input
+                                    type="number"
+                                    value={flv.price || editingProduct.discountPrice || editingProduct.price || 390}
+                                    onChange={(e) => handleUpdateFlavorRow(idx, 'price', Number(e.target.value))}
+                                    placeholder="390"
+                                    className="w-full bg-[#0B1220] border border-[#1E293B] rounded-lg p-2 text-emerald-300 font-bold text-xs focus:border-purple-500"
+                                  />
+                                </div>
+
+                                <div>
+                                  <label className="block text-[10px] text-gray-400 font-bold mb-1">
+                                    ব্যাজ কালার (Bg Tint)
+                                  </label>
+                                  <div className="flex items-center gap-1.5">
+                                    <input
+                                      type="color"
+                                      value={flv.bgColor || '#F3E8FF'}
+                                      onChange={(e) => handleUpdateFlavorRow(idx, 'bgColor', e.target.value)}
+                                      className="w-7 h-7 rounded border border-gray-600 cursor-pointer bg-transparent"
+                                    />
+                                    <input
+                                      type="text"
+                                      value={flv.bgColor || '#F3E8FF'}
+                                      onChange={(e) => handleUpdateFlavorRow(idx, 'bgColor', e.target.value)}
+                                      placeholder="#F3E8FF"
+                                      className="flex-1 bg-[#0B1220] border border-[#1E293B] rounded-lg p-1.5 text-white font-mono text-[11px]"
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Live Preview Box for Flavor Selector */}
+                        <div className="bg-[#FAF8F5] border-2 border-dashed border-[#D5DCBF] rounded-2xl p-4 mt-3">
+                          <div className="flex items-center justify-between text-xs font-bold text-gray-600 mb-2 border-b border-gray-200 pb-2">
+                            <span className="flex items-center gap-1.5 text-purple-700">
+                              <span>👁️ ফ্লেভার সিলেক্টর লাইভ প্রিভিউ (Customer View):</span>
+                            </span>
+                            <span className="text-[11px] bg-white px-2 py-0.5 rounded border border-gray-200 text-gray-500">
+                              ডেমো মোড
+                            </span>
+                          </div>
+                          <FlavorSelector
+                            flavors={editingProduct.flavors}
+                            title={editingProduct.flavorTitle || 'ফ্লেভার নির্বাচন করুন'}
+                            selectedFlavors={{ [editingProduct.flavors[0]?.name || 'Grape']: 1 }}
+                            onChange={() => {}}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
               {/* Offer Timer Section (Matching Demo Image) */}
               <div className="bg-[#0B1220] border border-[#1E293B] rounded-2xl p-4 text-white space-y-3">
                 <div className="flex items-center justify-between gap-3">
@@ -1529,11 +1865,11 @@ export const AdminProducts: React.FC = () => {
                         </label>
                         <input
                           type="text"
-                          value={editingProduct.timerTitle ?? 'অফারটি শেষ হতে বাকি:'}
+                          value={editingProduct.timerTitle ?? 'অফারটি শেষ হবে:'}
                           onChange={(e) =>
                             setEditingProduct({ ...editingProduct, timerTitle: e.target.value })
                           }
-                          placeholder="অফারটি শেষ হতে বাকি:"
+                          placeholder="অফারটি শেষ হবে:"
                           className="w-full bg-[#050B18] border border-[#1E293B] rounded-xl p-3 text-white focus:outline-none focus:border-[#2563EB] text-xs font-medium"
                         />
                       </div>

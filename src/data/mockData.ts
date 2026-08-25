@@ -1,4 +1,4 @@
-import { Category, Coupon, Order, Product, StoreSettings, TeamMember } from '../types';
+import { Category, Coupon, Order, Product, StoreSettings, TeamMember, HeroSlide, PromoBannerConfig } from '../types';
 
 export const INITIAL_SETTINGS: StoreSettings = {
   websiteTitle: 'KinoMart',
@@ -169,6 +169,11 @@ export const INITIAL_PRODUCTS: Product[] = [
         isVerifiedPurchase: true
       }
     ],
+    reviewImages: [
+      'https://images.unsplash.com/photo-1546435770-a3e426bf472b?w=800&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1572536147248-ac59a8abfa4b?w=800&auto=format&fit=crop&q=80'
+    ],
     status: 'ACTIVE'
   },
   {
@@ -238,14 +243,73 @@ export const INITIAL_PRODUCTS: Product[] = [
   },
   {
     id: 'prod-6',
-    name: 'KinoBreathe Nasal Inhaler & Health Aid',
-    price: 740,
+    name: 'Energy Booster Essential Oil Nasal Inhaler | Sheii Shop',
+    price: 650,
+    discountPrice: 390,
     category: 'ফিটনেস ও হেলথ গ্যাজেট',
     subCategory: 'নেসাল ইনহেলার',
     stock: 30,
     thumbnail: 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=800&auto=format&fit=crop&q=80',
     gallery: ['https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=800&auto=format&fit=crop&q=80'],
     shortDescription: 'প্রাকৃতিক ভেষজ নির্যাস সমৃদ্ধ ইনহেলার, তাৎক্ষণিক রিফ্রেশমেন্ট ও স্বস্তি।',
+    hasFlavors: true,
+    flavorTitle: 'ফ্লেভার নির্বাচন করুন',
+    flavors: [
+      {
+        id: 'flv-1',
+        name: 'Grape',
+        icon: '🍇',
+        bgColor: '#F3E8FF',
+        textColor: '#7E22CE',
+        price: 390,
+        inStock: true
+      },
+      {
+        id: 'flv-2',
+        name: 'Watermelon',
+        icon: '🍉',
+        bgColor: '#FFE4E6',
+        textColor: '#BE123C',
+        price: 390,
+        inStock: true
+      },
+      {
+        id: 'flv-3',
+        name: 'Mint',
+        icon: '🌿',
+        bgColor: '#DCFCE7',
+        textColor: '#15803D',
+        price: 390,
+        inStock: true
+      },
+      {
+        id: 'flv-4',
+        name: 'Peace',
+        icon: '🍑',
+        bgColor: '#FFEDD5',
+        textColor: '#C2410C',
+        price: 390,
+        inStock: true
+      },
+      {
+        id: 'flv-5',
+        name: 'Lemon',
+        icon: '🍋',
+        bgColor: '#FEF9C3',
+        textColor: '#A16207',
+        price: 390,
+        inStock: true
+      },
+      {
+        id: 'flv-6',
+        name: 'RedBull',
+        icon: '🐂',
+        bgColor: '#FEE2E2',
+        textColor: '#B91C1C',
+        price: 390,
+        inStock: true
+      }
+    ],
     bundleStyle: 'banner_table',
     bundleBannerSubtitle: 'একসাথে বেশি কিনুন – বেশি সাশ্রয় করুন!',
     bundleBannerTitle: 'একাধিক ফ্লেভার কিনলে পাবেন বিশেষ ছাড়',
@@ -487,23 +551,45 @@ export const INITIAL_TEAM: TeamMember[] = [
   }
 ];
 
-export const HERO_SLIDES = [
+export const INITIAL_HERO_SLIDES: HeroSlide[] = [
   {
     id: 1,
     image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=1600&auto=format&fit=crop&q=80',
     title: 'প্রিমিয়াম হেডফোন ও ইয়ারবাডস',
-    subtitle: 'অরিজিনাল গ্যাজেটে ছাড়ের ধামাকা অফার'
+    subtitle: 'অরিজিনাল গ্যাজেটে ছাড়ের ধামাকা অফার',
+    linkType: 'all_products',
+    isActive: true,
+    order: 1
   },
   {
     id: 2,
     image: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=1600&auto=format&fit=crop&q=80',
     title: 'স্মার্টওয়াচ কালেকশন ২০২৬',
-    subtitle: 'অ্যামোলেড ডিসপ্লে ও ব্লুটুথ কলিং'
+    subtitle: 'অ্যামোলেড ডিসপ্লে ও ব্লুটুথ কলিং',
+    linkType: 'category',
+    linkValue: 'স্মার্টওয়াচ',
+    isActive: true,
+    order: 2
   },
   {
     id: 3,
     image: 'https://images.unsplash.com/photo-1609592424109-dd9892f1b177?w=1600&auto=format&fit=crop&q=80',
     title: 'ফাস্ট চার্জিং পাওয়ার ব্যাংক',
-    subtitle: 'সারা দেশে দ্রুত ক্যাশ অন ডেলিভারি'
+    subtitle: 'সারা দেশে দ্রুত ক্যাশ অন ডেলিভারি',
+    linkType: 'all_products',
+    isActive: true,
+    order: 3
   }
 ];
+
+export const HERO_SLIDES = INITIAL_HERO_SLIDES;
+
+export const INITIAL_PROMO_BANNER: PromoBannerConfig = {
+  isEnabled: true,
+  badgeText: 'লিমিটেড টাইম ধামাকা অফার',
+  title: 'আজকের যেকোনো ২ টি গ্যাজেট অর্ডারে সম্পূর্ণ ফ্রি সারা দেশ ডেলিভারি!',
+  subtitle: 'আপনার পছন্দের ইয়ারবাডস, স্মার্টওয়াচ বা পাওয়ার ব্যাংক এখনই অর্ডার করুন। স্টক সীমিত!',
+  buttonText: 'অফারটি লুফে নিন',
+  linkType: 'all_products',
+  bgColor: '#434F33'
+};

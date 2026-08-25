@@ -29,7 +29,9 @@ import {
 } from 'lucide-react';
 import { ProductCard } from './ProductCard';
 import { BundleSelector, RadioCardBundleSection, BannerTableOfferSection } from './BundleSelector';
-import { getEffectiveBundles } from '../lib/bundleUtils';
+import { FlavorSelector } from './FlavorSelector';
+import { CustomerScreenshotCarousel } from './CustomerScreenshotCarousel';
+import { getEffectiveBundles, calculateProductPrice } from '../lib/bundleUtils';
 import { trackViewItem, trackAddToCart } from '../lib/dataLayer';
 
 interface ProductDetailsModalProps {
@@ -64,13 +66,20 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
   const defaultBundle = effectiveBundles.find((b) => b.isPopular) || effectiveBundles[0];
 
   const [selectedBundleId, setSelectedBundleId] = useState<string>(defaultBundle?.id || '');
-  const selectedBundle = effectiveBundles.find((b) => b.id === selectedBundleId) || defaultBundle;
-
   const [selectedImage, setSelectedImage] = useState<string>(product.thumbnail);
   const [selectedColor, setSelectedColor] = useState<string>(
     product.colors && product.colors.length > 0 ? product.colors[0] : 'MINT'
   );
-  const [quantity, setQuantity] = useState<number>(selectedBundle?.quantity || 1);
+  const [quantity, setQuantity] = useState<number>(defaultBundle?.quantity || 1);
+  const [selectedFlavors, setSelectedFlavors] = useState<{ [flavorName: string]: number }>({});
+
+  // Calculate dynamic price and active bundle
+  const priceResult = calculateProductPrice(product, quantity, selectedBundleId);
+  const selectedBundle = priceResult.activeBundle;
+  const displayPrice = priceResult.totalPrice;
+  const displayOriginalPrice = priceResult.originalPrice;
+  const activeBundleId = priceResult.activeBundleId;
+  const totalPrice = displayPrice;
 
   // Sync state whenever product changes
   useEffect(() => {
@@ -79,7 +88,15 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
     const eff = getEffectiveBundles(product);
     const def = eff.find((b) => b.isPopular) || eff[0];
     setSelectedBundleId(def?.id || '');
-    setQuantity(def?.quantity || 1);
+    const initialQty = def?.quantity || 1;
+    setQuantity(initialQty);
+
+    if (product.hasFlavors && product.flavors && product.flavors.length > 0) {
+      const firstFlv = product.flavors[0]?.name || 'Grape';
+      setSelectedFlavors({ [firstFlv]: initialQty });
+    } else {
+      setSelectedFlavors({});
+    }
 
     // Track view_item event
     trackViewItem(product, def?.quantity || 1, product.colors && product.colors.length > 0 ? product.colors[0] : undefined);
@@ -87,6 +104,18 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
     // Ensure page scrolls to top on product selection
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
   }, [product]);
+
+  const handleFlavorsChange = (newFlavors: { [flavorName: string]: number }, totalCount: number) => {
+    setSelectedFlavors(newFlavors);
+    const newQty = Math.max(1, totalCount);
+    setQuantity(newQty);
+    const matched = effectiveBundles.find((b) => b.quantity === newQty);
+    if (matched) {
+      setSelectedBundleId(matched.id);
+    } else {
+      setSelectedBundleId('');
+    }
+  };
 
   const [reviewSlideIdx, setReviewSlideIdx] = useState<number>(0);
 
@@ -229,16 +258,6 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
   const unitPrice = product.discountPrice || product.price;
   const unitOriginalPrice = product.discountPrice ? product.price : null;
 
-  const displayPrice = selectedBundle
-    ? selectedBundle.price
-    : unitPrice * quantity;
-
-  const displayOriginalPrice = selectedBundle
-    ? selectedBundle.originalPrice
-    : (unitOriginalPrice ? unitOriginalPrice * quantity : null);
-
-  const totalPrice = displayPrice;
-
   // Variants list
   const variantList = (product.colors && Array.isArray(product.colors))
     ? product.colors.filter((c) => c && typeof c === 'string' && c.trim() !== '')
@@ -307,10 +326,15 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
 
   // Handle order now
   const handleOrderNow = () => {
-    trackAddToCart(product, quantity, selectedColor);
+    const flavorSummary = Object.entries(selectedFlavors)
+      .filter(([_, q]) => q > 0)
+      .map(([name, q]) => `${name} (${q})`)
+      .join(', ');
+
+    trackAddToCart(product, quantity, flavorSummary || selectedColor);
     setQuickOrderProduct({
       ...product,
-      colors: [selectedColor]
+      colors: flavorSummary ? [flavorSummary] : [selectedColor]
     });
     setIsQuickOrderOpen(true);
   };
@@ -554,49 +578,67 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
 
             {/* Offer Countdown Banner (Shows only if enabled in Admin Panel) */}
             {Boolean(product.hasTimer) && (
-              <div className="bg-[#23311A] text-white p-3.5 rounded-2xl border border-[#3B4D2B] flex flex-wrap sm:flex-nowrap items-center justify-between gap-3 shadow-sm">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-full bg-[#3B4D2B] flex items-center justify-center text-amber-400 shrink-0">
-                    <Flame className="w-5 h-5 fill-amber-400" />
-                  </div>
-                  <div>
-                    <div className="font-black text-amber-300 text-xs sm:text-sm">
-                      {product.timerTitle || 'অফারটি শেষ হতে বাকি:'}
-                    </div>
-                    <div className="text-[11px] text-gray-300 font-medium">
-                      অফারের সময় সীমিত! দ্রুত অর্ডার করুন।
-                    </div>
-                  </div>
+              <div className="bg-[#FFF5F6] border border-[#FDE2E7] p-4 sm:p-5 rounded-3xl shadow-xs my-2">
+                {/* Header Title with Exclamation Circle */}
+                <div className="flex items-center justify-center gap-2 mb-3.5 sm:mb-4 text-center">
+                  <AlertCircle className="w-5 h-5 sm:w-6 sm:h-6 text-[#E60049] stroke-[2.5] shrink-0" />
+                  <span className="font-black text-[#E60049] text-base sm:text-lg tracking-wide">
+                    {product.timerTitle || 'অফারটি শেষ হবে:'}
+                  </span>
                 </div>
 
-                {/* Countdown Digits */}
-                <div className="flex items-center gap-1.5 text-xs font-black">
-                  <div className="flex flex-col items-center">
-                    <span className="bg-[#151E10] px-2.5 py-1 rounded-lg text-white font-mono text-sm border border-[#3B4D2B]">
-                      {toBnNum(timeLeft.days)}
+                {/* Countdown 4-Block Boxes */}
+                <div className="flex items-center justify-center gap-2 sm:gap-4 select-none">
+                  {/* Days */}
+                  <div className="w-14 sm:w-20 h-14 sm:h-20 bg-[#E60049] rounded-2xl sm:rounded-3xl flex flex-col items-center justify-center shadow-md shadow-[#E60049]/20">
+                    <span className="text-white font-black text-xl sm:text-2xl leading-none">
+                      {toBnNum(timeLeft.days, true)}
                     </span>
-                    <span className="text-[9px] text-gray-400 mt-0.5">দিন</span>
+                    <span className="text-white/95 text-[11px] sm:text-xs font-semibold mt-1 leading-tight">
+                      দিন
+                    </span>
                   </div>
-                  <span className="text-amber-300 pb-3">:</span>
-                  <div className="flex flex-col items-center">
-                    <span className="bg-[#151E10] px-2.5 py-1 rounded-lg text-white font-mono text-sm border border-[#3B4D2B]">
-                      {toBnNum(timeLeft.hours)}
+
+                  <span className="text-[#E60049] font-black text-xl sm:text-2xl pb-1">
+                    :
+                  </span>
+
+                  {/* Hours */}
+                  <div className="w-14 sm:w-20 h-14 sm:h-20 bg-[#E60049] rounded-2xl sm:rounded-3xl flex flex-col items-center justify-center shadow-md shadow-[#E60049]/20">
+                    <span className="text-white font-black text-xl sm:text-2xl leading-none">
+                      {toBnNum(timeLeft.hours, true)}
                     </span>
-                    <span className="text-[9px] text-gray-400 mt-0.5">ঘণ্টা</span>
+                    <span className="text-white/95 text-[11px] sm:text-xs font-semibold mt-1 leading-tight">
+                      ঘণ্টা
+                    </span>
                   </div>
-                  <span className="text-amber-300 pb-3">:</span>
-                  <div className="flex flex-col items-center">
-                    <span className="bg-[#151E10] px-2.5 py-1 rounded-lg text-white font-mono text-sm border border-[#3B4D2B]">
-                      {toBnNum(timeLeft.minutes)}
+
+                  <span className="text-[#E60049] font-black text-xl sm:text-2xl pb-1">
+                    :
+                  </span>
+
+                  {/* Minutes */}
+                  <div className="w-14 sm:w-20 h-14 sm:h-20 bg-[#E60049] rounded-2xl sm:rounded-3xl flex flex-col items-center justify-center shadow-md shadow-[#E60049]/20">
+                    <span className="text-white font-black text-xl sm:text-2xl leading-none">
+                      {toBnNum(timeLeft.minutes, true)}
                     </span>
-                    <span className="text-[9px] text-gray-400 mt-0.5">মিন</span>
+                    <span className="text-white/95 text-[11px] sm:text-xs font-semibold mt-1 leading-tight">
+                      মিনিট
+                    </span>
                   </div>
-                  <span className="text-amber-300 pb-3">:</span>
-                  <div className="flex flex-col items-center">
-                    <span className="bg-[#151E10] px-2.5 py-1 rounded-lg text-white font-mono text-sm border border-[#3B4D2B]">
-                      {toBnNum(timeLeft.seconds)}
+
+                  <span className="text-[#E60049] font-black text-xl sm:text-2xl pb-1">
+                    :
+                  </span>
+
+                  {/* Seconds */}
+                  <div className="w-14 sm:w-20 h-14 sm:h-20 bg-[#E60049] rounded-2xl sm:rounded-3xl flex flex-col items-center justify-center shadow-md shadow-[#E60049]/20">
+                    <span className="text-white font-black text-xl sm:text-2xl leading-none">
+                      {toBnNum(timeLeft.seconds, true)}
                     </span>
-                    <span className="text-[9px] text-gray-400 mt-0.5">সে</span>
+                    <span className="text-white/95 text-[11px] sm:text-xs font-semibold mt-1 leading-tight">
+                      সেকেন্ড
+                    </span>
                   </div>
                 </div>
               </div>
@@ -609,8 +651,21 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
               </div>
             )}
 
-            {/* Color / Variant Selection */}
-            {variantList.length > 0 && (
+            {/* Flavor Selection Section (Matching Demo UI) */}
+            {product.hasFlavors && product.flavors && product.flavors.length > 0 && (
+              <div className="pt-1">
+                <FlavorSelector
+                  flavors={product.flavors}
+                  title={product.flavorTitle || 'ফ্লেভার নির্বাচন করুন'}
+                  selectedFlavors={selectedFlavors}
+                  onChange={handleFlavorsChange}
+                  toBnNum={toBnNum}
+                />
+              </div>
+            )}
+
+            {/* Color / Variant Selection (For products without flavors) */}
+            {!product.hasFlavors && variantList.length > 0 && (
               <div className="space-y-2 pt-1">
                 <label className="text-xs sm:text-sm font-extrabold text-[#1F241E] block">
                   কালার: <span className="text-[#5E6A45]">{selectedColor}</span>
@@ -693,7 +748,7 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
                     {product.bundleStyle === 'banner_table' ? (
                       <BannerTableOfferSection
                         bundles={effectiveBundles}
-                        selectedBundleId={selectedBundleId}
+                        selectedBundleId={activeBundleId}
                         bannerTitle={product.bundleBannerTitle}
                         bannerSubtitle={product.bundleBannerSubtitle}
                         onSelectBundle={(b) => {
@@ -704,7 +759,7 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
                     ) : (
                       <RadioCardBundleSection
                         bundles={effectiveBundles}
-                        selectedBundleId={selectedBundleId}
+                        selectedBundleId={activeBundleId}
                         onSelectBundle={(b) => {
                           setSelectedBundleId(b.id);
                           setQuantity(b.quantity);
@@ -1099,36 +1154,13 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
             </div>
           )}
 
-          {/* Review Screenshot Images Gallery (from customer chat/messages) */}
+          {/* Review Screenshot Images Gallery / Carousel Slideshow (from customer chat/messages) */}
           {reviewScreenshots.length > 0 && (
-            <div className="pt-4 border-t border-[#E8E3D9] space-y-3">
-              <div className="flex items-center justify-between">
-                <h4 className="font-extrabold text-[#1F241E] text-xs sm:text-sm flex items-center gap-1.5">
-                  <ImageIcon className="w-4 h-4 text-[#5E6A45]" />
-                  <span>কাস্টমার চ্যাট ও ফিডব্যাক স্ক্রিনশট ({toBnNum(reviewScreenshots.length)} টি)</span>
-                </h4>
-                <span className="text-[11px] text-gray-500">ছবিতে ট্যাপ করে বড় করে দেখুন</span>
-              </div>
-
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                {reviewScreenshots.map((img, idx) => (
-                  <div
-                    key={idx}
-                    onClick={() => setExpandedReviewImage(img)}
-                    className="aspect-square rounded-2xl overflow-hidden border border-[#E8E3D9] bg-[#FAF8F5] relative group cursor-pointer shadow-2xs hover:shadow-md transition-all"
-                  >
-                    <img
-                      src={img}
-                      alt={`Review Screenshot ${idx + 1}`}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      referrerPolicy="no-referrer"
-                    />
-                    <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white transition-opacity">
-                      <ZoomIn className="w-5 h-5 drop-shadow" />
-                    </div>
-                  </div>
-                ))}
-              </div>
+            <div className="pt-4 border-t border-[#E8E3D9]">
+              <CustomerScreenshotCarousel
+                images={reviewScreenshots}
+                toBnNum={toBnNum}
+              />
             </div>
           )}
         </div>
@@ -1174,32 +1206,6 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
               </div>
             )}
 
-            {/* Real Product Gallery Posters / Photos */}
-            {hasGallery && (
-              <div className="space-y-4 border-t border-[#E8E3D9] pt-6">
-                <h3 className="font-black text-[#1F241E] text-base sm:text-lg flex items-center gap-2">
-                  <ImageIcon className="w-5 h-5 text-[#5E6A45]" />
-                  <span>প্রোডাক্টের বাস্তব ছবিসমূহ (গ্যালারি)</span>
-                </h3>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 items-start">
-                  {validGallery.map((img, idx) => (
-                    <div
-                      key={idx}
-                      className="w-full rounded-2xl overflow-hidden border border-[#E8E3D9] bg-[#FAF8F5] shadow-xs"
-                    >
-                      <img
-                        src={img}
-                        alt={`Product Photo ${idx + 1}`}
-                        className="w-full h-auto object-contain block mx-auto"
-                        referrerPolicy="no-referrer"
-                      />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
             {/* Product Video Review / Demo Frame */}
             {hasVideo && (
               <div className="space-y-4 border-t border-[#E8E3D9] pt-6">
@@ -1216,6 +1222,32 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                     allowFullScreen
                   />
+                </div>
+              </div>
+            )}
+
+            {/* Real Product Gallery Posters / Photos */}
+            {hasGallery && (
+              <div className="space-y-4 border-t border-[#E8E3D9] pt-6">
+                <h3 className="font-black text-[#1F241E] text-base sm:text-lg flex items-center gap-2">
+                  <ImageIcon className="w-5 h-5 text-[#5E6A45]" />
+                  <span>প্রোডাক্টের বাস্তব ছবিসমূহ (গ্যালারি)</span>
+                </h3>
+
+                <div className="grid grid-cols-2 gap-2.5 sm:gap-4 md:gap-6 items-start">
+                  {validGallery.map((img, idx) => (
+                    <div
+                      key={idx}
+                      className="w-full rounded-xl sm:rounded-2xl overflow-hidden border border-[#E8E3D9] bg-[#FAF8F5] shadow-xs"
+                    >
+                      <img
+                        src={img}
+                        alt={`Product Photo ${idx + 1}`}
+                        className="w-full h-auto object-contain block mx-auto"
+                        referrerPolicy="no-referrer"
+                      />
+                    </div>
+                  ))}
                 </div>
               </div>
             )}

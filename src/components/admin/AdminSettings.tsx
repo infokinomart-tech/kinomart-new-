@@ -382,6 +382,7 @@ GRANT ALL ON ALL TABLES IN SCHEMA public TO anon, authenticated, postgres, servi
               <label className="block text-[#94A3B8] font-bold mb-1">Facebook Pixel ID</label>
               <input
                 type="text"
+                placeholder="e.g. 123456789012345"
                 value={formData.facebookPixelId}
                 onChange={(e) => setFormData({ ...formData, facebookPixelId: e.target.value })}
                 className="w-full bg-[#11131A] border border-[#33384B] rounded-xl p-3 text-white"
@@ -391,11 +392,38 @@ GRANT ALL ON ALL TABLES IN SCHEMA public TO anon, authenticated, postgres, servi
               <label className="block text-[#94A3B8] font-bold mb-1">CAPI Access Token</label>
               <input
                 type="text"
+                placeholder="Meta Conversions API Token"
                 value={formData.capiAccessToken}
                 onChange={(e) => setFormData({ ...formData, capiAccessToken: e.target.value })}
                 className="w-full bg-[#11131A] border border-[#33384B] rounded-xl p-3 text-white"
               />
             </div>
+            <div>
+              <label className="block text-[#94A3B8] font-bold mb-1">Google Tag Manager (GTM ID)</label>
+              <input
+                type="text"
+                placeholder="e.g. GTM-XXXXXXX"
+                value={formData.gtmId || ''}
+                onChange={(e) => setFormData({ ...formData, gtmId: e.target.value })}
+                className="w-full bg-[#11131A] border border-[#33384B] rounded-xl p-3 text-white"
+              />
+              <p className="text-[10px] text-gray-400 mt-1">Google Tag Manager কন্টেইনার স্বয়ংক্রিয়ভাবে লোড হবে</p>
+            </div>
+            <div>
+              <label className="block text-[#94A3B8] font-bold mb-1">Google Analytics 4 (GA4 Measurement ID)</label>
+              <input
+                type="text"
+                placeholder="e.g. G-XXXXXXXXXX"
+                value={formData.gaMeasurementId || ''}
+                onChange={(e) => setFormData({ ...formData, gaMeasurementId: e.target.value })}
+                className="w-full bg-[#11131A] border border-[#33384B] rounded-xl p-3 text-white"
+              />
+              <p className="text-[10px] text-gray-400 mt-1">GA4 মেজারমেন্ট আইডি দিলে gtag.js স্বয়ংক্রিয়ভাবে কানেক্ট হবে</p>
+            </div>
+          </div>
+          <div className="bg-[#11131A] p-3 rounded-xl border border-emerald-900/40 text-[11px] text-emerald-400 font-medium flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+            <span><strong>DataLayer Active:</strong> window.dataLayer সক্রিয় এবং GA4 ইকমার্স ইভেন্ট (page_view, view_item_list, select_item, view_item, add_to_cart, begin_checkout, purchase) স্বয়ংক্রিয়ভাবে ট্র্যাক হচ্ছে।</span>
           </div>
         </div>
 

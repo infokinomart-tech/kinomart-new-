@@ -6,7 +6,9 @@ import {
   INITIAL_ORDERS,
   INITIAL_PRODUCTS,
   INITIAL_SETTINGS,
-  INITIAL_TEAM
+  INITIAL_TEAM,
+  INITIAL_HERO_SLIDES,
+  INITIAL_PROMO_BANNER
 } from '../data/mockData';
 import {
   Category,
@@ -17,9 +19,11 @@ import {
   OrderItem,
   Product,
   StoreSettings,
-  TeamMember
+  TeamMember,
+  HeroSlide,
+  PromoBannerConfig
 } from '../types';
-import { trackPurchase } from '../lib/dataLayer';
+import { trackPurchase, injectGTM, injectGA4, injectMetaPixel } from '../lib/dataLayer';
 
 interface StoreContextType {
   // Navigation & View
@@ -63,6 +67,8 @@ interface StoreContextType {
   coupons: Coupon[];
   team: TeamMember[];
   settings: StoreSettings;
+  heroSlides: HeroSlide[];
+  promoBanner: PromoBannerConfig;
 
   // Mock SMS Notifications
   mockSmsLogs: MockSMSLog[];
@@ -78,8 +84,8 @@ interface StoreContextType {
   setIsAdminModalOpen: (open: boolean) => void;
   loginAdmin: (username: string, pass: string) => boolean;
   logoutAdmin: () => void;
-  activeAdminTab: 'orders' | 'products' | 'categories' | 'coupons' | 'team' | 'settings';
-  setActiveAdminTab: (tab: 'orders' | 'products' | 'categories' | 'coupons' | 'team' | 'settings') => void;
+  activeAdminTab: 'orders' | 'products' | 'categories' | 'coupons' | 'team' | 'banners' | 'settings';
+  setActiveAdminTab: (tab: 'orders' | 'products' | 'categories' | 'coupons' | 'team' | 'banners' | 'settings') => void;
 
   // Actions
   createOrder: (orderData: Omit<Order, 'id' | 'orderNumber' | 'createdAt' | 'status' | 'callStatus'>) => Order;
@@ -97,6 +103,12 @@ interface StoreContextType {
 
   saveTeamMember: (member: TeamMember) => void;
   deleteTeamMember: (memberId: string) => void;
+
+  saveHeroSlide: (slide: HeroSlide) => void;
+  deleteHeroSlide: (slideId: string | number) => void;
+  reorderHeroSlides: (slides: HeroSlide[]) => void;
+  resetHeroSlides: () => void;
+  savePromoBanner: (config: PromoBannerConfig) => void;
 
   saveSettings: (settings: StoreSettings) => void;
   validateCoupon: (code: string, subtotal: number) => { valid: boolean; discount: number; message: string };
@@ -165,7 +177,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   });
   const [isAdminModalOpen, setIsAdminModalOpen] = useState<boolean>(false);
   const isAdminAuthenticated = isAdminLoggedIn;
-  const [activeAdminTab, setActiveAdminTab] = useState<'orders' | 'products' | 'categories' | 'coupons' | 'team' | 'settings'>('orders');
+  const [activeAdminTab, setActiveAdminTab] = useState<'orders' | 'products' | 'categories' | 'coupons' | 'team' | 'banners' | 'settings'>('orders');
 
   // Data Loading & Error States
   const [isDataLoading, setIsDataLoading] = useState<boolean>(true);
@@ -194,6 +206,14 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const [settings, setSettings] = useState<StoreSettings>(() => {
     return safeGetStorage('kinomart_settings', INITIAL_SETTINGS);
+  });
+
+  const [heroSlides, setHeroSlides] = useState<HeroSlide[]>(() => {
+    return safeGetStorage('kinomart_hero_slides', INITIAL_HERO_SLIDES);
+  });
+
+  const [promoBanner, setPromoBanner] = useState<PromoBannerConfig>(() => {
+    return safeGetStorage('kinomart_promo_banner', INITIAL_PROMO_BANNER);
   });
 
   // Supabase RLS Warning State
@@ -258,6 +278,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   useEffect(() => { safeSetStorage('kinomart_team', team); }, [team]);
   useEffect(() => { safeSetStorage('kinomart_settings', settings); }, [settings]);
   useEffect(() => { safeSetStorage('kinomart_customer_profiles', customerProfiles); }, [customerProfiles]);
+  useEffect(() => { safeSetStorage('kinomart_hero_slides', heroSlides); }, [heroSlides]);
+  useEffect(() => { safeSetStorage('kinomart_promo_banner', promoBanner); }, [promoBanner]);
 
   useEffect(() => {
     if (customerUser) {
@@ -669,6 +691,19 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       setSupabaseCredentials(settings.supabaseUrl || '', settings.supabaseKey || '');
     }
   }, [settings.supabaseUrl, settings.supabaseKey]);
+
+  // Auto initialize GTM, GA4, and Meta Pixel if configured
+  useEffect(() => {
+    if (settings.gtmId) {
+      injectGTM(settings.gtmId);
+    }
+    if (settings.gaMeasurementId) {
+      injectGA4(settings.gaMeasurementId);
+    }
+    if (settings.facebookPixelId) {
+      injectMetaPixel(settings.facebookPixelId);
+    }
+  }, [settings.gtmId, settings.gaMeasurementId, settings.facebookPixelId]);
 
   // Initial Fetch & Real-time Auto-Sync across devices
   useEffect(() => {
@@ -1244,6 +1279,45 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     })();
   };
 
+  // Banner / Slider Handlers
+  const saveHeroSlide = (slide: HeroSlide) => {
+    setHeroSlides(prev => {
+      const idx = prev.findIndex(s => String(s.id) === String(slide.id));
+      let updated: HeroSlide[];
+      if (idx >= 0) {
+        updated = [...prev];
+        updated[idx] = slide;
+      } else {
+        updated = [...prev, { ...slide, order: prev.length + 1 }];
+      }
+      safeSetStorage('kinomart_hero_slides', updated);
+      return updated;
+    });
+  };
+
+  const deleteHeroSlide = (slideId: string | number) => {
+    setHeroSlides(prev => {
+      const updated = prev.filter(s => String(s.id) !== String(slideId));
+      safeSetStorage('kinomart_hero_slides', updated);
+      return updated;
+    });
+  };
+
+  const reorderHeroSlides = (slides: HeroSlide[]) => {
+    setHeroSlides(slides);
+    safeSetStorage('kinomart_hero_slides', slides);
+  };
+
+  const resetHeroSlides = () => {
+    setHeroSlides(INITIAL_HERO_SLIDES);
+    safeSetStorage('kinomart_hero_slides', INITIAL_HERO_SLIDES);
+  };
+
+  const savePromoBanner = (config: PromoBannerConfig) => {
+    setPromoBanner(config);
+    safeSetStorage('kinomart_promo_banner', config);
+  };
+
   // Validate Coupon
   const validateCoupon = (code: string, subtotal: number) => {
     const cleanCode = code.trim().toUpperCase();
@@ -1273,6 +1347,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setOrders([]);
     setCoupons([]);
     setTeam([]);
+    setHeroSlides(INITIAL_HERO_SLIDES);
+    setPromoBanner(INITIAL_PROMO_BANNER);
     setSettings(INITIAL_SETTINGS);
     try {
       localStorage.clear();
@@ -1315,6 +1391,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         coupons,
         team,
         settings,
+        heroSlides,
+        promoBanner,
         mockSmsLogs,
         latestSmsToast,
         dismissSmsToast,
@@ -1339,6 +1417,11 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         deleteCoupon,
         saveTeamMember,
         deleteTeamMember,
+        saveHeroSlide,
+        deleteHeroSlide,
+        reorderHeroSlides,
+        resetHeroSlides,
+        savePromoBanner,
         saveSettings,
         validateCoupon,
         refreshSupabaseData,

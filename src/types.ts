@@ -10,6 +10,17 @@ export interface ProductBundle {
   iconType?: 'green_dot' | 'gold_dot' | 'fire' | 'star';
 }
 
+export interface ProductFlavor {
+  id: string;
+  name: string;
+  icon?: string; // emoji e.g. 🍇, 🍉, 🌿, 🍑, 🍋, 🐂 or icon label
+  bgColor?: string; // e.g. '#F3E8FF'
+  textColor?: string; // e.g. '#7E22CE'
+  price?: number; // optional custom unit price for this flavor
+  originalPrice?: number;
+  inStock?: boolean;
+}
+
 export interface Specification {
   key: string;
   value: string;
@@ -37,6 +48,9 @@ export interface Product {
   stock: number;
   limitedStockThreshold?: number;
   colors?: string[];
+  hasFlavors?: boolean;
+  flavorTitle?: string;
+  flavors?: ProductFlavor[];
   thumbnail: string;
   gallery: string[];
   videoUrl?: string;
@@ -86,6 +100,9 @@ export interface OrderItem {
   product: Product;
   quantity: number;
   selectedColor?: string;
+  selectedBundle?: ProductBundle | string;
+  selectedFlavors?: { [flavorName: string]: number };
+  flavorSummary?: string;
 }
 
 export interface Order {
@@ -119,6 +136,8 @@ export interface StoreSettings {
   topBannerText: string;
   facebookPixelId: string;
   capiAccessToken: string;
+  gtmId?: string;
+  gaMeasurementId?: string;
   bkashNumber: string;
   nagadNumber: string;
   phone: string;
@@ -132,6 +151,30 @@ export interface StoreSettings {
   deliveryFeeOutside?: number;
   supabaseUrl?: string;
   supabaseKey?: string;
+  heroSliderInterval?: number; // autoplay interval in ms (default 5000)
+}
+
+export interface HeroSlide {
+  id: string | number;
+  image: string;
+  title: string;
+  subtitle?: string;
+  linkType?: 'all_products' | 'category' | 'product' | 'custom_url';
+  linkValue?: string;
+  isActive?: boolean;
+  order?: number;
+}
+
+export interface PromoBannerConfig {
+  isEnabled: boolean;
+  badgeText: string;
+  title: string;
+  subtitle: string;
+  buttonText: string;
+  linkType?: 'all_products' | 'category' | 'product' | 'custom_url';
+  linkValue?: string;
+  bgImageUrl?: string;
+  bgColor?: string;
 }
 
 export interface TeamMember {
