@@ -13,27 +13,10 @@ export default defineConfig(() => {
       },
     },
     build: {
-      target: 'esnext',
+      target: 'es2020',
       cssCodeSplit: true,
-      minify: 'esbuild',
-      chunkSizeWarningLimit: 1000,
-      rollupOptions: {
-        output: {
-          manualChunks(id) {
-            if (id.includes('node_modules')) {
-              if (id.includes('react') || id.includes('react-dom')) {
-                return 'vendor-react';
-              }
-              if (id.includes('lucide-react') || id.includes('motion')) {
-                return 'vendor-ui';
-              }
-              if (id.includes('@supabase')) {
-                return 'vendor-supabase';
-              }
-            }
-          },
-        },
-      },
+      minify: 'esbuild' as const,
+      chunkSizeWarningLimit: 1200,
     },
     server: {
       // HMR is disabled in AI Studio via DISABLE_HMR env var.
