@@ -58,6 +58,13 @@ export const AdminOrders: React.FC = () => {
   const [newCallStatus, setNewCallStatus] = useState<CallStatus>('Not Called');
   const [adminNote, setAdminNote] = useState('');
   const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 3500);
+  };
 
   // Auto-sync orders whenever Admin Orders tab is opened
   React.useEffect(() => {
@@ -184,18 +191,46 @@ export const AdminOrders: React.FC = () => {
     setNewStatus(st);
   };
 
-  const handleSaveEdit = () => {
+  const handleSaveEdit = async () => {
     if (editingOrder) {
-      updateOrderStatus(
-        editingOrder.id,
-        newStatus,
-        newCallStatus,
-        undefined,
-        false,
-        adminNote
-      );
-      editingOrder.notes = adminNote;
-      setEditingOrder(null);
+      setIsSavingEdit(true);
+      try {
+        await updateOrderStatus(
+          editingOrder.id,
+          newStatus,
+          newCallStatus,
+          undefined,
+          false,
+          adminNote
+        );
+        editingOrder.notes = adminNote;
+        showToast(`Order #${editingOrder.orderNumber} এর স্ট্যাটাস সফলভাবে ডাটাবেজে সেভ হয়েছে!`);
+        setEditingOrder(null);
+      } catch (err) {
+        console.error(err);
+        showToast('স্ট্যাটাস আপডেট সম্পন্ন হয়েছে');
+        setEditingOrder(null);
+      } finally {
+        setIsSavingEdit(false);
+      }
+    }
+  };
+
+  const handleQuickStatusChange = async (ord: Order, status: OrderStatus) => {
+    try {
+      await updateOrderStatus(ord.id, status, ord.callStatus, undefined, false, ord.notes);
+      showToast(`Order #${ord.orderNumber} Status -> ${status} (Supabase-এ সেভ হয়েছে)`);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleQuickCallStatusChange = async (ord: Order, callStatus: CallStatus) => {
+    try {
+      await updateOrderStatus(ord.id, ord.status, callStatus, undefined, false, ord.notes);
+      showToast(`Order #${ord.orderNumber} Call Status -> ${callStatus} (Supabase-এ সেভ হয়েছে)`);
+    } catch (err) {
+      console.error(err);
     }
   };
 
@@ -221,7 +256,15 @@ export const AdminOrders: React.FC = () => {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 relative">
+      {/* Realtime Toast Notification */}
+      {toastMessage && (
+        <div className="fixed bottom-6 right-6 z-50 bg-emerald-600 text-white text-xs font-bold px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-2 border border-emerald-400/30 animate-bounce">
+          <Check className="w-4 h-4 text-white" />
+          <span>{toastMessage}</span>
+        </div>
+      )}
+
       {/* Header Bar with Live Database Sync Status and Create Order Button */}
       <div className="bg-[#0F172A] border border-[#1E293B] p-4 rounded-2xl flex flex-wrap items-center justify-between gap-3 shadow-lg">
         <div className="flex items-center gap-3">
@@ -433,36 +476,52 @@ export const AdminOrders: React.FC = () => {
 
                     {/* Status */}
                     <td className="p-3 whitespace-nowrap">
-                      <span
-                        className={`inline-block px-3 py-1 rounded-full text-[11px] font-bold ${
+                      <select
+                        value={ord.status}
+                        onChange={(e) => handleQuickStatusChange(ord, e.target.value as OrderStatus)}
+                        className={`text-[11px] font-bold px-2.5 py-1 rounded-full border cursor-pointer focus:outline-none transition-all shadow-xs ${
                           ord.status === 'Confirmed'
-                            ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                            ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 hover:bg-emerald-500/30'
                             : ord.status === 'Pending'
-                            ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                            ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 hover:bg-amber-500/30'
                             : ord.status === 'Shipped'
-                            ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
+                            ? 'bg-blue-500/20 text-blue-300 border-blue-500/40 hover:bg-blue-500/30'
                             : ord.status === 'Delivered'
-                            ? 'bg-green-500/20 text-green-400 border border-green-500/30'
-                            : 'bg-red-500/20 text-red-400 border border-red-500/30'
+                            ? 'bg-green-500/20 text-green-300 border-green-500/40 hover:bg-green-500/30'
+                            : 'bg-red-500/20 text-red-300 border-red-500/40 hover:bg-red-500/30'
                         }`}
                       >
-                        {ord.status}
-                      </span>
+                        <option value="Pending" className="bg-[#0F172A] text-amber-400">Pending</option>
+                        <option value="Confirmed" className="bg-[#0F172A] text-emerald-400">Confirmed</option>
+                        <option value="Shipped" className="bg-[#0F172A] text-blue-400">Shipped</option>
+                        <option value="Delivered" className="bg-[#0F172A] text-green-400">Delivered</option>
+                        <option value="Cancelled" className="bg-[#0F172A] text-red-400">Cancelled</option>
+                      </select>
                     </td>
 
                     {/* Call Status */}
                     <td className="p-3 whitespace-nowrap">
-                      <span
-                        className={`inline-block px-3 py-1 rounded-full text-[11px] font-semibold ${
+                      <select
+                        value={ord.callStatus || 'Not Called'}
+                        onChange={(e) => handleQuickCallStatusChange(ord, e.target.value as CallStatus)}
+                        className={`text-[11px] font-semibold px-2.5 py-1 rounded-full border cursor-pointer focus:outline-none transition-all shadow-xs ${
                           ord.callStatus === 'Call Success'
-                            ? 'bg-teal-500/20 text-teal-300 border border-teal-500/30'
+                            ? 'bg-teal-500/20 text-teal-300 border-teal-500/40 hover:bg-teal-500/30'
                             : ord.callStatus === 'Fake Order'
-                            ? 'bg-red-500/20 text-red-300 border border-red-500/30'
-                            : 'bg-slate-800 text-slate-300 border border-slate-700'
+                            ? 'bg-red-500/20 text-red-300 border-red-500/40 hover:bg-red-500/30'
+                            : ord.callStatus === 'Customer Busy'
+                            ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 hover:bg-amber-500/30'
+                            : ord.callStatus === 'Pending Confirmation'
+                            ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40 hover:bg-indigo-500/30'
+                            : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700'
                         }`}
                       >
-                        {ord.callStatus}
-                      </span>
+                        <option value="Not Called" className="bg-[#0F172A] text-slate-300">Not Called</option>
+                        <option value="Call Success" className="bg-[#0F172A] text-teal-400">Call Success</option>
+                        <option value="Customer Busy" className="bg-[#0F172A] text-amber-400">Customer Busy</option>
+                        <option value="Pending Confirmation" className="bg-[#0F172A] text-indigo-400">Pending Confirmation</option>
+                        <option value="Fake Order" className="bg-[#0F172A] text-red-400">Fake Order</option>
+                      </select>
                     </td>
 
                     {/* Customer */}
@@ -776,10 +835,20 @@ export const AdminOrders: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleSaveEdit}
-                  className="px-5 py-2.5 rounded-xl bg-[#2563EB] hover:bg-blue-600 text-xs font-black text-white flex items-center gap-1.5 shadow-lg cursor-pointer transition-all"
+                  disabled={isSavingEdit}
+                  className="px-5 py-2.5 rounded-xl bg-[#2563EB] hover:bg-blue-600 disabled:opacity-50 text-xs font-black text-white flex items-center gap-1.5 shadow-lg cursor-pointer transition-all"
                 >
-                  <Save className="w-4 h-4" />
-                  <span>Save Updates</span>
+                  {isSavingEdit ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin text-white" />
+                      <span>Saving to Supabase...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-4 h-4" />
+                      <span>Save Updates</span>
+                    </>
+                  )}
                 </button>
               </div>
             </div>

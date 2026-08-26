@@ -89,7 +89,7 @@ interface StoreContextType {
 
   // Actions
   createOrder: (orderData: Omit<Order, 'id' | 'orderNumber' | 'createdAt' | 'status' | 'callStatus'>) => Order;
-  updateOrderStatus: (orderId: string, status: Order['status'], callStatus?: Order['callStatus'], customSmsMsg?: string, sendSms?: boolean, notes?: string) => void;
+  updateOrderStatus: (orderId: string, status: Order['status'], callStatus?: Order['callStatus'], customSmsMsg?: string, sendSms?: boolean, notes?: string) => Promise<boolean>;
   deleteOrder: (orderId: string) => void;
   
   saveProduct: (product: Product) => void;
@@ -1117,107 +1117,143 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return newOrder;
   };
 
-  const updateOrderStatus = (
+  const updateOrderStatus = async (
     orderId: string,
     status: Order['status'],
     callStatus?: Order['callStatus'],
     customSmsMsg?: string,
     sendSms: boolean = true,
     notes?: string
-  ) => {
-    let targetOrder: Order | null = null;
-    setOrders((prev) => {
-      const updated = prev.map((o) => {
-        if (o.id === orderId || o.orderNumber === orderId) {
-          const nextOrder: Order = {
-            ...o,
-            status: status || o.status,
-            callStatus: callStatus !== undefined ? callStatus : o.callStatus,
-            notes: notes !== undefined ? notes : o.notes
-          };
-          targetOrder = nextOrder;
-          return nextOrder;
+  ): Promise<boolean> => {
+    // 1. Locate the existing order synchronously from current state
+    const currentOrder = orders.find((o) => o.id === orderId || o.orderNumber === orderId);
+
+    // 2. Build the updated order object
+    const updatedOrder: Order = currentOrder
+      ? {
+          ...currentOrder,
+          status: status || currentOrder.status,
+          callStatus: callStatus !== undefined ? callStatus : currentOrder.callStatus,
+          notes: notes !== undefined ? notes : currentOrder.notes
         }
-        return o;
-      });
+      : {
+          id: orderId,
+          orderNumber: orderId,
+          customerName: '',
+          customerPhone: '',
+          shippingAddress: '',
+          deliveryArea: 'Inside Dhaka',
+          deliveryFee: 0,
+          subtotal: 0,
+          discount: 0,
+          items: [],
+          totalPrice: 0,
+          paymentMethod: 'COD',
+          status: status || 'Pending',
+          callStatus: callStatus || 'Not Called',
+          createdAt: new Date().toISOString(),
+          notes
+        };
+
+    // 3. Update React state, localStorage, and broadcast across tabs
+    setOrders((prev) => {
+      const exists = prev.some((o) => o.id === orderId || o.orderNumber === orderId);
+      const updated = exists
+        ? prev.map((o) => (o.id === orderId || o.orderNumber === orderId ? updatedOrder : o))
+        : [updatedOrder, ...prev];
       safeSetStorage('kinomart_orders', updated);
+      broadcastSync('ORDERS_MUTATION', updated);
       return updated;
     });
 
-    if (sendSms && targetOrder) {
-      triggerMockSMS(targetOrder, customSmsMsg);
+    // 4. Send SMS if requested
+    if (sendSms) {
+      triggerMockSMS(updatedOrder, customSmsMsg);
     }
 
-    if (targetOrder) {
-      const ordToSave = targetOrder as Order;
-      (async () => {
-        const cleanOrd: Order = JSON.parse(JSON.stringify(ordToSave));
-        cleanOrd.status = status || cleanOrd.status;
-        if (callStatus !== undefined) cleanOrd.callStatus = callStatus;
-        if (notes !== undefined) cleanOrd.notes = notes;
+    // 5. Persist to Supabase Database
+    const cleanOrd: Order = JSON.parse(JSON.stringify(updatedOrder));
+    const targetId = cleanOrd.id || orderId;
+    const targetOrderNumber = cleanOrd.orderNumber || orderId;
 
-        const primary = {
-          id: cleanOrd.id,
-          order_number: cleanOrd.orderNumber || '',
-          customer_name: cleanOrd.customerName || '',
-          customer_phone: cleanOrd.customerPhone || '',
-          shipping_address: cleanOrd.shippingAddress || '',
-          total_price: Number(cleanOrd.totalPrice || 0),
-          status: cleanOrd.status || 'Pending',
-          call_status: cleanOrd.callStatus || 'Not Called',
-          data: cleanOrd
-        };
+    const primaryPayload = {
+      id: targetId,
+      order_number: targetOrderNumber,
+      customer_name: cleanOrd.customerName || '',
+      customer_phone: cleanOrd.customerPhone || '',
+      shipping_address: cleanOrd.shippingAddress || '',
+      delivery_area: cleanOrd.deliveryArea || 'Inside Dhaka',
+      total_price: Number(cleanOrd.totalPrice || 0),
+      status: cleanOrd.status || 'Pending',
+      call_status: cleanOrd.callStatus || 'Not Called',
+      data: cleanOrd
+    };
 
-        const fallbacks = [
-          {
-            id: cleanOrd.id,
-            status: cleanOrd.status || 'Pending',
-            call_status: cleanOrd.callStatus || 'Not Called',
+    const fallbackPayloads = [
+      {
+        id: targetId,
+        status: cleanOrd.status || 'Pending',
+        call_status: cleanOrd.callStatus || 'Not Called',
+        data: cleanOrd
+      },
+      {
+        order_number: targetOrderNumber,
+        status: cleanOrd.status || 'Pending',
+        call_status: cleanOrd.callStatus || 'Not Called',
+        data: cleanOrd
+      },
+      {
+        id: targetId,
+        data: cleanOrd
+      }
+    ];
+
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      try {
+        console.log(`[Supabase] Updating order in database:`, { id: targetId, orderNumber: targetOrderNumber, status: cleanOrd.status, callStatus: cleanOrd.callStatus });
+        
+        // Attempt direct update by id
+        const { error: directErr, data: updatedRows } = await supabase
+          .from('orders')
+          .update({
+            status: cleanOrd.status,
+            call_status: cleanOrd.callStatus,
             data: cleanOrd
-          },
-          {
-            id: cleanOrd.id,
-            order_number: cleanOrd.orderNumber || '',
-            customer_name: cleanOrd.customerName || '',
-            customer_phone: cleanOrd.customerPhone || '',
-            total_price: Number(cleanOrd.totalPrice || 0),
-            status: cleanOrd.status || 'Pending',
-            call_status: cleanOrd.callStatus || 'Not Called',
-            data: cleanOrd
-          },
-          { id: cleanOrd.id, data: cleanOrd }
-        ];
+          })
+          .eq('id', targetId)
+          .select();
 
-        // Direct update first for immediate response
-        const supabase = getSupabaseClient();
-        if (supabase) {
-          try {
-            const { error: directErr } = await supabase
-              .from('orders')
-              .update({
-                status: cleanOrd.status,
-                call_status: cleanOrd.callStatus,
-                data: cleanOrd
-              })
-              .eq('id', cleanOrd.id);
+        if (directErr || !updatedRows || updatedRows.length === 0) {
+          // Attempt direct update by order_number
+          const { error: orderNumErr, data: updatedNumRows } = await supabase
+            .from('orders')
+            .update({
+              status: cleanOrd.status,
+              call_status: cleanOrd.callStatus,
+              data: cleanOrd
+            })
+            .eq('order_number', targetOrderNumber)
+            .select();
 
-            if (directErr) {
-              console.warn(`[Supabase] Direct update failed, attempting smartUpsert:`, directErr.message);
-              await smartUpsert('orders', primary, fallbacks);
-            } else {
-              console.log(`[Supabase] Successfully updated status & call_status for order ${cleanOrd.id}`);
-            }
-          } catch (err) {
-            console.warn(`[Supabase] Exception during direct update:`, err);
-            await smartUpsert('orders', primary, fallbacks);
+          if (orderNumErr || !updatedNumRows || updatedNumRows.length === 0) {
+            console.warn(`[Supabase] Direct update failed or no rows matched. Falling back to smartUpsert.`);
+            await smartUpsert('orders', primaryPayload, fallbackPayloads);
+          } else {
+            console.log(`[Supabase] Successfully updated order in Supabase by order_number ${targetOrderNumber}`);
           }
         } else {
-          await smartUpsert('orders', primary, fallbacks);
+          console.log(`[Supabase] Successfully updated order in Supabase by id ${targetId}`);
         }
-
-        await refreshSupabaseData({ full: true, force: true });
-      })();
+      } catch (err) {
+        console.warn(`[Supabase] Exception during direct order update:`, err);
+        await smartUpsert('orders', primaryPayload, fallbackPayloads);
+      }
+    } else {
+      await smartUpsert('orders', primaryPayload, fallbackPayloads);
     }
+
+    return true;
   };
 
   const deleteOrder = async (orderId: string) => {
