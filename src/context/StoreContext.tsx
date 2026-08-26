@@ -180,7 +180,13 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [activeAdminTab, setActiveAdminTab] = useState<'orders' | 'products' | 'categories' | 'coupons' | 'team' | 'banners' | 'settings'>('orders');
 
   // Data Loading & Error States
-  const [isDataLoading, setIsDataLoading] = useState<boolean>(true);
+  const [isDataLoading, setIsDataLoading] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      const cached = safeGetStorage('kinomart_products', []);
+      return !Array.isArray(cached) || cached.length === 0;
+    }
+    return true;
+  });
   const [dataError, setDataError] = useState<string | null>(null);
 
   // Persistent States
@@ -340,7 +346,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return false;
   };
 
-  // Resilient Smart Upsert & Insert Helper for Supabase
+  // Resilient Smart Upsert, Update & Insert Helper for Supabase
   const smartUpsert = async (
     tableName: string,
     primaryPayload: Record<string, any>,
@@ -357,10 +363,11 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     for (let i = 0; i < payloadsToTry.length; i++) {
       const payload = payloadsToTry[i];
       try {
-        // Attempt 1: Upsert
-        const { error: upsertErr } = await supabase.from(tableName).upsert(payload);
+        // Attempt 1: Upsert with explicit onConflict if id exists
+        const upsertOptions = payload.id ? { onConflict: 'id' } : undefined;
+        const { error: upsertErr } = await supabase.from(tableName).upsert(payload, upsertOptions);
         if (!upsertErr) {
-          console.log(`[Supabase] Successfully upserted record to "${tableName}" on attempt ${i + 1}`);
+          console.log(`[Supabase] Successfully upserted record to "${tableName}" (attempt ${i + 1})`);
           setRlsWarning(null);
           return true;
         }
@@ -372,10 +379,28 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           setRlsWarning(`Supabase RLS Error: Row Level Security is active on table "${tableName}". Writes are blocked. Please run the SQL setup script in Admin Settings.`);
         }
 
-        // Attempt 2: Direct Insert fallback (in case upsert/merge is blocked by constraints)
+        // Attempt 2: Direct Update if id or order_number exists
+        if (payload.id) {
+          const { error: updateErr } = await supabase.from(tableName).update(payload).eq('id', payload.id);
+          if (!updateErr) {
+            console.log(`[Supabase] Successfully updated record in "${tableName}" by id ${payload.id}`);
+            setRlsWarning(null);
+            return true;
+          }
+        }
+        if (payload.order_number) {
+          const { error: updateErr2 } = await supabase.from(tableName).update(payload).eq('order_number', payload.order_number);
+          if (!updateErr2) {
+            console.log(`[Supabase] Successfully updated record in "${tableName}" by order_number ${payload.order_number}`);
+            setRlsWarning(null);
+            return true;
+          }
+        }
+
+        // Attempt 3: Direct Insert fallback
         const { error: insertErr } = await supabase.from(tableName).insert(payload);
         if (!insertErr) {
-          console.log(`[Supabase] Successfully inserted record to "${tableName}" on attempt ${i + 1}`);
+          console.log(`[Supabase] Successfully inserted record to "${tableName}" (attempt ${i + 1})`);
           setRlsWarning(null);
           return true;
         }
@@ -537,6 +562,20 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           } as Product;
         });
         setProducts(fetchedProducts);
+        safeSetStorage('kinomart_products', fetchedProducts);
+
+        // Preload top product thumbnails in browser cache for instantaneous render
+        if (typeof window !== 'undefined' && fetchedProducts.length > 0) {
+          setTimeout(() => {
+            fetchedProducts.slice(0, 8).forEach(p => {
+              const url = p.thumbnail || p.gallery?.[0];
+              if (url) {
+                const img = new Image();
+                img.src = url;
+              }
+            });
+          }, 50);
+        }
       }
 
       // 2. Categories Processing
@@ -573,13 +612,18 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           } as Category;
         });
         setCategories(fetchedCats);
+        safeSetStorage('kinomart_categories', fetchedCats);
       }
 
       // 3. Settings Processing
       if (stgRes.status === 'fulfilled' && !stgRes.value.error && stgRes.value.data && stgRes.value.data.length > 0) {
         const fetchedStg = safeParseJson(stgRes.value.data[0].data);
         if (fetchedStg && typeof fetchedStg === 'object' && Object.keys(fetchedStg).length > 0) {
-          setSettings(prev => ({ ...prev, ...fetchedStg }));
+          setSettings(prev => {
+            const merged = { ...prev, ...fetchedStg };
+            safeSetStorage('kinomart_settings', merged);
+            return merged;
+          });
         }
       }
 
@@ -632,23 +676,26 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           const ords = ordsRes.value.data;
           const fetchedOrders = ords.map(r => {
             const dataObj = safeParseJson(r.data);
+            const statusVal = r.status || dataObj.status || 'Pending';
+            const callStatusVal = r.call_status || r.callStatus || dataObj.callStatus || dataObj.call_status || 'Not Called';
             return {
               ...dataObj,
               id: String(r.id || dataObj.id),
-              orderNumber: String(dataObj.orderNumber || r.order_number || r.orderNumber || r.id),
-              customerName: String(dataObj.customerName || r.customer_name || r.customerName || ''),
-              customerPhone: String(dataObj.customerPhone || r.customer_phone || r.customerPhone || ''),
-              shippingAddress: String(dataObj.shippingAddress || r.shipping_address || ''),
+              orderNumber: String(r.order_number || dataObj.orderNumber || r.orderNumber || r.id),
+              customerName: String(r.customer_name || dataObj.customerName || r.customerName || ''),
+              customerPhone: String(r.customer_phone || dataObj.customerPhone || r.customerPhone || ''),
+              shippingAddress: String(r.shipping_address || dataObj.shippingAddress || ''),
               deliveryArea: dataObj.deliveryArea || 'Inside Dhaka',
               deliveryFee: Number(dataObj.deliveryFee ?? 0),
               paymentMethod: dataObj.paymentMethod || 'COD',
               items: Array.isArray(dataObj.items) ? dataObj.items : [],
               subtotal: Number(dataObj.subtotal ?? 0),
               discount: Number(dataObj.discount ?? 0),
-              totalPrice: Number(dataObj.totalPrice ?? r.total_price ?? 0),
-              status: dataObj.status || r.status || 'Pending',
-              callStatus: dataObj.callStatus || r.call_status || 'Not Called',
-              createdAt: dataObj.createdAt || r.created_at || new Date().toISOString()
+              totalPrice: Number(r.total_price ?? dataObj.totalPrice ?? 0),
+              status: statusVal as Order['status'],
+              callStatus: callStatusVal as Order['callStatus'],
+              notes: dataObj.notes !== undefined ? dataObj.notes : (r.notes || ''),
+              createdAt: r.created_at || dataObj.createdAt || new Date().toISOString()
             } as Order;
           });
 
@@ -1003,21 +1050,23 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     notes?: string
   ) => {
     let targetOrder: Order | null = null;
-    setOrders((prev) =>
-      prev.map((o) => {
-        if (o.id === orderId) {
+    setOrders((prev) => {
+      const updated = prev.map((o) => {
+        if (o.id === orderId || o.orderNumber === orderId) {
           const nextOrder: Order = {
             ...o,
-            status,
-            callStatus: callStatus || o.callStatus,
+            status: status || o.status,
+            callStatus: callStatus !== undefined ? callStatus : o.callStatus,
             notes: notes !== undefined ? notes : o.notes
           };
           targetOrder = nextOrder;
           return nextOrder;
         }
         return o;
-      })
-    );
+      });
+      safeSetStorage('kinomart_orders', updated);
+      return updated;
+    });
 
     if (sendSms && targetOrder) {
       triggerMockSMS(targetOrder, customSmsMsg);
@@ -1027,29 +1076,69 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const ordToSave = targetOrder as Order;
       (async () => {
         const cleanOrd: Order = JSON.parse(JSON.stringify(ordToSave));
+        cleanOrd.status = status || cleanOrd.status;
+        if (callStatus !== undefined) cleanOrd.callStatus = callStatus;
+        if (notes !== undefined) cleanOrd.notes = notes;
+
         const primary = {
           id: cleanOrd.id,
           order_number: cleanOrd.orderNumber || '',
           customer_name: cleanOrd.customerName || '',
           customer_phone: cleanOrd.customerPhone || '',
+          shipping_address: cleanOrd.shippingAddress || '',
           total_price: Number(cleanOrd.totalPrice || 0),
           status: cleanOrd.status || 'Pending',
           call_status: cleanOrd.callStatus || 'Not Called',
           data: cleanOrd
         };
+
         const fallbacks = [
           {
             id: cleanOrd.id,
+            status: cleanOrd.status || 'Pending',
+            call_status: cleanOrd.callStatus || 'Not Called',
+            data: cleanOrd
+          },
+          {
+            id: cleanOrd.id,
+            order_number: cleanOrd.orderNumber || '',
             customer_name: cleanOrd.customerName || '',
             customer_phone: cleanOrd.customerPhone || '',
             total_price: Number(cleanOrd.totalPrice || 0),
             status: cleanOrd.status || 'Pending',
+            call_status: cleanOrd.callStatus || 'Not Called',
             data: cleanOrd
           },
           { id: cleanOrd.id, data: cleanOrd }
         ];
 
-        await smartUpsert('orders', primary, fallbacks);
+        // Direct update first for immediate response
+        const supabase = getSupabaseClient();
+        if (supabase) {
+          try {
+            const { error: directErr } = await supabase
+              .from('orders')
+              .update({
+                status: cleanOrd.status,
+                call_status: cleanOrd.callStatus,
+                data: cleanOrd
+              })
+              .eq('id', cleanOrd.id);
+
+            if (directErr) {
+              console.warn(`[Supabase] Direct update failed, attempting smartUpsert:`, directErr.message);
+              await smartUpsert('orders', primary, fallbacks);
+            } else {
+              console.log(`[Supabase] Successfully updated status & call_status for order ${cleanOrd.id}`);
+            }
+          } catch (err) {
+            console.warn(`[Supabase] Exception during direct update:`, err);
+            await smartUpsert('orders', primary, fallbacks);
+          }
+        } else {
+          await smartUpsert('orders', primary, fallbacks);
+        }
+
         await refreshSupabaseData({ full: true, force: true });
       })();
     }

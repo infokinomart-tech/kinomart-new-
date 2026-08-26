@@ -26,6 +26,11 @@ export const initDataLayer = (): Record<string, any>[] => {
   return [];
 };
 
+// Initialize immediately on bundle load
+if (typeof window !== 'undefined') {
+  initDataLayer();
+}
+
 /**
  * Helper to safely push events to window.dataLayer with debug logging
  */

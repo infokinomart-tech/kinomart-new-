@@ -358,8 +358,8 @@ const MainAppContent: React.FC = () => {
               ) : (
                 <>
                   <div id="product-grid" className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6 mt-6">
-                    {displayedProducts.map((product) => (
-                      <ProductCard key={product.id} product={product} />
+                    {displayedProducts.map((product, index) => (
+                      <ProductCard key={product.id} product={product} index={index} priority={index < 8} />
                     ))}
                   </div>
 
@@ -521,8 +521,8 @@ const MainAppContent: React.FC = () => {
             ) : (
               <>
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6">
-                  {displayedProducts.map((product) => (
-                    <ProductCard key={product.id} product={product} />
+                  {displayedProducts.map((product, index) => (
+                    <ProductCard key={product.id} product={product} index={index} priority={index < 8} />
                   ))}
                 </div>
 
