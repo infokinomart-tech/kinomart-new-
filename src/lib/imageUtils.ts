@@ -131,10 +131,10 @@ export async function compressImageFile(
       return;
     }
 
-    // Determine target format (retain PNG for transparency if file is PNG)
-    let outputFormat: 'image/jpeg' | 'image/webp' | 'image/png' = 'image/jpeg';
+    // Determine target format (retain PNG for transparency if file is PNG, otherwise use WebP/JPEG for maximum compression)
+    let outputFormat: 'image/jpeg' | 'image/webp' | 'image/png' = 'image/webp';
     if (format === 'auto') {
-      outputFormat = file.type === 'image/png' ? 'image/png' : 'image/jpeg';
+      outputFormat = file.type === 'image/png' ? 'image/png' : 'image/webp';
     } else {
       outputFormat = format;
     }
@@ -301,7 +301,7 @@ export function isHttpUrl(url?: string): boolean {
 }
 
 /**
- * Optimizes an image URL for display (supports Unsplash sizing parameters and Data URLs)
+ * Optimizes an image URL for display (supports Unsplash, Supabase Storage, Cloudinary, and Data URLs)
  */
 export function getOptimizedImageUrl(
   url?: string,
@@ -309,17 +309,23 @@ export function getOptimizedImageUrl(
 ): string {
   if (!url) return 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500';
   
-  // If data URL, return as is
-  if (url.startsWith('data:')) {
+  // If data URL or local blob, return as is
+  if (url.startsWith('data:') || url.startsWith('blob:')) {
     return url;
   }
 
+  const width = options.width || 600;
+  const quality = options.quality || 80;
+
   // If Unsplash URL, append or replace width & quality parameters
   if (url.includes('images.unsplash.com')) {
-    const width = options.width || 800;
-    const quality = options.quality || 85;
     const cleanUrl = url.split('?')[0];
     return `${cleanUrl}?w=${width}&auto=format&fit=crop&q=${quality}`;
+  }
+
+  // If Cloudinary URL
+  if (url.includes('res.cloudinary.com') && !url.includes('/w_') && url.includes('/upload/')) {
+    return url.replace('/upload/', `/upload/w_${width},q_${quality},f_auto/`);
   }
 
   return url;

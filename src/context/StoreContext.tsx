@@ -222,6 +222,19 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return safeGetStorage('kinomart_promo_banner', INITIAL_PROMO_BANNER);
   });
 
+  // Cross-tab broadcast channel for instantaneous zero-latency synchronization
+  const broadcastSync = (type: string, payload: any) => {
+    try {
+      if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+        const bc = new BroadcastChannel('kinomart_sync_channel');
+        bc.postMessage({ type, payload, timestamp: Date.now() });
+        bc.close();
+      }
+    } catch {
+      // Ignore in restricted environments
+    }
+  };
+
   // Supabase RLS Warning State
   const [rlsWarning, setRlsWarning] = useState<string | null>(null);
   const dismissRlsWarning = () => setRlsWarning(null);
@@ -615,16 +628,34 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         safeSetStorage('kinomart_categories', fetchedCats);
       }
 
-      // 3. Settings Processing
-      if (stgRes.status === 'fulfilled' && !stgRes.value.error && stgRes.value.data && stgRes.value.data.length > 0) {
-        const fetchedStg = safeParseJson(stgRes.value.data[0].data);
-        if (fetchedStg && typeof fetchedStg === 'object' && Object.keys(fetchedStg).length > 0) {
-          setSettings(prev => {
-            const merged = { ...prev, ...fetchedStg };
-            safeSetStorage('kinomart_settings', merged);
-            return merged;
-          });
-        }
+      // 3. Settings & Banners Processing
+      if (stgRes.status === 'fulfilled' && !stgRes.value.error && Array.isArray(stgRes.value.data) && stgRes.value.data.length > 0) {
+        stgRes.value.data.forEach((r: any) => {
+          const parsed = safeParseJson(r.data);
+          if (!parsed) return;
+
+          if (r.id === 'hero_slides' && Array.isArray(parsed) && parsed.length > 0) {
+            setHeroSlides(parsed as HeroSlide[]);
+            safeSetStorage('kinomart_hero_slides', parsed);
+          } else if (r.id === 'promo_banner' && typeof parsed === 'object') {
+            setPromoBanner(parsed as PromoBannerConfig);
+            safeSetStorage('kinomart_promo_banner', parsed);
+          } else if (typeof parsed === 'object') {
+            if (Array.isArray(parsed.heroSlides) && parsed.heroSlides.length > 0) {
+              setHeroSlides(parsed.heroSlides as HeroSlide[]);
+              safeSetStorage('kinomart_hero_slides', parsed.heroSlides);
+            }
+            if (parsed.promoBanner && typeof parsed.promoBanner === 'object') {
+              setPromoBanner(parsed.promoBanner as PromoBannerConfig);
+              safeSetStorage('kinomart_promo_banner', parsed.promoBanner);
+            }
+            setSettings(prev => {
+              const merged = { ...prev, ...parsed };
+              safeSetStorage('kinomart_settings', merged);
+              return merged;
+            });
+          }
+        });
       }
 
       // Immediate UI unblock after Critical Tier is ready
@@ -790,7 +821,33 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     // Immediate Fast-Path Initial Load
     refreshSupabaseData({ full: isAdminLoggedIn || isSessionAdmin, force: true });
 
-    // Multi-tab cross-synchronization listener
+    // Cross-tab broadcast receiver for instantaneous UI sync
+    let bc: BroadcastChannel | null = null;
+    try {
+      if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+        bc = new BroadcastChannel('kinomart_sync_channel');
+        bc.onmessage = (event) => {
+          const { type, payload } = event.data || {};
+          if (type === 'PRODUCTS_MUTATION' && Array.isArray(payload)) {
+            setProducts(payload);
+          } else if (type === 'CATEGORIES_MUTATION' && Array.isArray(payload)) {
+            setCategories(payload);
+          } else if (type === 'SETTINGS_MUTATION' && typeof payload === 'object') {
+            setSettings(prev => ({ ...prev, ...payload }));
+          } else if (type === 'HERO_SLIDES_MUTATION' && Array.isArray(payload)) {
+            setHeroSlides(payload as HeroSlide[]);
+          } else if (type === 'PROMO_BANNER_MUTATION' && typeof payload === 'object') {
+            setPromoBanner(payload as PromoBannerConfig);
+          } else if (type === 'ORDERS_MUTATION' && Array.isArray(payload)) {
+            setOrders(payload);
+          }
+        };
+      }
+    } catch {
+      // Ignore
+    }
+
+    // Multi-tab cross-synchronization listener (StorageEvent fallback)
     const handleStorageEvent = (e: StorageEvent) => {
       if (e.key === 'kinomart_products' && e.newValue) {
         try {
@@ -820,6 +877,22 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         try {
           const updated = JSON.parse(e.newValue);
           if (updated && typeof updated === 'object') setSettings(updated);
+        } catch {
+          // Ignore parse errors
+        }
+      }
+      if (e.key === 'kinomart_hero_slides' && e.newValue) {
+        try {
+          const updated = JSON.parse(e.newValue);
+          if (Array.isArray(updated)) setHeroSlides(updated);
+        } catch {
+          // Ignore parse errors
+        }
+      }
+      if (e.key === 'kinomart_promo_banner' && e.newValue) {
+        try {
+          const updated = JSON.parse(e.newValue);
+          if (updated && typeof updated === 'object') setPromoBanner(updated);
         } catch {
           // Ignore parse errors
         }
@@ -866,6 +939,9 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     return () => {
       clearInterval(interval);
+      if (bc) {
+        try { bc.close(); } catch {}
+      }
       window.removeEventListener('storage', handleStorageEvent);
       window.removeEventListener('focus', handleFocus);
       const activeClient = getSupabaseClient();
@@ -1169,6 +1245,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         updated = [cleanProduct, ...prev];
       }
       safeSetStorage('kinomart_products', updated);
+      broadcastSync('PRODUCTS_MUTATION', updated);
       return updated;
     });
 
@@ -1241,6 +1318,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setProducts(prev => {
       const updated = prev.filter(p => p.id !== productId);
       safeSetStorage('kinomart_products', updated);
+      broadcastSync('PRODUCTS_MUTATION', updated);
       return updated;
     });
     const ok = await smartDelete('products', productId);
@@ -1268,6 +1346,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         updated = [...prev, cleanCategory];
       }
       safeSetStorage('kinomart_categories', updated);
+      broadcastSync('CATEGORIES_MUTATION', updated);
       return updated;
     });
 
@@ -1305,6 +1384,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setCategories(prev => {
       const updated = prev.filter(c => c.id !== categoryId);
       safeSetStorage('kinomart_categories', updated);
+      broadcastSync('CATEGORIES_MUTATION', updated);
       return updated;
     });
     const ok = await smartDelete('categories', categoryId);
@@ -1416,6 +1496,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const saveSettings = (newSettings: StoreSettings) => {
     const cleanSettings: StoreSettings = JSON.parse(JSON.stringify(newSettings));
     setSettings(cleanSettings);
+    safeSetStorage('kinomart_settings', cleanSettings);
+    broadcastSync('SETTINGS_MUTATION', cleanSettings);
 
     if (cleanSettings.supabaseUrl || cleanSettings.supabaseKey) {
       setSupabaseCredentials(cleanSettings.supabaseUrl || '', cleanSettings.supabaseKey || '');
@@ -1450,6 +1532,13 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         updated = [...prev, { ...slide, order: prev.length + 1 }];
       }
       safeSetStorage('kinomart_hero_slides', updated);
+      broadcastSync('HERO_SLIDES_MUTATION', updated);
+
+      // Persist to Supabase settings table so all devices and visitors get it immediately
+      smartUpsert('settings', { id: 'hero_slides', data: updated }, [
+        { id: 'hero_slides', data: JSON.stringify(updated) }
+      ]);
+
       return updated;
     });
   };
@@ -1458,6 +1547,12 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setHeroSlides(prev => {
       const updated = prev.filter(s => String(s.id) !== String(slideId));
       safeSetStorage('kinomart_hero_slides', updated);
+      broadcastSync('HERO_SLIDES_MUTATION', updated);
+
+      smartUpsert('settings', { id: 'hero_slides', data: updated }, [
+        { id: 'hero_slides', data: JSON.stringify(updated) }
+      ]);
+
       return updated;
     });
   };
@@ -1465,16 +1560,31 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const reorderHeroSlides = (slides: HeroSlide[]) => {
     setHeroSlides(slides);
     safeSetStorage('kinomart_hero_slides', slides);
+    broadcastSync('HERO_SLIDES_MUTATION', slides);
+
+    smartUpsert('settings', { id: 'hero_slides', data: slides }, [
+      { id: 'hero_slides', data: JSON.stringify(slides) }
+    ]);
   };
 
   const resetHeroSlides = () => {
     setHeroSlides(INITIAL_HERO_SLIDES);
     safeSetStorage('kinomart_hero_slides', INITIAL_HERO_SLIDES);
+    broadcastSync('HERO_SLIDES_MUTATION', INITIAL_HERO_SLIDES);
+
+    smartUpsert('settings', { id: 'hero_slides', data: INITIAL_HERO_SLIDES }, [
+      { id: 'hero_slides', data: JSON.stringify(INITIAL_HERO_SLIDES) }
+    ]);
   };
 
   const savePromoBanner = (config: PromoBannerConfig) => {
     setPromoBanner(config);
     safeSetStorage('kinomart_promo_banner', config);
+    broadcastSync('PROMO_BANNER_MUTATION', config);
+
+    smartUpsert('settings', { id: 'promo_banner', data: config }, [
+      { id: 'promo_banner', data: JSON.stringify(config) }
+    ]);
   };
 
   // Validate Coupon

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, Suspense, lazy } from 'react';
 import { useStore } from '../../context/StoreContext';
 import {
   ShoppingBag,
@@ -14,13 +14,21 @@ import {
   X,
   ShieldAlert
 } from 'lucide-react';
-import { AdminOrders } from './AdminOrders';
-import { AdminProducts } from './AdminProducts';
-import { AdminCategories } from './AdminCategories';
-import { AdminCoupons } from './AdminCoupons';
-import { AdminTeam } from './AdminTeam';
-import { AdminBanners } from './AdminBanners';
-import { AdminSettings } from './AdminSettings';
+
+const AdminOrders = lazy(() => import('./AdminOrders').then(m => ({ default: m.AdminOrders })));
+const AdminProducts = lazy(() => import('./AdminProducts').then(m => ({ default: m.AdminProducts })));
+const AdminCategories = lazy(() => import('./AdminCategories').then(m => ({ default: m.AdminCategories })));
+const AdminCoupons = lazy(() => import('./AdminCoupons').then(m => ({ default: m.AdminCoupons })));
+const AdminTeam = lazy(() => import('./AdminTeam').then(m => ({ default: m.AdminTeam })));
+const AdminBanners = lazy(() => import('./AdminBanners').then(m => ({ default: m.AdminBanners })));
+const AdminSettings = lazy(() => import('./AdminSettings').then(m => ({ default: m.AdminSettings })));
+
+const AdminTabLoader = () => (
+  <div className="py-20 text-center text-gray-400">
+    <div className="animate-spin w-8 h-8 border-3 border-[#2563EB] border-t-transparent rounded-full mx-auto mb-3" />
+    <p className="text-xs font-semibold">লোড হচ্ছে...</p>
+  </div>
+);
 
 export const AdminLayout: React.FC = () => {
   const {
@@ -213,13 +221,15 @@ export const AdminLayout: React.FC = () => {
           </div>
         )}
 
-        {activeAdminTab === 'orders' && <AdminOrders />}
-        {activeAdminTab === 'products' && <AdminProducts />}
-        {activeAdminTab === 'categories' && <AdminCategories />}
-        {activeAdminTab === 'coupons' && <AdminCoupons />}
-        {activeAdminTab === 'team' && <AdminTeam />}
-        {activeAdminTab === 'banners' && <AdminBanners />}
-        {activeAdminTab === 'settings' && <AdminSettings />}
+        <Suspense fallback={<AdminTabLoader />}>
+          {activeAdminTab === 'orders' && <AdminOrders />}
+          {activeAdminTab === 'products' && <AdminProducts />}
+          {activeAdminTab === 'categories' && <AdminCategories />}
+          {activeAdminTab === 'coupons' && <AdminCoupons />}
+          {activeAdminTab === 'team' && <AdminTeam />}
+          {activeAdminTab === 'banners' && <AdminBanners />}
+          {activeAdminTab === 'settings' && <AdminSettings />}
+        </Suspense>
       </main>
     </div>
   );
