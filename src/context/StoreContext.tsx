@@ -113,7 +113,7 @@ interface StoreContextType {
   saveSettings: (settings: StoreSettings) => void;
   validateCoupon: (code: string, subtotal: number) => { valid: boolean; discount: number; message: string };
   
-  refreshSupabaseData: () => Promise<void>;
+  refreshSupabaseData: (options?: { full?: boolean; force?: boolean }) => Promise<void>;
   resetToDefaults: () => void;
   rlsWarning: string | null;
   dismissRlsWarning: () => void;
@@ -340,39 +340,49 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return false;
   };
 
-  // Resilient Smart Upsert Helper for Supabase
+  // Resilient Smart Upsert & Insert Helper for Supabase
   const smartUpsert = async (
     tableName: string,
     primaryPayload: Record<string, any>,
     fallbackPayloads: Record<string, any>[] = []
   ): Promise<boolean> => {
     const supabase = getSupabaseClient();
-    if (!supabase) return false;
+    if (!supabase) {
+      console.warn(`[Supabase] Client not initialized. Cannot save to "${tableName}".`);
+      return false;
+    }
 
-    try {
-      const { error: primaryErr } = await supabase.from(tableName).upsert(primaryPayload);
-      if (!primaryErr) {
-        setRlsWarning(null);
-        return true;
-      }
+    const payloadsToTry = [primaryPayload, ...fallbackPayloads];
 
-      const errMsg = String(primaryErr.message || JSON.stringify(primaryErr));
-      console.warn(`Primary upsert failed on ${tableName}:`, errMsg);
-
-      if (primaryErr.code === '42501' || errMsg.toLowerCase().includes('row-level security') || errMsg.toLowerCase().includes('policy')) {
-        setRlsWarning(`Supabase RLS Error: Row Level Security is active on table "${tableName}". Writes are blocked. Please run the SQL setup script in Admin Settings.`);
-      }
-
-      for (const fallback of fallbackPayloads) {
-        const { error: fbErr } = await supabase.from(tableName).upsert(fallback);
-        if (!fbErr) {
-          console.log(`Fallback upsert succeeded on ${tableName}`);
+    for (let i = 0; i < payloadsToTry.length; i++) {
+      const payload = payloadsToTry[i];
+      try {
+        // Attempt 1: Upsert
+        const { error: upsertErr } = await supabase.from(tableName).upsert(payload);
+        if (!upsertErr) {
+          console.log(`[Supabase] Successfully upserted record to "${tableName}" on attempt ${i + 1}`);
           setRlsWarning(null);
           return true;
         }
+
+        const errMsg = String(upsertErr.message || JSON.stringify(upsertErr));
+        console.warn(`[Supabase] Upsert attempt ${i + 1} on "${tableName}" failed:`, errMsg);
+
+        if (upsertErr.code === '42501' || errMsg.toLowerCase().includes('row-level security') || errMsg.toLowerCase().includes('policy')) {
+          setRlsWarning(`Supabase RLS Error: Row Level Security is active on table "${tableName}". Writes are blocked. Please run the SQL setup script in Admin Settings.`);
+        }
+
+        // Attempt 2: Direct Insert fallback (in case upsert/merge is blocked by constraints)
+        const { error: insertErr } = await supabase.from(tableName).insert(payload);
+        if (!insertErr) {
+          console.log(`[Supabase] Successfully inserted record to "${tableName}" on attempt ${i + 1}`);
+          setRlsWarning(null);
+          return true;
+        }
+        console.warn(`[Supabase] Direct insert attempt ${i + 1} on "${tableName}" failed:`, insertErr.message);
+      } catch (err) {
+        console.warn(`[Supabase] Exception during save on "${tableName}" (attempt ${i + 1}):`, err);
       }
-    } catch (err) {
-      console.warn(`Exception during smartUpsert on ${tableName}:`, err);
     }
     return false;
   };
@@ -471,7 +481,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     isFetchingRef.current = true;
     lastFetchTimeRef.current = now;
 
-    const shouldFetchFull = Boolean(options?.full || isAdminLoggedIn);
+    const isSessionAdmin = typeof window !== 'undefined' && sessionStorage.getItem('kinomart_admin_auth') === 'true';
+    const shouldFetchFull = Boolean(options?.full || isAdminLoggedIn || isSessionAdmin || viewMode === 'admin');
 
     try {
       // Tier 1: Critical Customer-Facing Data (Products, Categories, Settings)
@@ -652,8 +663,28 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             }
             return 0;
           };
-          fetchedOrders.sort((a, b) => parseTime(b) - parseTime(a));
-          setOrders(fetchedOrders);
+
+          setOrders(prevLocalOrders => {
+            // Intelligent deduplication and merge: keep any local orders not yet reflected in Supabase
+            const fetchedMap = new Map<string, Order>();
+            fetchedOrders.forEach(o => {
+              if (o.id) fetchedMap.set(o.id, o);
+              if (o.orderNumber) fetchedMap.set(o.orderNumber, o);
+            });
+
+            const merged = [...fetchedOrders];
+            prevLocalOrders.forEach(localOrd => {
+              const hasById = localOrd.id && fetchedMap.has(localOrd.id);
+              const hasByNum = localOrd.orderNumber && fetchedMap.has(localOrd.orderNumber);
+              if (!hasById && !hasByNum) {
+                merged.push(localOrd);
+              }
+            });
+
+            merged.sort((a, b) => parseTime(b) - parseTime(a));
+            safeSetStorage('kinomart_orders', merged);
+            return merged;
+          });
         }
 
         // 7. Customer Profiles
@@ -672,6 +703,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 };
               }
             });
+            safeSetStorage('kinomart_customer_profiles', map);
             return map;
           });
         }
@@ -707,8 +739,9 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // Initial Fetch & Real-time Auto-Sync across devices
   useEffect(() => {
+    const isSessionAdmin = typeof window !== 'undefined' && sessionStorage.getItem('kinomart_admin_auth') === 'true';
     // Immediate Fast-Path Initial Load
-    refreshSupabaseData({ full: isAdminLoggedIn, force: true });
+    refreshSupabaseData({ full: isAdminLoggedIn || isSessionAdmin, force: true });
 
     // Multi-tab cross-synchronization listener
     const handleStorageEvent = (e: StorageEvent) => {
@@ -720,21 +753,45 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           // Ignore parse errors
         }
       }
+      if (e.key === 'kinomart_orders' && e.newValue) {
+        try {
+          const updated = JSON.parse(e.newValue);
+          if (Array.isArray(updated)) setOrders(updated);
+        } catch {
+          // Ignore parse errors
+        }
+      }
+      if (e.key === 'kinomart_categories' && e.newValue) {
+        try {
+          const updated = JSON.parse(e.newValue);
+          if (Array.isArray(updated)) setCategories(updated);
+        } catch {
+          // Ignore parse errors
+        }
+      }
+      if (e.key === 'kinomart_settings' && e.newValue) {
+        try {
+          const updated = JSON.parse(e.newValue);
+          if (updated && typeof updated === 'object') setSettings(updated);
+        } catch {
+          // Ignore parse errors
+        }
+      }
     };
     window.addEventListener('storage', handleStorageEvent);
 
     // Window focus refresh (only if stale > 30s)
     const handleFocus = () => {
       if (Date.now() - lastFetchTimeRef.current > 30000) {
-        refreshSupabaseData({ full: isAdminLoggedIn });
+        refreshSupabaseData({ full: isAdminLoggedIn || isSessionAdmin });
       }
     };
     window.addEventListener('focus', handleFocus);
 
-    // Low-frequency gentle background fallback sync (every 45s)
+    // Low-frequency gentle background fallback sync (every 30s)
     const interval = setInterval(() => {
-      refreshSupabaseData({ full: isAdminLoggedIn });
-    }, 45000);
+      refreshSupabaseData({ full: isAdminLoggedIn || isSessionAdmin });
+    }, 30000);
 
     // Real-time Postgres Changes via Supabase Channel
     let channel: any;
@@ -752,9 +809,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             refreshSupabaseData({ full: false, force: true });
           })
           .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => {
-            if (isAdminLoggedIn) {
-              refreshSupabaseData({ full: true, force: true });
-            }
+            refreshSupabaseData({ full: true, force: true });
           })
           .subscribe();
       } catch (err) {
@@ -787,8 +842,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       if (typeof window !== 'undefined' && !window.location.pathname.includes('/admin')) {
         window.history.pushState({}, '', '/admin');
       }
-      // Immediately fetch latest DB records upon admin login
-      refreshSupabaseData();
+      // Immediately fetch all latest DB records (including orders) upon admin login
+      refreshSupabaseData({ full: true, force: true });
       return true;
     }
     return false;
@@ -871,7 +926,11 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       ]);
     }
 
-    setOrders(prev => [newOrder, ...prev]);
+    setOrders(prev => {
+      const updated = [newOrder, ...prev.filter(o => o.id !== newOrder.id && o.orderNumber !== newOrder.orderNumber)];
+      safeSetStorage('kinomart_orders', updated);
+      return updated;
+    });
     setCompletedOrder(newOrder);
     setIsQuickOrderOpen(false);
     setQuickOrderProduct(null);
@@ -900,6 +959,17 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const fallbacks = [
         {
           id: cleanOrder.id,
+          order_number: cleanOrder.orderNumber || '',
+          customer_name: cleanOrder.customerName || '',
+          customer_phone: cleanOrder.customerPhone || '',
+          shipping_address: cleanOrder.shippingAddress || '',
+          total_price: Number(cleanOrder.totalPrice || 0),
+          status: cleanOrder.status || 'Pending',
+          call_status: cleanOrder.callStatus || 'Not Called',
+          data: cleanOrder
+        },
+        {
+          id: cleanOrder.id,
           customer_name: cleanOrder.customerName || '',
           customer_phone: cleanOrder.customerPhone || '',
           total_price: Number(cleanOrder.totalPrice || 0),
@@ -917,7 +987,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       ];
 
       await smartUpsert('orders', primary, fallbacks);
-      await refreshSupabaseData();
+      await refreshSupabaseData({ full: true, force: true });
     })();
 
     window.scrollTo({ top: 0, behavior: 'smooth' });

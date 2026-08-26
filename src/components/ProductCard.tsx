@@ -103,14 +103,8 @@ export const ProductCard: React.FC<ProductCardProps> = React.memo(({ product, in
             ) : null}
           </div>
 
-          {/* Right Corner Stock Badge in Light Website Color */}
+          {/* Right Corner Badge */}
           <div className="absolute top-1.5 right-1.5 z-10 pointer-events-none flex flex-col items-end gap-1">
-            {!isOutOfStock && (
-              <span className="bg-[#627048]/90 text-white backdrop-blur-xs text-[8.5px] sm:text-[10px] font-extrabold px-2 py-0.5 rounded-full shadow-xs whitespace-nowrap inline-flex items-center gap-1 border border-white/20">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-300 animate-pulse" />
-                ইন স্টক
-              </span>
-            )}
             {product.isBestSeller && !isOutOfStock && (
               <span className="bg-[#1F241E]/80 text-amber-300 text-[8px] sm:text-[9px] font-black px-1.5 py-0.5 rounded-full shadow-xs whitespace-nowrap inline-flex items-center">
                 বেস্ট সেলার

@@ -59,9 +59,18 @@ export const AdminOrders: React.FC = () => {
   const [adminNote, setAdminNote] = useState('');
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
+  // Auto-sync orders whenever Admin Orders tab is opened
+  React.useEffect(() => {
+    refreshSupabaseData({ full: true, force: true });
+    const timer = setInterval(() => {
+      refreshSupabaseData({ full: true });
+    }, 10000);
+    return () => clearInterval(timer);
+  }, []);
+
   const handleManualRefresh = async () => {
     setIsRefreshing(true);
-    await refreshSupabaseData();
+    await refreshSupabaseData({ full: true, force: true });
     setTimeout(() => setIsRefreshing(false), 500);
   };
 
