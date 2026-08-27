@@ -90,6 +90,14 @@ ALTER TABLE public.customer_profiles DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.team DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.settings DISABLE ROW LEVEL SECURITY;
 
+-- High-performance indexes for instant queries across all devices
+CREATE INDEX IF NOT EXISTS idx_products_created_at ON public.products (created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_products_category ON public.products (category);
+CREATE INDEX IF NOT EXISTS idx_categories_position ON public.categories (position ASC);
+CREATE INDEX IF NOT EXISTS idx_orders_created_at ON public.orders (created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_orders_status ON public.orders (status);
+CREATE INDEX IF NOT EXISTS idx_coupons_code ON public.coupons (code);
+
 -- Allow public access policies (In case RLS is forced on by project)
 DO $$ BEGIN CREATE POLICY "Public All Orders" ON public.orders FOR ALL USING (true) WITH CHECK (true); EXCEPTION WHEN OTHERS THEN NULL; END $$;
 DO $$ BEGIN CREATE POLICY "Public All Products" ON public.products FOR ALL USING (true) WITH CHECK (true); EXCEPTION WHEN OTHERS THEN NULL; END $$;
