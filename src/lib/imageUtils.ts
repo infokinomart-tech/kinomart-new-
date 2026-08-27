@@ -287,6 +287,36 @@ export async function processImageForPlaceholder(
 /**
  * Checks if a string is a base64 data URL
  */
+import { getR2PublicUrl, isR2Url, uploadToR2, getR2Config, isR2CredentialsConfigured } from './r2Storage';
+
+export { getR2PublicUrl, isR2Url, uploadToR2, getR2Config, isR2CredentialsConfigured };
+
+/**
+ * Process image and upload to Cloudflare R2 if configured, otherwise return high-res compressed Data URL
+ */
+export async function processAndUploadImage(
+  file: File,
+  placeholderType: PlaceholderType,
+  folder: 'products' | 'banners' | 'categories' | 'reviews' | 'settings' | 'general' = 'products'
+): Promise<string> {
+  const compressedDataUrl = await processImageForPlaceholder(file, placeholderType);
+
+  if (isR2CredentialsConfigured()) {
+    try {
+      const result = await uploadToR2(compressedDataUrl, {
+        folder,
+        filename: file.name
+      });
+      return result.cdnUrl;
+    } catch (err) {
+      console.warn('[Image Processing] R2 direct upload failed, using high-res compressed image:', err);
+      return compressedDataUrl;
+    }
+  }
+
+  return compressedDataUrl;
+}
+
 export function isDataUrl(url?: string): boolean {
   if (!url) return false;
   return url.startsWith('data:image/');
@@ -301,7 +331,7 @@ export function isHttpUrl(url?: string): boolean {
 }
 
 /**
- * Optimizes an image URL for display (supports Unsplash, Supabase Storage, Cloudinary, and Data URLs)
+ * Optimizes an image URL for display (supports Cloudflare R2 CDN, Unsplash, Supabase Storage, Cloudinary, and Data URLs)
  */
 export function getOptimizedImageUrl(
   url?: string,
@@ -311,6 +341,11 @@ export function getOptimizedImageUrl(
   
   // If data URL or local blob, return as is
   if (url.startsWith('data:') || url.startsWith('blob:')) {
+    return url;
+  }
+
+  // If Cloudflare R2 CDN URL, ensure it is cleanly formatted
+  if (isR2Url(url)) {
     return url;
   }
 

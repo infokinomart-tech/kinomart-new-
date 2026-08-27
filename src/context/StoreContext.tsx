@@ -1,13 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { getSupabaseClient, isSupabaseConfigured, setSupabaseCredentials } from '../lib/supabase';
 import {
-  INITIAL_CATEGORIES,
-  INITIAL_COUPONS,
-  INITIAL_ORDERS,
-  INITIAL_PRODUCTS,
   INITIAL_SETTINGS,
-  INITIAL_TEAM,
-  INITIAL_HERO_SLIDES,
   INITIAL_PROMO_BANNER
 } from '../data/mockData';
 import {
@@ -215,7 +209,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   });
 
   const [heroSlides, setHeroSlides] = useState<HeroSlide[]>(() => {
-    return safeGetStorage('kinomart_hero_slides', INITIAL_HERO_SLIDES);
+    return safeGetStorage('kinomart_hero_slides', []);
   });
 
   const [promoBanner, setPromoBanner] = useState<PromoBannerConfig>(() => {
@@ -559,7 +553,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             stock: Number(dataObj.stock ?? r.stock ?? 0),
             limitedStockThreshold: Number(dataObj.limitedStockThreshold ?? 10),
             colors: Array.isArray(dataObj.colors) ? dataObj.colors : ['BLACK'],
-            thumbnail: dataObj.thumbnail || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800&auto=format&fit=crop&q=80',
+            thumbnail: dataObj.thumbnail || r.thumbnail || (Array.isArray(dataObj.gallery) && dataObj.gallery[0]) || '',
             gallery: Array.isArray(dataObj.gallery) ? dataObj.gallery : [],
             videoUrl: dataObj.videoUrl || '',
             shortDescription: dataObj.shortDescription || '',
@@ -634,14 +628,14 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           const parsed = safeParseJson(r.data);
           if (!parsed) return;
 
-          if (r.id === 'hero_slides' && Array.isArray(parsed) && parsed.length > 0) {
+          if (r.id === 'hero_slides' && Array.isArray(parsed)) {
             setHeroSlides(parsed as HeroSlide[]);
             safeSetStorage('kinomart_hero_slides', parsed);
           } else if (r.id === 'promo_banner' && typeof parsed === 'object') {
             setPromoBanner(parsed as PromoBannerConfig);
             safeSetStorage('kinomart_promo_banner', parsed);
           } else if (typeof parsed === 'object') {
-            if (Array.isArray(parsed.heroSlides) && parsed.heroSlides.length > 0) {
+            if (Array.isArray(parsed.heroSlides)) {
               setHeroSlides(parsed.heroSlides as HeroSlide[]);
               safeSetStorage('kinomart_hero_slides', parsed.heroSlides);
             }
@@ -707,8 +701,24 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           const ords = ordsRes.value.data;
           const fetchedOrders = ords.map(r => {
             const dataObj = safeParseJson(r.data);
-            const statusVal = r.status || dataObj.status || 'Pending';
-            const callStatusVal = r.call_status || r.callStatus || dataObj.callStatus || dataObj.call_status || 'Not Called';
+            
+            // Prioritize updated values from dataObj or non-default column values
+            const statusVal = (dataObj.status && dataObj.status !== 'Pending')
+              ? dataObj.status
+              : (r.status && r.status !== 'Pending')
+              ? r.status
+              : (dataObj.status || r.status || 'Pending');
+
+            const callStatusVal = (dataObj.callStatus && dataObj.callStatus !== 'Not Called')
+              ? dataObj.callStatus
+              : (dataObj.call_status && dataObj.call_status !== 'Not Called')
+              ? dataObj.call_status
+              : (r.call_status && r.call_status !== 'Not Called')
+              ? r.call_status
+              : (r.callStatus && r.callStatus !== 'Not Called')
+              ? r.callStatus
+              : (dataObj.callStatus || dataObj.call_status || r.call_status || r.callStatus || 'Not Called');
+
             return {
               ...dataObj,
               id: String(r.id || dataObj.id),
@@ -743,14 +753,39 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           };
 
           setOrders(prevLocalOrders => {
-            // Intelligent deduplication and merge: keep any local orders not yet reflected in Supabase
             const fetchedMap = new Map<string, Order>();
             fetchedOrders.forEach(o => {
               if (o.id) fetchedMap.set(o.id, o);
               if (o.orderNumber) fetchedMap.set(o.orderNumber, o);
             });
 
-            const merged = [...fetchedOrders];
+            // Map through fetched orders and retain local changes if they are more recent / non-default
+            const merged = fetchedOrders.map(fetchedOrd => {
+              const localMatch = prevLocalOrders.find(l => 
+                (l.id && l.id === fetchedOrd.id) || 
+                (l.orderNumber && l.orderNumber === fetchedOrd.orderNumber)
+              );
+              if (localMatch) {
+                const finalStatus = (localMatch.status && localMatch.status !== 'Pending' && fetchedOrd.status === 'Pending')
+                  ? localMatch.status
+                  : fetchedOrd.status;
+                const finalCallStatus = (localMatch.callStatus && localMatch.callStatus !== 'Not Called' && fetchedOrd.callStatus === 'Not Called')
+                  ? localMatch.callStatus
+                  : fetchedOrd.callStatus;
+                const finalNotes = localMatch.notes || fetchedOrd.notes || '';
+
+                return {
+                  ...fetchedOrd,
+                  ...localMatch,
+                  status: finalStatus,
+                  callStatus: finalCallStatus,
+                  notes: finalNotes
+                };
+              }
+              return fetchedOrd;
+            });
+
+            // Add local orders that are not in fetchedOrders at all (e.g. freshly created)
             prevLocalOrders.forEach(localOrd => {
               const hasById = localOrd.id && fetchedMap.has(localOrd.id);
               const hasByNum = localOrd.orderNumber && fetchedMap.has(localOrd.orderNumber);
@@ -1052,6 +1087,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setOrders(prev => {
       const updated = [newOrder, ...prev.filter(o => o.id !== newOrder.id && o.orderNumber !== newOrder.orderNumber)];
       safeSetStorage('kinomart_orders', updated);
+      broadcastSync('ORDERS_MUTATION', updated);
       return updated;
     });
     setCompletedOrder(newOrder);
@@ -1074,6 +1110,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         order_number: cleanOrder.orderNumber || '',
         customer_name: cleanOrder.customerName || '',
         customer_phone: cleanOrder.customerPhone || '',
+        shipping_address: cleanOrder.shippingAddress || '',
+        delivery_area: cleanOrder.deliveryArea || 'Inside Dhaka',
         total_price: Number(cleanOrder.totalPrice || 0),
         status: cleanOrder.status || 'Pending',
         call_status: cleanOrder.callStatus || 'Not Called',
@@ -1085,7 +1123,6 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           order_number: cleanOrder.orderNumber || '',
           customer_name: cleanOrder.customerName || '',
           customer_phone: cleanOrder.customerPhone || '',
-          shipping_address: cleanOrder.shippingAddress || '',
           total_price: Number(cleanOrder.totalPrice || 0),
           status: cleanOrder.status || 'Pending',
           call_status: cleanOrder.callStatus || 'Not Called',
@@ -1093,24 +1130,15 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         },
         {
           id: cleanOrder.id,
-          customer_name: cleanOrder.customerName || '',
-          customer_phone: cleanOrder.customerPhone || '',
-          total_price: Number(cleanOrder.totalPrice || 0),
+          order_number: cleanOrder.orderNumber || '',
           status: cleanOrder.status || 'Pending',
           data: cleanOrder
         },
         { id: cleanOrder.id, data: cleanOrder },
-        {
-          id: cleanOrder.id,
-          order_number: cleanOrder.orderNumber || '',
-          customer_name: cleanOrder.customerName || '',
-          customer_phone: cleanOrder.customerPhone || '',
-          total_price: Number(cleanOrder.totalPrice || 0)
-        }
+        { id: cleanOrder.id, order_number: cleanOrder.orderNumber || '', data: cleanOrder }
       ];
 
       await smartUpsert('orders', primary, fallbacks);
-      await refreshSupabaseData({ full: true, force: true });
     })();
 
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1128,7 +1156,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     // 1. Locate the existing order synchronously from current state
     const currentOrder = orders.find((o) => o.id === orderId || o.orderNumber === orderId);
 
-    // 2. Build the updated order object
+    // 2. Build the updated order object with exact status, callStatus, notes & data
     const updatedOrder: Order = currentOrder
       ? {
           ...currentOrder,
@@ -1152,7 +1180,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           status: status || 'Pending',
           callStatus: callStatus || 'Not Called',
           createdAt: new Date().toISOString(),
-          notes
+          notes: notes || ''
         };
 
     // 3. Update React state, localStorage, and broadcast across tabs
@@ -1171,39 +1199,49 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       triggerMockSMS(updatedOrder, customSmsMsg);
     }
 
-    // 5. Persist to Supabase Database
+    // 5. Persist to Supabase Database with full multi-strategy resilience
     const cleanOrd: Order = JSON.parse(JSON.stringify(updatedOrder));
-    const targetId = cleanOrd.id || orderId;
-    const targetOrderNumber = cleanOrd.orderNumber || orderId;
+    const targetId = String(cleanOrd.id || orderId || '').trim();
+    const targetOrderNumber = String(cleanOrd.orderNumber || orderId || '').trim();
 
-    const primaryPayload = {
-      id: targetId,
-      order_number: targetOrderNumber,
-      customer_name: cleanOrd.customerName || '',
-      customer_phone: cleanOrd.customerPhone || '',
-      shipping_address: cleanOrd.shippingAddress || '',
-      delivery_area: cleanOrd.deliveryArea || 'Inside Dhaka',
-      total_price: Number(cleanOrd.totalPrice || 0),
+    const primaryPayload: Record<string, any> = {
       status: cleanOrd.status || 'Pending',
       call_status: cleanOrd.callStatus || 'Not Called',
       data: cleanOrd
     };
 
+    if (targetId) primaryPayload.id = targetId;
+    if (targetOrderNumber) primaryPayload.order_number = targetOrderNumber;
+    if (cleanOrd.customerName) primaryPayload.customer_name = cleanOrd.customerName;
+    if (cleanOrd.customerPhone) primaryPayload.customer_phone = cleanOrd.customerPhone;
+    if (cleanOrd.shippingAddress) primaryPayload.shipping_address = cleanOrd.shippingAddress;
+    if (cleanOrd.deliveryArea) primaryPayload.delivery_area = cleanOrd.deliveryArea;
+    if (cleanOrd.totalPrice !== undefined) primaryPayload.total_price = Number(cleanOrd.totalPrice || 0);
+
     const fallbackPayloads = [
       {
         id: targetId,
-        status: cleanOrd.status || 'Pending',
-        call_status: cleanOrd.callStatus || 'Not Called',
-        data: cleanOrd
-      },
-      {
         order_number: targetOrderNumber,
         status: cleanOrd.status || 'Pending',
         call_status: cleanOrd.callStatus || 'Not Called',
         data: cleanOrd
       },
       {
-        id: targetId,
+        status: cleanOrd.status || 'Pending',
+        call_status: cleanOrd.callStatus || 'Not Called',
+        data: cleanOrd
+      },
+      {
+        status: cleanOrd.status || 'Pending',
+        call_status: cleanOrd.callStatus || 'Not Called'
+      },
+      {
+        status: cleanOrd.status || 'Pending'
+      },
+      {
+        call_status: cleanOrd.callStatus || 'Not Called'
+      },
+      {
         data: cleanOrd
       }
     ];
@@ -1211,39 +1249,177 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const supabase = getSupabaseClient();
     if (supabase) {
       try {
-        console.log(`[Supabase] Updating order in database:`, { id: targetId, orderNumber: targetOrderNumber, status: cleanOrd.status, callStatus: cleanOrd.callStatus });
-        
-        // Attempt direct update by id
-        const { error: directErr, data: updatedRows } = await supabase
-          .from('orders')
-          .update({
-            status: cleanOrd.status,
-            call_status: cleanOrd.callStatus,
-            data: cleanOrd
-          })
-          .eq('id', targetId)
-          .select();
+        console.log(`[Supabase] Updating order status & call status in Supabase:`, { 
+          id: targetId, 
+          orderNumber: targetOrderNumber, 
+          status: cleanOrd.status, 
+          callStatus: cleanOrd.callStatus 
+        });
 
-        if (directErr || !updatedRows || updatedRows.length === 0) {
-          // Attempt direct update by order_number
-          const { error: orderNumErr, data: updatedNumRows } = await supabase
+        let updatedInDb = false;
+        let lastErrorMsg = '';
+
+        // Payloads to try for updating status and call_status
+        const updatePayloads = [
+          { status: cleanOrd.status, call_status: cleanOrd.callStatus, data: cleanOrd },
+          { status: cleanOrd.status, call_status: cleanOrd.callStatus },
+          { status: cleanOrd.status, callStatus: cleanOrd.callStatus, data: cleanOrd },
+          { status: cleanOrd.status, callStatus: cleanOrd.callStatus },
+          { status: cleanOrd.status, data: cleanOrd },
+          { status: cleanOrd.status },
+          { call_status: cleanOrd.callStatus },
+          { data: cleanOrd }
+        ];
+
+        // Step A: Find existing matching row ID directly from Supabase DB to get exact primary key
+        let matchedDbId: any = null;
+        try {
+          const { data: foundRows, error: searchErr } = await supabase
             .from('orders')
-            .update({
-              status: cleanOrd.status,
-              call_status: cleanOrd.callStatus,
-              data: cleanOrd
-            })
-            .eq('order_number', targetOrderNumber)
-            .select();
+            .select('*')
+            .limit(20);
 
-          if (orderNumErr || !updatedNumRows || updatedNumRows.length === 0) {
-            console.warn(`[Supabase] Direct update failed or no rows matched. Falling back to smartUpsert.`);
-            await smartUpsert('orders', primaryPayload, fallbackPayloads);
-          } else {
-            console.log(`[Supabase] Successfully updated order in Supabase by order_number ${targetOrderNumber}`);
+          if (!searchErr && Array.isArray(foundRows) && foundRows.length > 0) {
+            const matched = foundRows.find((r: any) => {
+              const rId = String(r.id || '').trim();
+              const rNum = String(r.order_number || r.orderNumber || '').trim();
+              const rPhone = String(r.customer_phone || r.customerPhone || '').trim();
+              const rData = safeParseJson(r.data);
+
+              return (
+                (targetId && rId === targetId) ||
+                (targetOrderNumber && rNum === targetOrderNumber) ||
+                (targetOrderNumber && rId === targetOrderNumber) ||
+                (targetId && rNum === targetId) ||
+                (rData.id && String(rData.id) === targetId) ||
+                (rData.orderNumber && String(rData.orderNumber) === targetOrderNumber) ||
+                (cleanOrd.customerPhone && rPhone && rPhone === cleanOrd.customerPhone.trim())
+              );
+            });
+
+            if (matched) {
+              matchedDbId = matched.id;
+              console.log(`[Supabase] Found matching DB row with exact id:`, matchedDbId);
+            }
           }
-        } else {
-          console.log(`[Supabase] Successfully updated order in Supabase by id ${targetId}`);
+        } catch (sErr) {
+          console.warn(`[Supabase] Order lookup search note:`, sErr);
+        }
+
+        // Step B: Update using exact matchedDbId if found
+        if (matchedDbId !== null && matchedDbId !== undefined) {
+          for (const p of updatePayloads) {
+            const { error: errMatch, count } = await supabase
+              .from('orders')
+              .update(p, { count: 'exact' })
+              .eq('id', matchedDbId);
+
+            if (!errMatch) {
+              if (count === null || count > 0) {
+                updatedInDb = true;
+                console.log(`[Supabase] Successfully updated order via matchedDbId ${matchedDbId}`);
+                setRlsWarning(null);
+                break;
+              }
+            } else {
+              lastErrorMsg = errMatch.message;
+              if (errMatch.code === '42501' || errMatch.message.toLowerCase().includes('row-level security') || errMatch.message.toLowerCase().includes('policy')) {
+                setRlsWarning(`Supabase RLS Error: Row Level Security is blocking UPDATE on "orders" table. Please run the SQL fix script.`);
+              }
+            }
+          }
+        }
+
+        // Step C: If not updated yet, try updating by targetId (as string and as number)
+        if (!updatedInDb && targetId) {
+          for (const p of updatePayloads) {
+            const { error: errId, count } = await supabase
+              .from('orders')
+              .update(p, { count: 'exact' })
+              .eq('id', targetId);
+
+            if (!errId && (count === null || count > 0)) {
+              updatedInDb = true;
+              console.log(`[Supabase] Successfully updated order status by string id ${targetId}`);
+              setRlsWarning(null);
+              break;
+            }
+
+            const numId = Number(targetId);
+            if (!isNaN(numId)) {
+              const { error: errNumId, count: countNum } = await supabase
+                .from('orders')
+                .update(p, { count: 'exact' })
+                .eq('id', numId);
+
+              if (!errNumId && (countNum === null || countNum > 0)) {
+                updatedInDb = true;
+                console.log(`[Supabase] Successfully updated order status by numeric id ${numId}`);
+                setRlsWarning(null);
+                break;
+              }
+            }
+          }
+        }
+
+        // Step D: Try updating by order_number
+        if (!updatedInDb && targetOrderNumber) {
+          for (const p of updatePayloads) {
+            const { error: errNum, count } = await supabase
+              .from('orders')
+              .update(p, { count: 'exact' })
+              .eq('order_number', targetOrderNumber);
+
+            if (!errNum && (count === null || count > 0)) {
+              updatedInDb = true;
+              console.log(`[Supabase] Successfully updated order status by order_number ${targetOrderNumber}`);
+              setRlsWarning(null);
+              break;
+            }
+          }
+        }
+
+        // Step E: Try updating by matching targetOrderNumber as id or targetId as order_number
+        if (!updatedInDb) {
+          for (const p of updatePayloads) {
+            const { error: errCross, count } = await supabase
+              .from('orders')
+              .update(p, { count: 'exact' })
+              .eq('id', targetOrderNumber);
+
+            if (!errCross && (count === null || count > 0)) {
+              updatedInDb = true;
+              console.log(`[Supabase] Successfully updated order by cross-id ${targetOrderNumber}`);
+              setRlsWarning(null);
+              break;
+            }
+          }
+        }
+
+        // Step F: Try updating by customer_phone if unique
+        if (!updatedInDb && cleanOrd.customerPhone) {
+          for (const p of updatePayloads) {
+            const { error: errPhone, count } = await supabase
+              .from('orders')
+              .update(p, { count: 'exact' })
+              .eq('customer_phone', cleanOrd.customerPhone.trim());
+
+            if (!errPhone && (count === null || count > 0)) {
+              updatedInDb = true;
+              console.log(`[Supabase] Successfully updated order by customer_phone ${cleanOrd.customerPhone}`);
+              setRlsWarning(null);
+              break;
+            }
+          }
+        }
+
+        // Step G: If direct update didn't find the row, perform resilient upsert so it gets created/saved with the new status
+        if (!updatedInDb) {
+          console.warn(`[Supabase] Direct update did not match any row. Running resilient upsert with Status = "${cleanOrd.status}", CallStatus = "${cleanOrd.callStatus}"...`);
+          const upsertSuccess = await smartUpsert('orders', primaryPayload, fallbackPayloads);
+          if (!upsertSuccess && lastErrorMsg) {
+            console.error(`[Supabase] Final update failed. Last error:`, lastErrorMsg);
+          }
         }
       } catch (err) {
         console.warn(`[Supabase] Exception during direct order update:`, err);
@@ -1604,12 +1780,12 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const resetHeroSlides = () => {
-    setHeroSlides(INITIAL_HERO_SLIDES);
-    safeSetStorage('kinomart_hero_slides', INITIAL_HERO_SLIDES);
-    broadcastSync('HERO_SLIDES_MUTATION', INITIAL_HERO_SLIDES);
+    setHeroSlides([]);
+    safeSetStorage('kinomart_hero_slides', []);
+    broadcastSync('HERO_SLIDES_MUTATION', []);
 
-    smartUpsert('settings', { id: 'hero_slides', data: INITIAL_HERO_SLIDES }, [
-      { id: 'hero_slides', data: JSON.stringify(INITIAL_HERO_SLIDES) }
+    smartUpsert('settings', { id: 'hero_slides', data: [] }, [
+      { id: 'hero_slides', data: JSON.stringify([]) }
     ]);
   };
 
@@ -1652,7 +1828,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setOrders([]);
     setCoupons([]);
     setTeam([]);
-    setHeroSlides(INITIAL_HERO_SLIDES);
+    setHeroSlides([]);
     setPromoBanner(INITIAL_PROMO_BANNER);
     setSettings(INITIAL_SETTINGS);
     try {
@@ -1660,7 +1836,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     } catch {
       // Ignore
     }
-    refreshSupabaseData();
+    refreshSupabaseData({ force: true });
   };
 
   return (

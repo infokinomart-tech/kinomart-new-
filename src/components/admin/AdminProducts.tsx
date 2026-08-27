@@ -4,7 +4,7 @@ import { Product, Specification, ProductBundle, Review, ProductFlavor } from '..
 import { getDefaultBundles, generateDemoSixTiers, generateRadioCardBundles } from '../../lib/bundleUtils';
 import { BundleSelector, RadioCardBundleSection, BannerTableOfferSection } from '../BundleSelector';
 import { FlavorSelector } from '../FlavorSelector';
-import { processImageForPlaceholder, compressImageFile, isDataUrl, isHttpUrl } from '../../lib/imageUtils';
+import { processImageForPlaceholder, compressImageFile, isDataUrl, isHttpUrl, processAndUploadImage } from '../../lib/imageUtils';
 import {
   Plus,
   Edit2,
@@ -47,16 +47,16 @@ export const AdminProducts: React.FC = () => {
     if (!fileList || fileList.length === 0) return;
 
     setIsCompressingImage(true);
-    setImageCompressionProgress(`১/${fileList.length} ছবি অপ্টিমাইজ হচ্ছে...`);
+    setImageCompressionProgress(`১/${fileList.length} ছবি প্রসেস ও আপলোড হচ্ছে...`);
 
     try {
       const files = Array.from(fileList);
-      const compressedImages: string[] = [];
+      const processedImages: string[] = [];
 
       for (let i = 0; i < files.length; i++) {
-        setImageCompressionProgress(`${i + 1}/${files.length} ছবি হাই-রেজুলেশন সহ অপ্টিমাইজ হচ্ছে...`);
-        const compressed = await processImageForPlaceholder(files[i], 'product_cover');
-        compressedImages.push(compressed);
+        setImageCompressionProgress(`${i + 1}/${files.length} ছবি অপ্টিমাইজ ও R2 ক্লাউডে আপলোড হচ্ছে...`);
+        const resultUrl = await processAndUploadImage(files[i], 'product_cover', 'products');
+        processedImages.push(resultUrl);
       }
 
       setEditingProduct((prev) => {
@@ -64,7 +64,7 @@ export const AdminProducts: React.FC = () => {
         let thumb = prev.thumbnail || '';
         const gallery = [...(prev.gallery || [])];
 
-        for (const img of compressedImages) {
+        for (const img of processedImages) {
           if (!thumb) {
             thumb = img;
           } else {
@@ -79,7 +79,7 @@ export const AdminProducts: React.FC = () => {
         };
       });
     } catch (err) {
-      console.error('Image compression failed:', err);
+      console.error('Image processing failed:', err);
     } finally {
       setIsCompressingImage(false);
       setImageCompressionProgress(null);
@@ -92,26 +92,26 @@ export const AdminProducts: React.FC = () => {
     if (!fileList || fileList.length === 0) return;
 
     setIsCompressingImage(true);
-    setImageCompressionProgress('রিভিউ স্ক্রিনশট অপ্টিমাইজ হচ্ছে...');
+    setImageCompressionProgress('রিভিউ স্ক্রিনশট প্রসেস ও আপলোড হচ্ছে...');
 
     try {
       const files = Array.from(fileList);
-      const compressedImages: string[] = [];
+      const processedImages: string[] = [];
 
       for (let i = 0; i < files.length; i++) {
-        const compressed = await processImageForPlaceholder(files[i], 'review_screenshot');
-        compressedImages.push(compressed);
+        const resultUrl = await processAndUploadImage(files[i], 'review_screenshot', 'reviews');
+        processedImages.push(resultUrl);
       }
 
       setEditingProduct((prev) => {
         if (!prev) return prev;
         return {
           ...prev,
-          reviewImages: [...(prev.reviewImages || []), ...compressedImages]
+          reviewImages: [...(prev.reviewImages || []), ...processedImages]
         };
       });
     } catch (err) {
-      console.error('Review image compression failed:', err);
+      console.error('Review image processing failed:', err);
     } finally {
       setIsCompressingImage(false);
       setImageCompressionProgress(null);

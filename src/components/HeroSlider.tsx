@@ -1,16 +1,14 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useStore } from '../context/StoreContext';
-import { INITIAL_HERO_SLIDES } from '../data/mockData';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 export const HeroSlider: React.FC = () => {
-  const { heroSlides, settings, setActiveClientPage, setSelectedCategory } = useStore();
+  const { heroSlides, settings, isDataLoading, setActiveClientPage, setSelectedCategory } = useStore();
   const [currentSlide, setCurrentSlide] = useState(0);
 
   const activeSlides = useMemo(() => {
-    const list = (heroSlides && heroSlides.length > 0) ? heroSlides : INITIAL_HERO_SLIDES;
-    const filtered = list.filter((s) => s.isActive !== false);
-    return filtered.length > 0 ? filtered : list;
+    const list = Array.isArray(heroSlides) ? heroSlides : [];
+    return list.filter((s) => s.isActive !== false && s.image);
   }, [heroSlides]);
 
   const slideInterval = settings.heroSliderInterval || 5000;
@@ -29,6 +27,17 @@ export const HeroSlider: React.FC = () => {
       setCurrentSlide(0);
     }
   }, [activeSlides.length, currentSlide]);
+
+  if (activeSlides.length === 0) {
+    if (isDataLoading) {
+      return (
+        <div className="w-full max-w-7xl mx-auto px-4 mt-3 mb-6">
+          <div className="h-44 sm:h-72 md:h-96 lg:h-[420px] w-full rounded-2xl sm:rounded-3xl bg-[#E8E3D9]/60 animate-pulse" />
+        </div>
+      );
+    }
+    return null;
+  }
 
   const prevSlide = () => {
     setCurrentSlide((prev) => (prev === 0 ? activeSlides.length - 1 : prev - 1));

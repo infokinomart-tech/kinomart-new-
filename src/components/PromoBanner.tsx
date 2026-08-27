@@ -1,13 +1,12 @@
 import React from 'react';
 import { useStore } from '../context/StoreContext';
-import { INITIAL_PROMO_BANNER } from '../data/mockData';
 import { Flame, ArrowRight } from 'lucide-react';
 
 export const PromoBanner: React.FC = () => {
   const { promoBanner, setActiveClientPage, setSelectedCategory } = useStore();
-  const config = promoBanner || INITIAL_PROMO_BANNER;
+  const config = promoBanner;
 
-  if (config.isEnabled === false) {
+  if (!config || config.isEnabled === false || !config.title) {
     return null;
   }
 

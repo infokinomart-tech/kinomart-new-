@@ -17,7 +17,9 @@ import {
   Plus,
   RefreshCw,
   Database,
-  Package
+  Package,
+  ShieldCheck,
+  Code
 } from 'lucide-react';
 
 export const AdminOrders: React.FC = () => {
@@ -39,6 +41,8 @@ export const AdminOrders: React.FC = () => {
 
   // Manual Add Order Modal State
   const [isAddOrderOpen, setIsAddOrderOpen] = useState(false);
+  const [isSqlModalOpen, setIsSqlModalOpen] = useState(false);
+  const [sqlCopied, setSqlCopied] = useState(false);
   const [newCustName, setNewCustName] = useState('');
   const [newCustPhone, setNewCustPhone] = useState('');
   const [newCustAddress, setNewCustAddress] = useState('');
@@ -267,11 +271,11 @@ export const AdminOrders: React.FC = () => {
 
       {/* Header Bar with Live Database Sync Status and Create Order Button */}
       <div className="bg-[#0F172A] border border-[#1E293B] p-4 rounded-2xl flex flex-wrap items-center justify-between gap-3 shadow-lg">
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <div className="p-2.5 bg-emerald-500/10 text-emerald-400 rounded-xl border border-emerald-500/20 flex items-center gap-2 text-xs font-extrabold">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
             <Database className="w-4 h-4 text-emerald-400" />
-            <span>Supabase Database Syncing (All Devices)</span>
+            <span>Supabase Database Connected</span>
           </div>
           <button
             onClick={handleManualRefresh}
@@ -281,6 +285,14 @@ export const AdminOrders: React.FC = () => {
           >
             <RefreshCw className={`w-3.5 h-3.5 text-blue-400 ${isRefreshing ? 'animate-spin' : ''}`} />
             <span>{isRefreshing ? 'রিফ্রেশ হচ্ছে...' : 'রিফ্রেশ ডাটা'}</span>
+          </button>
+          <button
+            onClick={() => setIsSqlModalOpen(true)}
+            className="px-3 py-2 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs rounded-xl font-bold flex items-center gap-1.5 transition-all cursor-pointer"
+            title="Supabase RLS Fix Script"
+          >
+            <Code className="w-3.5 h-3.5 text-amber-400" />
+            <span>Supabase RLS Fix (SQL)</span>
           </button>
         </div>
 
@@ -1050,6 +1062,81 @@ export const AdminOrders: React.FC = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Supabase RLS Fix Modal */}
+      {isSqlModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-xs p-4 overflow-y-auto">
+          <div className="bg-[#0F172A] border border-[#1E293B] rounded-3xl max-w-xl w-full p-5 sm:p-6 space-y-4 shadow-2xl my-auto">
+            <div className="flex justify-between items-center border-b border-[#1E293B] pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 bg-amber-500/10 text-amber-400 rounded-xl border border-amber-500/20">
+                  <ShieldCheck className="w-5 h-5 text-amber-400" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white">Supabase ডাটাবেজ পারমিশন ও RLS ফিক্স</h3>
+                  <p className="text-xs text-[#94A3B8]">অর্ডার স্ট্যাটাস ডাটাবেজে সেভ না হওয়ার সমাধান</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsSqlModalOpen(false)}
+                className="p-1.5 hover:bg-[#1E293B] text-[#94A3B8] hover:text-white rounded-xl transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs text-[#CBD5E1]">
+              <p className="leading-relaxed">
+                Supabase-এ নতুন টেবিল তৈরি করলে ডিফল্টভাবে <strong>Row Level Security (RLS)</strong> অন থাকে, যার ফলে অ্যাপ থেকে ডাটাবেজে স্ট্যাটাস বা ডাটা আপডেট ব্লক হয়ে যেতে পারে।
+              </p>
+
+              <div className="bg-[#070D1A] border border-[#1E293B] p-3 rounded-2xl space-y-2">
+                <div className="flex items-center justify-between text-xs text-[#94A3B8]">
+                  <span className="font-mono text-amber-400 font-bold">SQL Editor-এ রান করার জন্য স্ক্রিপ্ট:</span>
+                  <button
+                    onClick={() => {
+                      const sql = `-- Supabase Orders & Tables Permissions Fix\nALTER TABLE public.orders DISABLE ROW LEVEL SECURITY;\nALTER TABLE public.products DISABLE ROW LEVEL SECURITY;\nALTER TABLE public.categories DISABLE ROW LEVEL SECURITY;\nALTER TABLE public.coupons DISABLE ROW LEVEL SECURITY;\nALTER TABLE public.settings DISABLE ROW LEVEL SECURITY;\nALTER TABLE public.team DISABLE ROW LEVEL SECURITY;\nALTER TABLE public.customer_profiles DISABLE ROW LEVEL SECURITY;\n\nALTER TABLE public.orders ADD COLUMN IF NOT EXISTS status text DEFAULT 'Pending';\nALTER TABLE public.orders ADD COLUMN IF NOT EXISTS call_status text DEFAULT 'Not Called';\nALTER TABLE public.orders ADD COLUMN IF NOT EXISTS order_number text;\nALTER TABLE public.orders ADD COLUMN IF NOT EXISTS customer_name text;\nALTER TABLE public.orders ADD COLUMN IF NOT EXISTS customer_phone text;\nALTER TABLE public.orders ADD COLUMN IF NOT EXISTS shipping_address text;\nALTER TABLE public.orders ADD COLUMN IF NOT EXISTS delivery_area text;\nALTER TABLE public.orders ADD COLUMN IF NOT EXISTS total_price numeric;\nALTER TABLE public.orders ADD COLUMN IF NOT EXISTS data jsonb NOT NULL DEFAULT '{}'::jsonb;\n\nGRANT ALL ON ALL TABLES IN SCHEMA public TO anon, authenticated, postgres, service_role;`;
+                      navigator.clipboard.writeText(sql);
+                      setSqlCopied(true);
+                      setTimeout(() => setSqlCopied(false), 2500);
+                    }}
+                    className="bg-[#2563EB] hover:bg-blue-600 text-white px-3 py-1 rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors"
+                  >
+                    {sqlCopied ? <Check className="w-3.5 h-3.5 text-emerald-300" /> : <Copy className="w-3.5 h-3.5" />}
+                    <span>{sqlCopied ? 'কপি হয়েছে!' : 'SQL কোড কপি করুন'}</span>
+                  </button>
+                </div>
+
+                <pre className="p-3 bg-black/60 rounded-xl text-[11px] font-mono text-emerald-400 overflow-x-auto border border-[#1E293B]">
+{`-- ১. RLS বন্ধ করে সরাসরি পারমিশন দিন
+ALTER TABLE public.orders DISABLE ROW LEVEL SECURITY;
+
+-- ২. কলামগুলো নিশ্চিত করুন
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS status text DEFAULT 'Pending';
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS call_status text DEFAULT 'Not Called';
+
+-- ৩. পাবলিক পারমিশন দিন
+GRANT ALL ON ALL TABLES IN SCHEMA public TO anon, authenticated, postgres, service_role;`}
+                </pre>
+              </div>
+
+              <div className="bg-blue-500/10 border border-blue-500/30 p-3 rounded-2xl text-[11px] text-blue-200">
+                <strong>কিভাবে রান করবেন:</strong> আপনার <a href="https://app.supabase.com" target="_blank" rel="noreferrer" className="underline font-bold text-white">Supabase ড্যাশবোর্ডে</a> যান &gt; বাম পাশের মেনু থেকে <strong>SQL Editor</strong> &gt; <strong>+ New Query</strong> তে পেস্ট করে <strong>Run</strong> বাটনে ক্লিক করুন।
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-2 border-t border-[#1E293B]">
+              <button
+                type="button"
+                onClick={() => setIsSqlModalOpen(false)}
+                className="px-4 py-2 bg-[#1E293B] hover:bg-[#334155] text-white font-bold text-xs rounded-xl cursor-pointer"
+              >
+                বুঝেছি, বন্ধ করুন
+              </button>
+            </div>
           </div>
         </div>
       )}

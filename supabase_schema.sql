@@ -6,9 +6,9 @@
 -- 1. Create 'orders' table
 CREATE TABLE IF NOT EXISTS public.orders (
   id TEXT PRIMARY KEY,
-  order_number TEXT UNIQUE NOT NULL,
-  customer_name TEXT NOT NULL,
-  customer_phone TEXT NOT NULL,
+  order_number TEXT,
+  customer_name TEXT,
+  customer_phone TEXT,
   shipping_address TEXT,
   delivery_area TEXT,
   total_price NUMERIC,
@@ -18,60 +18,86 @@ CREATE TABLE IF NOT EXISTS public.orders (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Enable Row Level Security & Allow Public Read/Write Access
-ALTER TABLE public.orders ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Allow public full access on orders" ON public.orders FOR ALL USING (true) WITH CHECK (true);
+-- Ensure all order columns exist if table was created previously
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS call_status TEXT DEFAULT 'Not Called';
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS shipping_address TEXT;
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS delivery_area TEXT;
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'Pending';
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS total_price NUMERIC;
 
 -- 2. Create 'products' table
 CREATE TABLE IF NOT EXISTS public.products (
   id TEXT PRIMARY KEY,
-  name TEXT NOT NULL,
+  name TEXT,
+  category TEXT,
+  sub_category TEXT,
+  price NUMERIC,
+  stock INTEGER,
   data JSONB NOT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
-
-ALTER TABLE public.products ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Allow public full access on products" ON public.products FOR ALL USING (true) WITH CHECK (true);
 
 -- 3. Create 'categories' table
 CREATE TABLE IF NOT EXISTS public.categories (
   id TEXT PRIMARY KEY,
-  name TEXT NOT NULL,
-  data JSONB NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT NOW()
+  name TEXT,
+  image TEXT,
+  position INTEGER DEFAULT 1,
+  is_visible_on_home BOOLEAN DEFAULT true,
+  sub_categories JSONB,
+  data JSONB NOT NULL
 );
-
-ALTER TABLE public.categories ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Allow public full access on categories" ON public.categories FOR ALL USING (true) WITH CHECK (true);
 
 -- 4. Create 'coupons' table
 CREATE TABLE IF NOT EXISTS public.coupons (
   id TEXT PRIMARY KEY,
-  code TEXT UNIQUE NOT NULL,
-  data JSONB NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT NOW()
+  code TEXT,
+  discount_amount NUMERIC,
+  discount_type TEXT,
+  data JSONB NOT NULL
 );
-
-ALTER TABLE public.coupons ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Allow public full access on coupons" ON public.coupons FOR ALL USING (true) WITH CHECK (true);
 
 -- 5. Create 'customer_profiles' table
 CREATE TABLE IF NOT EXISTS public.customer_profiles (
   phone TEXT PRIMARY KEY,
-  name TEXT NOT NULL,
+  name TEXT,
   address TEXT,
+  data JSONB NOT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-ALTER TABLE public.customer_profiles ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Allow public full access on customer_profiles" ON public.customer_profiles FOR ALL USING (true) WITH CHECK (true);
+-- 6. Create 'team' table
+CREATE TABLE IF NOT EXISTS public.team (
+  id TEXT PRIMARY KEY,
+  name TEXT,
+  role TEXT,
+  data JSONB NOT NULL
+);
 
--- 6. Create 'settings' table
+-- 7. Create 'settings' table
 CREATE TABLE IF NOT EXISTS public.settings (
   id TEXT PRIMARY KEY DEFAULT 'main_settings',
   data JSONB NOT NULL,
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-ALTER TABLE public.settings ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Allow public full access on settings" ON public.settings FOR ALL USING (true) WITH CHECK (true);
+-- Disable Row Level Security (RLS) so Client App & Admin can read/write smoothly
+ALTER TABLE public.orders DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.products DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.categories DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.coupons DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.customer_profiles DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.team DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.settings DISABLE ROW LEVEL SECURITY;
+
+-- Allow public access policies (In case RLS is forced on by project)
+DO $$ BEGIN CREATE POLICY "Public All Orders" ON public.orders FOR ALL USING (true) WITH CHECK (true); EXCEPTION WHEN OTHERS THEN NULL; END $$;
+DO $$ BEGIN CREATE POLICY "Public All Products" ON public.products FOR ALL USING (true) WITH CHECK (true); EXCEPTION WHEN OTHERS THEN NULL; END $$;
+DO $$ BEGIN CREATE POLICY "Public All Categories" ON public.categories FOR ALL USING (true) WITH CHECK (true); EXCEPTION WHEN OTHERS THEN NULL; END $$;
+DO $$ BEGIN CREATE POLICY "Public All Coupons" ON public.coupons FOR ALL USING (true) WITH CHECK (true); EXCEPTION WHEN OTHERS THEN NULL; END $$;
+DO $$ BEGIN CREATE POLICY "Public All Settings" ON public.settings FOR ALL USING (true) WITH CHECK (true); EXCEPTION WHEN OTHERS THEN NULL; END $$;
+DO $$ BEGIN CREATE POLICY "Public All Team" ON public.team FOR ALL USING (true) WITH CHECK (true); EXCEPTION WHEN OTHERS THEN NULL; END $$;
+DO $$ BEGIN CREATE POLICY "Public All Customers" ON public.customer_profiles FOR ALL USING (true) WITH CHECK (true); EXCEPTION WHEN OTHERS THEN NULL; END $$;
+
+-- Grant permissions to public anon role
+GRANT ALL ON ALL TABLES IN SCHEMA public TO anon, authenticated, postgres, service_role;

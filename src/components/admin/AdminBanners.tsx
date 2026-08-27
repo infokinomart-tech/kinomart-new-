@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { useStore } from '../../context/StoreContext';
 import { HeroSlide, PromoBannerConfig } from '../../types';
-import { INITIAL_HERO_SLIDES, INITIAL_PROMO_BANNER } from '../../data/mockData';
-import { processImageForPlaceholder } from '../../lib/imageUtils';
+import { processImageForPlaceholder, processAndUploadImage } from '../../lib/imageUtils';
 import {
   Image as ImageIcon,
   Plus,
@@ -84,8 +83,16 @@ export const AdminBanners: React.FC = () => {
     saveSettings
   } = useStore();
 
-  const slides = (heroSlides && heroSlides.length > 0) ? heroSlides : INITIAL_HERO_SLIDES;
-  const promo = promoBanner || INITIAL_PROMO_BANNER;
+  const slides = Array.isArray(heroSlides) ? heroSlides : [];
+  const promo = promoBanner || {
+    isEnabled: false,
+    badgeText: '',
+    title: '',
+    subtitle: '',
+    buttonText: 'অফারটি দেখুন',
+    linkType: 'all_products',
+    bgColor: '#434F33'
+  };
 
   // Slide Edit / Modal State
   const [isSlideModalOpen, setIsSlideModalOpen] = useState(false);
@@ -135,14 +142,15 @@ export const AdminBanners: React.FC = () => {
 
     try {
       setIsUploading(true);
-      const processed = await processImageForPlaceholder(file, 'banner');
+      const processed = await processAndUploadImage(file, 'banner', 'banners');
       setEditingSlide(prev => prev ? { ...prev, image: processed } : null);
-      showToast('ব্যানার ছবি সফলভাবে আপলোড হয়েছে!');
+      showToast('ব্যানার ছবি সফলভাবে প্রসেস ও আপলোড হয়েছে!');
     } catch (err) {
       console.error(err);
-      alert('ছবি প্রসেসিং করতে সমস্যা হয়েছে। দয়া করে ছোট সাইজের ছবি ব্যবহার করুন।');
+      alert('ছবি প্রসেসিং করতে সমস্যা হয়েছে।');
     } finally {
       setIsUploading(false);
+      e.target.value = '';
     }
   };
 
@@ -258,10 +266,18 @@ export const AdminBanners: React.FC = () => {
         <div className="flex items-center gap-2.5 flex-wrap">
           <button
             onClick={() => {
-              if (confirm('সকল ব্যানারকে কি ডিফল্ট অবস্থায় ফিরিয়ে নিতে চান?')) {
+              if (confirm('সকল ব্যানারকে কি খালি / রিসেট করতে চান?')) {
                 resetHeroSlides();
-                savePromoBanner(INITIAL_PROMO_BANNER);
-                showToast('ব্যানারসমূহ ডিফল্ট অবস্থায় ফিরে গেছে।');
+                savePromoBanner({
+                  isEnabled: false,
+                  badgeText: '',
+                  title: '',
+                  subtitle: '',
+                  buttonText: 'অফারটি দেখুন',
+                  linkType: 'all_products',
+                  bgColor: '#434F33'
+                });
+                showToast('ব্যানারসমূহ রিসেট করা হয়েছে।');
               }
             }}
             className="px-3.5 py-2 rounded-xl bg-[#222736] hover:bg-[#2D3348] text-[#94A3B8] hover:text-white text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer border border-[#2D3348]"

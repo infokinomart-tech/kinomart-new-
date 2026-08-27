@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useStore } from '../../context/StoreContext';
 import { Category } from '../../types';
-import { processImageForPlaceholder } from '../../lib/imageUtils';
+import { processImageForPlaceholder, processAndUploadImage } from '../../lib/imageUtils';
 import { Tags, Plus, Edit2, Trash2, X, Check, Eye } from 'lucide-react';
 
 export const AdminCategories: React.FC = () => {
@@ -195,8 +195,8 @@ export const AdminCategories: React.FC = () => {
                         const file = e.target.files?.[0];
                         if (file) {
                           try {
-                            const compressed = await processImageForPlaceholder(file, 'category_icon');
-                            setEditingCategory({ ...editingCategory, image: compressed });
+                            const processed = await processAndUploadImage(file, 'category_icon', 'categories');
+                            setEditingCategory({ ...editingCategory, image: processed });
                           } catch (err) {
                             console.error('Category image upload error:', err);
                           }

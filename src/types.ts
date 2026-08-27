@@ -152,6 +152,12 @@ export interface StoreSettings {
   supabaseUrl?: string;
   supabaseKey?: string;
   heroSliderInterval?: number; // autoplay interval in ms (default 5000)
+  r2AccountId?: string;
+  r2BucketName?: string;
+  r2PublicUrl?: string;
+  r2S3Endpoint?: string;
+  r2AccessKeyId?: string;
+  r2SecretAccessKey?: string;
 }
 
 export interface HeroSlide {
