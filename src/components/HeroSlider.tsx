@@ -81,6 +81,9 @@ export const HeroSlider: React.FC = () => {
               alt={slide.title || `Slide ${index + 1}`}
               className="w-full h-full object-cover"
               referrerPolicy="no-referrer"
+              loading={index === 0 ? 'eager' : 'lazy'}
+              fetchPriority={index === 0 ? 'high' : 'auto'}
+              decoding="async"
             />
           </div>
         ))}

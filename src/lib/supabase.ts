@@ -47,6 +47,41 @@ let cachedClient: SupabaseClient | null = null;
 let lastUrl = '';
 let lastKey = '';
 
+// Early In-Flight Network Preload (Initiates instant query before React lifecycle mount)
+let preloadedProductsPromise: Promise<any> | null = null;
+let preloadedCategoriesPromise: Promise<any> | null = null;
+let preloadedSettingsPromise: Promise<any> | null = null;
+
+export const startEarlyPreload = () => {
+  const client = getSupabaseClient();
+  if (!client) return;
+  try {
+    if (!preloadedProductsPromise) {
+      preloadedProductsPromise = Promise.resolve(client.from('products').select('*'));
+    }
+    if (!preloadedCategoriesPromise) {
+      preloadedCategoriesPromise = Promise.resolve(client.from('categories').select('*'));
+    }
+    if (!preloadedSettingsPromise) {
+      preloadedSettingsPromise = Promise.resolve(client.from('settings').select('*'));
+    }
+  } catch (e) {
+    // Ignore preload error
+  }
+};
+
+export const consumePreloadPromises = () => {
+  const promises = {
+    products: preloadedProductsPromise,
+    categories: preloadedCategoriesPromise,
+    settings: preloadedSettingsPromise
+  };
+  preloadedProductsPromise = null;
+  preloadedCategoriesPromise = null;
+  preloadedSettingsPromise = null;
+  return promises;
+};
+
 export const getSupabaseClient = (): SupabaseClient | null => {
   const { url, key } = getSupabaseConfig();
   if (!url || !key) return null;
@@ -67,6 +102,15 @@ export const getSupabaseClient = (): SupabaseClient | null => {
 };
 
 export const supabase: SupabaseClient | null = getSupabaseClient();
+
+// Auto-start preload immediately upon script evaluation
+if (typeof window !== 'undefined') {
+  try {
+    startEarlyPreload();
+  } catch {
+    // Ignore
+  }
+}
 
 export const isSupabaseConfigured = (): boolean => {
   return !!getSupabaseClient();

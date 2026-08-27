@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { getSupabaseClient, isSupabaseConfigured, setSupabaseCredentials } from '../lib/supabase';
+import { getSupabaseClient, isSupabaseConfigured, setSupabaseCredentials, consumePreloadPromises } from '../lib/supabase';
 import {
   INITIAL_SETTINGS,
   INITIAL_PROMO_BANNER
@@ -517,14 +517,163 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const shouldFetchFull = Boolean(options?.full || isAdminLoggedIn || isSessionAdmin || viewMode === 'admin');
 
     try {
-      // Tier 1: Critical Customer-Facing Data (Products, Categories, Settings)
-      const criticalPromises = [
-        supabase.from('products').select('*'),
-        supabase.from('categories').select('*'),
-        supabase.from('settings').select('*')
-      ];
+      const isInitialFetch = !options?.force && isDataLoading;
+      const { products: preloadProds, categories: preloadCats, settings: preloadStg } = isInitialFetch 
+        ? consumePreloadPromises() 
+        : { products: null, categories: null, settings: null };
 
-      // Tier 2: Deferred / Admin Data (Only fetch when in admin mode or explicitly requested)
+      // 1. Independent Streaming Products Query
+      const prodsPromise = Promise.resolve(preloadProds || supabase.from('products').select('*'))
+        .then(res => {
+          if (!res.error && Array.isArray(res.data)) {
+            const prods = res.data;
+            const fetchedProducts = prods.map(r => {
+              const dataObj = safeParseJson(r.data);
+              const rawStatus = dataObj.status || r.status;
+              return {
+                ...dataObj,
+                id: String(r.id || dataObj.id),
+                name: String(dataObj.name || r.name || ''),
+                price: Number(dataObj.price ?? r.price ?? 0),
+                discountPrice: dataObj.discountPrice !== undefined ? Number(dataObj.discountPrice) : undefined,
+                category: String(dataObj.category || r.category || 'গ্যাজেট'),
+                subCategory: String(dataObj.subCategory || r.sub_category || r.subCategory || r.subcategory || ''),
+                stock: Number(dataObj.stock ?? r.stock ?? 0),
+                limitedStockThreshold: Number(dataObj.limitedStockThreshold ?? 10),
+                colors: Array.isArray(dataObj.colors) ? dataObj.colors : ['BLACK'],
+                thumbnail: dataObj.thumbnail || r.thumbnail || (Array.isArray(dataObj.gallery) && dataObj.gallery[0]) || '',
+                gallery: Array.isArray(dataObj.gallery) ? dataObj.gallery : [],
+                videoUrl: dataObj.videoUrl || '',
+                shortDescription: dataObj.shortDescription || '',
+                longDescription: dataObj.longDescription || '',
+                specifications: Array.isArray(dataObj.specifications) ? dataObj.specifications : [],
+                bundles: Array.isArray(dataObj.bundles) ? dataObj.bundles : [],
+                hasTimer: Boolean(dataObj.hasTimer ?? false),
+                isBestSeller: Boolean(dataObj.isBestSeller ?? false),
+                isFeatured: Boolean(dataObj.isFeatured ?? false),
+                rating: Number(dataObj.rating ?? 5.0),
+                reviewsCount: Number(dataObj.reviewsCount ?? 1),
+                status: (rawStatus === 'INACTIVE' ? 'INACTIVE' : 'ACTIVE') as 'ACTIVE' | 'INACTIVE'
+              } as Product;
+            });
+            setProducts(fetchedProducts);
+            safeSetStorage('kinomart_products', fetchedProducts);
+            setIsDataLoading(false);
+
+            // Preload top product thumbnails in browser cache for instantaneous render
+            if (typeof window !== 'undefined' && fetchedProducts.length > 0) {
+              setTimeout(() => {
+                fetchedProducts.slice(0, 8).forEach(p => {
+                  const url = p.thumbnail || p.gallery?.[0];
+                  if (url) {
+                    const img = new Image();
+                    img.src = url;
+                  }
+                });
+              }, 20);
+            }
+          }
+        })
+        .catch(err => {
+          console.warn('Error fetching products:', err);
+        });
+
+      // 2. Independent Streaming Categories Query
+      const catsPromise = Promise.resolve(preloadCats || supabase.from('categories').select('*'))
+        .then(res => {
+          if (!res.error && Array.isArray(res.data)) {
+            const cats = res.data;
+            const fetchedCats = cats.map(r => {
+              const dataObj = safeParseJson(r.data);
+              const dataSub = dataObj.subCategories;
+              const colSub = r.sub_categories ?? r.subCategories ?? r.subcategories;
+              let rawSub: any = dataSub || colSub;
+
+              let parsedSub: string[] = [];
+              if (Array.isArray(rawSub)) {
+                parsedSub = rawSub.map(s => String(s).trim()).filter(Boolean);
+              } else if (typeof rawSub === 'string') {
+                try {
+                  const p = JSON.parse(rawSub);
+                  if (Array.isArray(p)) {
+                    parsedSub = p.map(s => String(s).trim()).filter(Boolean);
+                  }
+                } catch {
+                  parsedSub = [];
+                }
+              }
+
+              return {
+                ...dataObj,
+                id: String(r.id || dataObj.id),
+                name: String(dataObj.name || r.name || ''),
+                image: dataObj.image || r.image || '',
+                position: Number(dataObj.position ?? r.position ?? 1),
+                isVisibleOnHome: Boolean(dataObj.isVisibleOnHome ?? r.is_visible_on_home ?? true),
+                subCategories: parsedSub
+              } as Category;
+            });
+            setCategories(fetchedCats);
+            safeSetStorage('kinomart_categories', fetchedCats);
+          }
+        })
+        .catch(err => {
+          console.warn('Error fetching categories:', err);
+        });
+
+      // 3. Independent Streaming Settings & Hero Banner Query
+      const stgPromise = Promise.resolve(preloadStg || supabase.from('settings').select('*'))
+        .then(res => {
+          if (!res.error && Array.isArray(res.data) && res.data.length > 0) {
+            res.data.forEach((r: any) => {
+              const parsed = safeParseJson(r.data);
+              if (!parsed) return;
+
+              if (r.id === 'hero_slides' && Array.isArray(parsed)) {
+                setHeroSlides(parsed as HeroSlide[]);
+                safeSetStorage('kinomart_hero_slides', parsed);
+                // Preload hero slide images immediately
+                if (typeof window !== 'undefined') {
+                  parsed.forEach((s: any) => {
+                    if (s.image) {
+                      const img = new Image();
+                      img.src = s.image;
+                    }
+                  });
+                }
+              } else if (r.id === 'promo_banner' && typeof parsed === 'object') {
+                setPromoBanner(parsed as PromoBannerConfig);
+                safeSetStorage('kinomart_promo_banner', parsed);
+              } else if (typeof parsed === 'object') {
+                if (Array.isArray(parsed.heroSlides)) {
+                  setHeroSlides(parsed.heroSlides as HeroSlide[]);
+                  safeSetStorage('kinomart_hero_slides', parsed.heroSlides);
+                }
+                if (parsed.promoBanner && typeof parsed.promoBanner === 'object') {
+                  setPromoBanner(parsed.promoBanner as PromoBannerConfig);
+                  safeSetStorage('kinomart_promo_banner', parsed.promoBanner);
+                }
+                setSettings(prev => {
+                  const merged = { ...prev, ...parsed };
+                  safeSetStorage('kinomart_settings', merged);
+                  return merged;
+                });
+              }
+            });
+          }
+        })
+        .catch(err => {
+          console.warn('Error fetching settings:', err);
+        });
+
+      // Wait for all critical tier queries to finish settling
+      await Promise.allSettled([prodsPromise, catsPromise, stgPromise]);
+
+      // Immediate UI unblock
+      setIsDataLoading(false);
+      setDataError(null);
+
+      // Process Tier 2: Deferred / Admin Data (Only fetch when in admin mode or explicitly requested)
       const secondaryPromises = shouldFetchFull
         ? [
             supabase.from('coupons').select('*'),
@@ -534,129 +683,6 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           ]
         : [];
 
-      const [prodsRes, catsRes, stgRes] = await Promise.allSettled(criticalPromises);
-
-      // 1. Products Processing
-      if (prodsRes.status === 'fulfilled' && !prodsRes.value.error && Array.isArray(prodsRes.value.data)) {
-        const prods = prodsRes.value.data;
-        const fetchedProducts = prods.map(r => {
-          const dataObj = safeParseJson(r.data);
-          const rawStatus = dataObj.status || r.status;
-          return {
-            ...dataObj,
-            id: String(r.id || dataObj.id),
-            name: String(dataObj.name || r.name || ''),
-            price: Number(dataObj.price ?? r.price ?? 0),
-            discountPrice: dataObj.discountPrice !== undefined ? Number(dataObj.discountPrice) : undefined,
-            category: String(dataObj.category || r.category || 'গ্যাজেট'),
-            subCategory: String(dataObj.subCategory || r.sub_category || r.subCategory || r.subcategory || ''),
-            stock: Number(dataObj.stock ?? r.stock ?? 0),
-            limitedStockThreshold: Number(dataObj.limitedStockThreshold ?? 10),
-            colors: Array.isArray(dataObj.colors) ? dataObj.colors : ['BLACK'],
-            thumbnail: dataObj.thumbnail || r.thumbnail || (Array.isArray(dataObj.gallery) && dataObj.gallery[0]) || '',
-            gallery: Array.isArray(dataObj.gallery) ? dataObj.gallery : [],
-            videoUrl: dataObj.videoUrl || '',
-            shortDescription: dataObj.shortDescription || '',
-            longDescription: dataObj.longDescription || '',
-            specifications: Array.isArray(dataObj.specifications) ? dataObj.specifications : [],
-            bundles: Array.isArray(dataObj.bundles) ? dataObj.bundles : [],
-            hasTimer: Boolean(dataObj.hasTimer ?? false),
-            isBestSeller: Boolean(dataObj.isBestSeller ?? false),
-            isFeatured: Boolean(dataObj.isFeatured ?? false),
-            rating: Number(dataObj.rating ?? 5.0),
-            reviewsCount: Number(dataObj.reviewsCount ?? 1),
-            status: (rawStatus === 'INACTIVE' ? 'INACTIVE' : 'ACTIVE') as 'ACTIVE' | 'INACTIVE'
-          } as Product;
-        });
-        setProducts(fetchedProducts);
-        safeSetStorage('kinomart_products', fetchedProducts);
-
-        // Preload top product thumbnails in browser cache for instantaneous render
-        if (typeof window !== 'undefined' && fetchedProducts.length > 0) {
-          setTimeout(() => {
-            fetchedProducts.slice(0, 8).forEach(p => {
-              const url = p.thumbnail || p.gallery?.[0];
-              if (url) {
-                const img = new Image();
-                img.src = url;
-              }
-            });
-          }, 50);
-        }
-      }
-
-      // 2. Categories Processing
-      if (catsRes.status === 'fulfilled' && !catsRes.value.error && Array.isArray(catsRes.value.data)) {
-        const cats = catsRes.value.data;
-        const fetchedCats = cats.map(r => {
-          const dataObj = safeParseJson(r.data);
-          const dataSub = dataObj.subCategories;
-          const colSub = r.sub_categories ?? r.subCategories ?? r.subcategories;
-          let rawSub: any = dataSub || colSub;
-
-          let parsedSub: string[] = [];
-          if (Array.isArray(rawSub)) {
-            parsedSub = rawSub.map(s => String(s).trim()).filter(Boolean);
-          } else if (typeof rawSub === 'string') {
-            try {
-              const p = JSON.parse(rawSub);
-              if (Array.isArray(p)) {
-                parsedSub = p.map(s => String(s).trim()).filter(Boolean);
-              }
-            } catch {
-              parsedSub = [];
-            }
-          }
-
-          return {
-            ...dataObj,
-            id: String(r.id || dataObj.id),
-            name: String(dataObj.name || r.name || ''),
-            image: dataObj.image || r.image || '',
-            position: Number(dataObj.position ?? r.position ?? 1),
-            isVisibleOnHome: Boolean(dataObj.isVisibleOnHome ?? r.is_visible_on_home ?? true),
-            subCategories: parsedSub
-          } as Category;
-        });
-        setCategories(fetchedCats);
-        safeSetStorage('kinomart_categories', fetchedCats);
-      }
-
-      // 3. Settings & Banners Processing
-      if (stgRes.status === 'fulfilled' && !stgRes.value.error && Array.isArray(stgRes.value.data) && stgRes.value.data.length > 0) {
-        stgRes.value.data.forEach((r: any) => {
-          const parsed = safeParseJson(r.data);
-          if (!parsed) return;
-
-          if (r.id === 'hero_slides' && Array.isArray(parsed)) {
-            setHeroSlides(parsed as HeroSlide[]);
-            safeSetStorage('kinomart_hero_slides', parsed);
-          } else if (r.id === 'promo_banner' && typeof parsed === 'object') {
-            setPromoBanner(parsed as PromoBannerConfig);
-            safeSetStorage('kinomart_promo_banner', parsed);
-          } else if (typeof parsed === 'object') {
-            if (Array.isArray(parsed.heroSlides)) {
-              setHeroSlides(parsed.heroSlides as HeroSlide[]);
-              safeSetStorage('kinomart_hero_slides', parsed.heroSlides);
-            }
-            if (parsed.promoBanner && typeof parsed.promoBanner === 'object') {
-              setPromoBanner(parsed.promoBanner as PromoBannerConfig);
-              safeSetStorage('kinomart_promo_banner', parsed.promoBanner);
-            }
-            setSettings(prev => {
-              const merged = { ...prev, ...parsed };
-              safeSetStorage('kinomart_settings', merged);
-              return merged;
-            });
-          }
-        });
-      }
-
-      // Immediate UI unblock after Critical Tier is ready
-      setIsDataLoading(false);
-      setDataError(null);
-
-      // Process Tier 2 if requested
       if (secondaryPromises.length > 0) {
         const [cpnRes, tmRes, ordsRes, profsRes] = await Promise.allSettled(secondaryPromises);
 
