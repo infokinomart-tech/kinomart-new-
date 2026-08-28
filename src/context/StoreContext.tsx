@@ -113,6 +113,46 @@ interface StoreContextType {
   dismissRlsWarning: () => void;
 }
 
+interface CacheEntry<T> {
+  data: T;
+  timestamp: number;
+  isStale: boolean;
+}
+
+// In-Memory Cache Singleton for near-instant zero-latency client loads
+const memoryCache: {
+  products: CacheEntry<Product[]> | null;
+  categories: CacheEntry<Category[]> | null;
+} = {
+  products: null,
+  categories: null
+};
+
+// Cache freshness TTL (5 minutes by default). Fresh cached data avoids duplicate network roundtrips.
+const CACHE_TTL_MS = 5 * 60 * 1000;
+
+export const isCacheValid = <T,>(entry: CacheEntry<T> | null, maxAge: number = CACHE_TTL_MS): boolean => {
+  if (!entry || !entry.data || entry.isStale) return false;
+  return Date.now() - entry.timestamp < maxAge;
+};
+
+export const invalidateProductsCache = () => {
+  if (memoryCache.products) {
+    memoryCache.products.isStale = true;
+  }
+};
+
+export const invalidateCategoriesCache = () => {
+  if (memoryCache.categories) {
+    memoryCache.categories.isStale = true;
+  }
+};
+
+export const invalidateAllStoreCache = () => {
+  if (memoryCache.products) memoryCache.products.isStale = true;
+  if (memoryCache.categories) memoryCache.categories.isStale = true;
+};
+
 const safeGetStorage = <T,>(key: string, fallback: T): T => {
   try {
     if (typeof window === 'undefined') return fallback;
@@ -175,6 +215,9 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // Data Loading & Error States
   const [isDataLoading, setIsDataLoading] = useState<boolean>(() => {
+    if (memoryCache.products && !memoryCache.products.isStale && memoryCache.products.data.length > 0) {
+      return false;
+    }
     if (typeof window !== 'undefined') {
       const cached = safeGetStorage('kinomart_products', []);
       return !Array.isArray(cached) || cached.length === 0;
@@ -185,11 +228,35 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // Persistent States
   const [products, setProducts] = useState<Product[]>(() => {
-    return safeGetStorage('kinomart_products', []);
+    if (memoryCache.products && !memoryCache.products.isStale && memoryCache.products.data.length > 0) {
+      return memoryCache.products.data;
+    }
+    const cached = safeGetStorage('kinomart_products', []);
+    if (Array.isArray(cached) && cached.length > 0) {
+      memoryCache.products = {
+        data: cached,
+        timestamp: Date.now(),
+        isStale: false
+      };
+      return cached;
+    }
+    return [];
   });
 
   const [categories, setCategories] = useState<Category[]>(() => {
-    return safeGetStorage('kinomart_categories', []);
+    if (memoryCache.categories && !memoryCache.categories.isStale && memoryCache.categories.data.length > 0) {
+      return memoryCache.categories.data;
+    }
+    const cached = safeGetStorage('kinomart_categories', []);
+    if (Array.isArray(cached) && cached.length > 0) {
+      memoryCache.categories = {
+        data: cached,
+        timestamp: Date.now(),
+        isStale: false
+      };
+      return cached;
+    }
+    return [];
   });
 
   const [orders, setOrders] = useState<Order[]>(() => {
@@ -488,9 +555,16 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   };
 
-  // Supabase Data Refresh Function (Optimized Tiered Strategy)
+  // Supabase Data Refresh Function (Optimized Ultra-Fast Streaming Strategy)
   const isFetchingRef = React.useRef(false);
   const lastFetchTimeRef = React.useRef(0);
+
+  const withTimeout = <T,>(promise: Promise<T>, timeoutMs: number = 6000, fallback: T): Promise<T> => {
+    return Promise.race([
+      promise,
+      new Promise<T>((resolve) => setTimeout(() => resolve(fallback), timeoutMs))
+    ]);
+  };
 
   const refreshSupabaseData = async (options?: { full?: boolean; force?: boolean }) => {
     const supabase = getSupabaseClient();
@@ -505,8 +579,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     if (isFetchingRef.current && !options?.force) {
       return;
     }
-    // Throttle duplicate requests within 1.5 seconds unless forced
-    if (!options?.force && now - lastFetchTimeRef.current < 1500) {
+    // Throttle duplicate requests within 1 second unless forced
+    if (!options?.force && now - lastFetchTimeRef.current < 1000) {
       return;
     }
 
@@ -516,102 +590,138 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const isSessionAdmin = typeof window !== 'undefined' && sessionStorage.getItem('kinomart_admin_auth') === 'true';
     const shouldFetchFull = Boolean(options?.full || isAdminLoggedIn || isSessionAdmin || viewMode === 'admin');
 
+    const productsFresh = isCacheValid(memoryCache.products);
+    const categoriesFresh = isCacheValid(memoryCache.categories);
+
+    // If cached products and categories are already fresh, not an admin view, and not forced, return immediately
+    if (!options?.force && !shouldFetchFull && productsFresh && categoriesFresh) {
+      setIsDataLoading(false);
+      setDataError(null);
+      return;
+    }
+
     try {
       const isInitialFetch = !options?.force && isDataLoading;
       const { products: preloadProds, categories: preloadCats, settings: preloadStg } = isInitialFetch 
         ? consumePreloadPromises() 
         : { products: null, categories: null, settings: null };
 
-      // 1. Independent Streaming Products Query
-      const prodsPromise = Promise.resolve(preloadProds || supabase.from('products').select('*'))
-        .then(res => {
-          if (!res.error && Array.isArray(res.data)) {
-            const prods = res.data;
-            const fetchedProducts = prods.map(r => {
-              const dataObj = safeParseJson(r.data);
-              const rawStatus = dataObj.status || r.status;
-              return {
-                ...dataObj,
-                id: String(r.id || dataObj.id),
-                name: String(dataObj.name || r.name || ''),
-                price: Number(dataObj.price ?? r.price ?? 0),
-                discountPrice: dataObj.discountPrice !== undefined ? Number(dataObj.discountPrice) : undefined,
-                category: String(dataObj.category || r.category || 'গ্যাজেট'),
-                subCategory: String(dataObj.subCategory || r.sub_category || r.subCategory || r.subcategory || ''),
-                stock: Number(dataObj.stock ?? r.stock ?? 0),
-                limitedStockThreshold: Number(dataObj.limitedStockThreshold ?? 10),
-                colors: Array.isArray(dataObj.colors) ? dataObj.colors : ['BLACK'],
-                thumbnail: dataObj.thumbnail || r.thumbnail || (Array.isArray(dataObj.gallery) && dataObj.gallery[0]) || '',
-                gallery: Array.isArray(dataObj.gallery) ? dataObj.gallery : [],
-                videoUrl: dataObj.videoUrl || '',
-                shortDescription: dataObj.shortDescription || '',
-                longDescription: dataObj.longDescription || '',
-                specifications: Array.isArray(dataObj.specifications) ? dataObj.specifications : [],
-                bundles: Array.isArray(dataObj.bundles) ? dataObj.bundles : [],
-                hasTimer: Boolean(dataObj.hasTimer ?? false),
-                isBestSeller: Boolean(dataObj.isBestSeller ?? false),
-                isFeatured: Boolean(dataObj.isFeatured ?? false),
-                rating: Number(dataObj.rating ?? 5.0),
-                reviewsCount: Number(dataObj.reviewsCount ?? 1),
-                status: (rawStatus === 'INACTIVE' ? 'INACTIVE' : 'ACTIVE') as 'ACTIVE' | 'INACTIVE'
-              } as Product;
-            });
-            setProducts(fetchedProducts);
-            safeSetStorage('kinomart_products', fetchedProducts);
-            setIsDataLoading(false);
-          }
-        })
-        .catch(err => {
-          console.warn('Error fetching products:', err);
-        });
-
-      // 2. Independent Streaming Categories Query
-      const catsPromise = Promise.resolve(preloadCats || supabase.from('categories').select('*'))
-        .then(res => {
-          if (!res.error && Array.isArray(res.data)) {
-            const cats = res.data;
-            const fetchedCats = cats.map(r => {
-              const dataObj = safeParseJson(r.data);
-              const dataSub = dataObj.subCategories;
-              const colSub = r.sub_categories ?? r.subCategories ?? r.subcategories;
-              let rawSub: any = dataSub || colSub;
-
-              let parsedSub: string[] = [];
-              if (Array.isArray(rawSub)) {
-                parsedSub = rawSub.map(s => String(s).trim()).filter(Boolean);
-              } else if (typeof rawSub === 'string') {
-                try {
-                  const p = JSON.parse(rawSub);
-                  if (Array.isArray(p)) {
-                    parsedSub = p.map(s => String(s).trim()).filter(Boolean);
-                  }
-                } catch {
-                  parsedSub = [];
-                }
+      // 1. Independent Streaming Products Query (with 6s timeout guard)
+      const prodsPromise = (options?.force || !productsFresh || shouldFetchFull)
+        ? withTimeout(
+            Promise.resolve(preloadProds || supabase.from('products').select('*')),
+            6000,
+            { data: null, error: null }
+          )
+            .then(res => {
+              if (res && !res.error && Array.isArray(res.data) && res.data.length > 0) {
+                const prods = res.data;
+                const fetchedProducts = prods.map(r => {
+                  const dataObj = safeParseJson(r.data);
+                  const rawStatus = dataObj.status || r.status;
+                  return {
+                    ...dataObj,
+                    id: String(r.id || dataObj.id),
+                    name: String(dataObj.name || r.name || ''),
+                    price: Number(dataObj.price ?? r.price ?? 0),
+                    discountPrice: dataObj.discountPrice !== undefined ? Number(dataObj.discountPrice) : undefined,
+                    category: String(dataObj.category || r.category || 'গ্যাজেট'),
+                    subCategory: String(dataObj.subCategory || r.sub_category || r.subCategory || r.subcategory || ''),
+                    stock: Number(dataObj.stock ?? r.stock ?? 0),
+                    limitedStockThreshold: Number(dataObj.limitedStockThreshold ?? 10),
+                    colors: Array.isArray(dataObj.colors) ? dataObj.colors : ['BLACK'],
+                    thumbnail: dataObj.thumbnail || r.thumbnail || (Array.isArray(dataObj.gallery) && dataObj.gallery[0]) || '',
+                    gallery: Array.isArray(dataObj.gallery) ? dataObj.gallery : [],
+                    videoUrl: dataObj.videoUrl || '',
+                    shortDescription: dataObj.shortDescription || '',
+                    longDescription: dataObj.longDescription || '',
+                    specifications: Array.isArray(dataObj.specifications) ? dataObj.specifications : [],
+                    bundles: Array.isArray(dataObj.bundles) ? dataObj.bundles : [],
+                    hasTimer: Boolean(dataObj.hasTimer ?? false),
+                    isBestSeller: Boolean(dataObj.isBestSeller ?? false),
+                    isFeatured: Boolean(dataObj.isFeatured ?? false),
+                    rating: Number(dataObj.rating ?? 5.0),
+                    reviewsCount: Number(dataObj.reviewsCount ?? 1),
+                    status: (rawStatus === 'INACTIVE' ? 'INACTIVE' : 'ACTIVE') as 'ACTIVE' | 'INACTIVE'
+                  } as Product;
+                });
+                setProducts(fetchedProducts);
+                safeSetStorage('kinomart_products', fetchedProducts);
+                memoryCache.products = {
+                  data: fetchedProducts,
+                  timestamp: Date.now(),
+                  isStale: false
+                };
+                setIsDataLoading(false);
               }
+            })
+            .catch(err => {
+              console.warn('Error fetching products:', err);
+            })
+        : Promise.resolve();
 
-              return {
-                ...dataObj,
-                id: String(r.id || dataObj.id),
-                name: String(dataObj.name || r.name || ''),
-                image: dataObj.image || r.image || '',
-                position: Number(dataObj.position ?? r.position ?? 1),
-                isVisibleOnHome: Boolean(dataObj.isVisibleOnHome ?? r.is_visible_on_home ?? true),
-                subCategories: parsedSub
-              } as Category;
-            });
-            setCategories(fetchedCats);
-            safeSetStorage('kinomart_categories', fetchedCats);
-          }
-        })
-        .catch(err => {
-          console.warn('Error fetching categories:', err);
-        });
+      // 2. Independent Streaming Categories Query (with 6s timeout guard)
+      const catsPromise = (options?.force || !categoriesFresh || shouldFetchFull)
+        ? withTimeout(
+            Promise.resolve(preloadCats || supabase.from('categories').select('*')),
+            6000,
+            { data: null, error: null }
+          )
+            .then(res => {
+              if (res && !res.error && Array.isArray(res.data) && res.data.length > 0) {
+                const cats = res.data;
+                const fetchedCats = cats.map(r => {
+                  const dataObj = safeParseJson(r.data);
+                  const dataSub = dataObj.subCategories;
+                  const colSub = r.sub_categories ?? r.subCategories ?? r.subcategories;
+                  let rawSub: any = dataSub || colSub;
 
-      // 3. Independent Streaming Settings & Hero Banner Query
-      const stgPromise = Promise.resolve(preloadStg || supabase.from('settings').select('*'))
+                  let parsedSub: string[] = [];
+                  if (Array.isArray(rawSub)) {
+                    parsedSub = rawSub.map(s => String(s).trim()).filter(Boolean);
+                  } else if (typeof rawSub === 'string') {
+                    try {
+                      const p = JSON.parse(rawSub);
+                      if (Array.isArray(p)) {
+                        parsedSub = p.map(s => String(s).trim()).filter(Boolean);
+                      }
+                    } catch {
+                      parsedSub = [];
+                    }
+                  }
+
+                  return {
+                    ...dataObj,
+                    id: String(r.id || dataObj.id),
+                    name: String(dataObj.name || r.name || ''),
+                    image: dataObj.image || r.image || '',
+                    position: Number(dataObj.position ?? r.position ?? 1),
+                    isVisibleOnHome: Boolean(dataObj.isVisibleOnHome ?? r.is_visible_on_home ?? true),
+                    subCategories: parsedSub
+                  } as Category;
+                });
+                setCategories(fetchedCats);
+                safeSetStorage('kinomart_categories', fetchedCats);
+                memoryCache.categories = {
+                  data: fetchedCats,
+                  timestamp: Date.now(),
+                  isStale: false
+                };
+              }
+            })
+            .catch(err => {
+              console.warn('Error fetching categories:', err);
+            })
+        : Promise.resolve();
+
+      // 3. Independent Streaming Settings & Hero Banner Query (with 6s timeout guard)
+      const stgPromise = withTimeout(
+        Promise.resolve(preloadStg || supabase.from('settings').select('*')),
+        6000,
+        { data: null, error: null }
+      )
         .then(res => {
-          if (!res.error && Array.isArray(res.data) && res.data.length > 0) {
+          if (res && !res.error && Array.isArray(res.data) && res.data.length > 0) {
             res.data.forEach((r: any) => {
               const parsed = safeParseJson(r.data);
               if (!parsed) return;
@@ -644,7 +754,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           console.warn('Error fetching settings:', err);
         });
 
-      // Wait for all critical tier queries to finish settling
+      // Wait for critical tier queries to finish settling
       await Promise.allSettled([prodsPromise, catsPromise, stgPromise]);
 
       // Immediate UI unblock
@@ -857,8 +967,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   // Initial Fetch & Real-time Auto-Sync across devices
   useEffect(() => {
     const isSessionAdmin = typeof window !== 'undefined' && sessionStorage.getItem('kinomart_admin_auth') === 'true';
-    // Immediate Fast-Path Initial Load
-    refreshSupabaseData({ full: isAdminLoggedIn || isSessionAdmin, force: true });
+    // Immediate Fast-Path Initial Load (uses in-memory cache if fresh, otherwise triggers background fetch)
+    refreshSupabaseData({ full: isAdminLoggedIn || isSessionAdmin });
 
     // Cross-tab broadcast receiver for instantaneous UI sync
     let bc: BroadcastChannel | null = null;
@@ -869,8 +979,10 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           const { type, payload } = event.data || {};
           if (type === 'PRODUCTS_MUTATION' && Array.isArray(payload)) {
             setProducts(payload);
+            memoryCache.products = { data: payload, timestamp: Date.now(), isStale: false };
           } else if (type === 'CATEGORIES_MUTATION' && Array.isArray(payload)) {
             setCategories(payload);
+            memoryCache.categories = { data: payload, timestamp: Date.now(), isStale: false };
           } else if (type === 'SETTINGS_MUTATION' && typeof payload === 'object') {
             setSettings(prev => ({ ...prev, ...payload }));
           } else if (type === 'HERO_SLIDES_MUTATION' && Array.isArray(payload)) {
@@ -891,7 +1003,10 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       if (e.key === 'kinomart_products' && e.newValue) {
         try {
           const updated = JSON.parse(e.newValue);
-          if (Array.isArray(updated)) setProducts(updated);
+          if (Array.isArray(updated)) {
+            setProducts(updated);
+            memoryCache.products = { data: updated, timestamp: Date.now(), isStale: false };
+          }
         } catch {
           // Ignore parse errors
         }
@@ -907,7 +1022,10 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       if (e.key === 'kinomart_categories' && e.newValue) {
         try {
           const updated = JSON.parse(e.newValue);
-          if (Array.isArray(updated)) setCategories(updated);
+          if (Array.isArray(updated)) {
+            setCategories(updated);
+            memoryCache.categories = { data: updated, timestamp: Date.now(), isStale: false };
+          }
         } catch {
           // Ignore parse errors
         }
@@ -959,9 +1077,11 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       try {
         channel = client.channel('store-live-updates')
           .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, () => {
+            invalidateProductsCache();
             refreshSupabaseData({ full: false, force: true });
           })
           .on('postgres_changes', { event: '*', schema: 'public', table: 'categories' }, () => {
+            invalidateCategoriesCache();
             refreshSupabaseData({ full: false, force: true });
           })
           .on('postgres_changes', { event: '*', schema: 'public', table: 'settings' }, () => {
@@ -1462,6 +1582,9 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }
       safeSetStorage('kinomart_products', updated);
       broadcastSync('PRODUCTS_MUTATION', updated);
+      // Invalidate existing cache and update with the fresh mutated products list
+      invalidateProductsCache();
+      memoryCache.products = { data: updated, timestamp: Date.now(), isStale: false };
       return updated;
     });
 
@@ -1525,6 +1648,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
       const ok = await smartUpsert('products', primary, fallbacks);
       if (ok) {
+        invalidateProductsCache();
         await refreshSupabaseData({ force: true });
       }
     })();
@@ -1535,10 +1659,13 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const updated = prev.filter(p => p.id !== productId);
       safeSetStorage('kinomart_products', updated);
       broadcastSync('PRODUCTS_MUTATION', updated);
+      invalidateProductsCache();
+      memoryCache.products = { data: updated, timestamp: Date.now(), isStale: false };
       return updated;
     });
     const ok = await smartDelete('products', productId);
     if (ok) {
+      invalidateProductsCache();
       await refreshSupabaseData({ force: true });
     }
   };
@@ -1563,6 +1690,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }
       safeSetStorage('kinomart_categories', updated);
       broadcastSync('CATEGORIES_MUTATION', updated);
+      invalidateCategoriesCache();
+      memoryCache.categories = { data: updated, timestamp: Date.now(), isStale: false };
       return updated;
     });
 
@@ -1592,7 +1721,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     const ok = await smartUpsert('categories', primary, fallbacks);
     if (ok) {
-      await refreshSupabaseData();
+      invalidateCategoriesCache();
+      await refreshSupabaseData({ force: true });
     }
   };
 
@@ -1601,11 +1731,14 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const updated = prev.filter(c => c.id !== categoryId);
       safeSetStorage('kinomart_categories', updated);
       broadcastSync('CATEGORIES_MUTATION', updated);
+      invalidateCategoriesCache();
+      memoryCache.categories = { data: updated, timestamp: Date.now(), isStale: false };
       return updated;
     });
     const ok = await smartDelete('categories', categoryId);
     if (ok) {
-      await refreshSupabaseData();
+      invalidateCategoriesCache();
+      await refreshSupabaseData({ force: true });
     }
   };
 
@@ -1835,6 +1968,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setHeroSlides([]);
     setPromoBanner(INITIAL_PROMO_BANNER);
     setSettings(INITIAL_SETTINGS);
+    invalidateAllStoreCache();
     try {
       localStorage.clear();
     } catch {

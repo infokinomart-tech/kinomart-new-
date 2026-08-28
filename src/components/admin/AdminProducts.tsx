@@ -54,7 +54,7 @@ export const AdminProducts: React.FC = () => {
       const processedImages: string[] = [];
 
       for (let i = 0; i < files.length; i++) {
-        setImageCompressionProgress(`${i + 1}/${files.length} ছবি অপ্টিমাইজ ও R2 ক্লাউডে আপলোড হচ্ছে...`);
+        setImageCompressionProgress(`${i + 1}/${files.length} ছবি অপ্টিমাইজ ও প্রস্তুত হচ্ছে...`);
         const resultUrl = await processAndUploadImage(files[i], 'product_cover', 'products');
         processedImages.push(resultUrl);
       }

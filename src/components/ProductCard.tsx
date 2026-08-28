@@ -20,8 +20,8 @@ export const ProductCard: React.FC<ProductCardProps> = React.memo(({ product, in
   const isHighPriority = priority || index < 2;
 
   const rawImageUrl = product.thumbnail || product.gallery?.[0] || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500';
-  const optimizedSrc = getOptimizedImageUrl(rawImageUrl, { width: 380, quality: 80 });
-  const responsiveSrcSet = getResponsiveSrcSet(rawImageUrl, [240, 360, 480], 78);
+  const optimizedSrc = getOptimizedImageUrl(rawImageUrl, { width: 360, quality: 80 });
+  const responsiveSrcSet = getResponsiveSrcSet(rawImageUrl, [180, 280, 380, 500, 640], 80);
 
   const handleCardClick = () => {
     trackSelectItem(product, 'Product Grid', index + 1);
@@ -86,9 +86,10 @@ export const ProductCard: React.FC<ProductCardProps> = React.memo(({ product, in
       <div>
         <div className="relative w-full aspect-square bg-[#EFECE6] rounded-xl overflow-hidden flex items-center justify-center mb-3 border border-[#E8E3D9]">
           <img
+            id={`product-card-img-${product.id}`}
             src={optimizedSrc}
             srcSet={responsiveSrcSet || undefined}
-            sizes="(max-width: 640px) 46vw, (max-width: 1024px) 30vw, 260px"
+            sizes="(max-width: 640px) 48vw, (max-width: 1024px) 32vw, 280px"
             width={300}
             height={300}
             alt={product.name || 'প্রোডাক্ট'}

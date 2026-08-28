@@ -91,7 +91,18 @@ export const getSupabaseClient = (): SupabaseClient | null => {
   }
 
   try {
-    cachedClient = createClient(url, key);
+    cachedClient = createClient(url, key, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+        detectSessionInUrl: false
+      },
+      global: {
+        headers: {
+          'x-client-info': 'kinomart-fast-client'
+        }
+      }
+    });
     lastUrl = url;
     lastKey = key;
     return cachedClient;

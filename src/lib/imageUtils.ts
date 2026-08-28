@@ -285,36 +285,14 @@ export async function processImageForPlaceholder(
 }
 
 /**
- * Checks if a string is a base64 data URL
- */
-import { getR2PublicUrl, isR2Url, uploadToR2, getR2Config, isR2CredentialsConfigured } from './r2Storage';
-
-export { getR2PublicUrl, isR2Url, uploadToR2, getR2Config, isR2CredentialsConfigured };
-
-/**
- * Process image and upload to Cloudflare R2 if configured, otherwise return high-res compressed Data URL
+ * Process image and return high-res compressed WebP/JPEG Data URL for fast direct loading
  */
 export async function processAndUploadImage(
   file: File,
   placeholderType: PlaceholderType,
-  folder: 'products' | 'banners' | 'categories' | 'reviews' | 'settings' | 'general' = 'products'
+  _folder: 'products' | 'banners' | 'categories' | 'reviews' | 'settings' | 'general' = 'products'
 ): Promise<string> {
-  const compressedDataUrl = await processImageForPlaceholder(file, placeholderType);
-
-  if (isR2CredentialsConfigured()) {
-    try {
-      const result = await uploadToR2(compressedDataUrl, {
-        folder,
-        filename: file.name
-      });
-      return result.cdnUrl;
-    } catch (err) {
-      console.warn('[Image Processing] R2 direct upload failed, using high-res compressed image:', err);
-      return compressedDataUrl;
-    }
-  }
-
-  return compressedDataUrl;
+  return processImageForPlaceholder(file, placeholderType);
 }
 
 // Track if Supabase image transformation is supported for the project (fails on free tier)
@@ -378,7 +356,7 @@ export function getRawStorageUrl(url?: string): string {
 }
 
 /**
- * Optimizes an image URL for display (supports Supabase Storage Image Transformation, Cloudflare R2 CDN, Unsplash, Cloudinary, and Data URLs)
+ * Optimizes an image URL for display (supports Supabase Storage Image Transformation, Unsplash, Cloudinary, and Data URLs)
  */
 export function getOptimizedImageUrl(
   url?: string,
@@ -394,10 +372,10 @@ export function getOptimizedImageUrl(
   const width = options.width || 600;
   const quality = options.quality || 80;
 
-  // Supabase Storage Image Handling
+  // Supabase Storage Image Transformation
+  // Transforms /storage/v1/object/public/ into /storage/v1/render/image/public/ with width & quality parameters
   if (url.includes('.supabase.co/storage/v1/')) {
-    // If transformation is explicitly confirmed supported, use render transformation endpoint
-    if (supabaseTransformSupported === true) {
+    if (supabaseTransformSupported !== false) {
       if (url.includes('/storage/v1/object/public/')) {
         const baseUrl = url.replace('/storage/v1/object/public/', '/storage/v1/render/image/public/');
         return `${baseUrl}?width=${width}&quality=${quality}&resize=contain`;
@@ -407,13 +385,8 @@ export function getOptimizedImageUrl(
         return `${cleanUrl}?width=${width}&quality=${quality}&resize=contain`;
       }
     }
-    // Default to direct fast Supabase CDN public object URL (guaranteed 200 OK without 404 roundtrip)
+    // Direct raw Supabase Storage CDN URL fallback
     return getRawStorageUrl(url);
-  }
-
-  // If Cloudflare R2 CDN URL, ensure it is cleanly formatted
-  if (isR2Url(url)) {
-    return url;
   }
 
   // If Unsplash URL, append or replace width & quality parameters
@@ -442,14 +415,14 @@ export function getResponsiveSrcSet(
     return '';
   }
 
-  // For Supabase, only create transform srcset if transformation is explicitly supported
-  if (url.includes('.supabase.co/storage/v1/') && supabaseTransformSupported !== true) {
+  // For Supabase, skip srcset only if transformation is explicitly known to be unsupported
+  if (url.includes('.supabase.co/storage/v1/') && supabaseTransformSupported === false) {
     return '';
   }
 
-  // Check if image service supports URL transformation
+  // Check if image service supports URL transformation (Supabase, Unsplash, Cloudinary)
   const isTransformable =
-    (url.includes('.supabase.co/storage/v1/') && supabaseTransformSupported === true) ||
+    (url.includes('.supabase.co/storage/v1/') && supabaseTransformSupported !== false) ||
     url.includes('images.unsplash.com') ||
     url.includes('res.cloudinary.com');
 

@@ -3,16 +3,6 @@ import { useStore } from '../../context/StoreContext';
 import { getSupabaseConfig, isSupabaseConfigured, getSupabaseClient, setSupabaseCredentials } from '../../lib/supabase';
 import { processImageForPlaceholder } from '../../lib/imageUtils';
 import {
-  getR2Config,
-  setR2Config,
-  testR2Connection,
-  uploadToR2,
-  DEFAULT_R2_CONFIG,
-  isR2Url,
-  isR2CredentialsConfigured,
-  RECOMMENDED_R2_CORS_JSON
-} from '../../lib/r2Storage';
-import {
   Settings,
   Save,
   Check,
@@ -30,15 +20,6 @@ import {
   CheckCircle2,
   XCircle,
   RefreshCw,
-  Cloud,
-  UploadCloud,
-  FileImage,
-  Sparkles,
-  ExternalLink,
-  Eye,
-  EyeOff,
-  Info,
-  HelpCircle,
   Lock
 } from 'lucide-react';
 
@@ -46,17 +27,10 @@ export const AdminSettings: React.FC = () => {
   const { settings, saveSettings, resetToDefaults } = useStore();
 
   const currentSupabase = getSupabaseConfig();
-  const currentR2 = getR2Config();
   const [formData, setFormData] = useState({
     ...settings,
     supabaseUrl: settings.supabaseUrl || currentSupabase.url || '',
-    supabaseKey: settings.supabaseKey || currentSupabase.key || '',
-    r2AccountId: settings.r2AccountId || currentR2.accountId || DEFAULT_R2_CONFIG.accountId,
-    r2BucketName: settings.r2BucketName || currentR2.bucketName || DEFAULT_R2_CONFIG.bucketName,
-    r2PublicUrl: settings.r2PublicUrl || currentR2.publicUrl || DEFAULT_R2_CONFIG.publicUrl,
-    r2S3Endpoint: settings.r2S3Endpoint || currentR2.s3ApiUrl || DEFAULT_R2_CONFIG.s3ApiUrl,
-    r2AccessKeyId: settings.r2AccessKeyId || currentR2.accessKeyId || '',
-    r2SecretAccessKey: settings.r2SecretAccessKey || currentR2.secretAccessKey || ''
+    supabaseKey: settings.supabaseKey || currentSupabase.key || ''
   });
   const [currentPass, setCurrentPass] = useState('');
   const [newAdminId, setNewAdminId] = useState(settings.adminUsername);
@@ -68,17 +42,6 @@ export const AdminSettings: React.FC = () => {
   const [isTesting, setIsTesting] = useState(false);
   const [testResults, setTestResults] = useState<Record<string, { status: 'ok' | 'error' | 'missing'; msg: string }> | null>(null);
   const [copiedSql, setCopiedSql] = useState(false);
-
-  // Cloudflare R2 Media State
-  const [isTestingR2, setIsTestingR2] = useState(false);
-  const [r2TestResult, setR2TestResult] = useState<{ success: boolean; message: string; latencyMs?: number } | null>(null);
-  const [r2UploadFolder, setR2UploadFolder] = useState<'products' | 'banners' | 'categories' | 'reviews' | 'general'>('products');
-  const [isUploadingToR2, setIsUploadingToR2] = useState(false);
-  const [lastUploadedR2Url, setLastUploadedR2Url] = useState<string>('');
-  const [r2UploadError, setR2UploadError] = useState<string>('');
-  const [copiedR2Url, setCopiedR2Url] = useState(false);
-  const [copiedCorsJson, setCopiedCorsJson] = useState(false);
-  const [showR2Secret, setShowR2Secret] = useState(false);
 
   const sqlSetupScript = `-- ============================================================
 -- KINOMART E-COMMERCE SUPABASE COMPLETE DATABASE SETUP SCRIPT
@@ -246,74 +209,10 @@ GRANT ALL ON ALL TABLES IN SCHEMA public TO anon, authenticated, postgres, servi
     setIsTesting(false);
   };
 
-  const handleTestR2 = async () => {
-    setIsTestingR2(true);
-    setR2TestResult(null);
-    try {
-      const res = await testR2Connection(formData.r2PublicUrl);
-      setR2TestResult(res);
-    } catch (err: any) {
-      setR2TestResult({ success: false, message: 'Cloudflare R2 টেস্ট ব্যর্থ হয়েছে: ' + (err.message || '') });
-    } finally {
-      setIsTestingR2(false);
-    }
-  };
-
-  const handleUploadR2Media = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setIsUploadingToR2(true);
-    setR2UploadError('');
-    setLastUploadedR2Url('');
-    try {
-      // If access keys are not set in state, check if they exist in formData
-      setR2Config({
-        accountId: formData.r2AccountId,
-        bucketName: formData.r2BucketName,
-        publicUrl: formData.r2PublicUrl,
-        s3ApiUrl: formData.r2S3Endpoint,
-        accessKeyId: formData.r2AccessKeyId,
-        secretAccessKey: formData.r2SecretAccessKey
-      });
-
-      const result = await uploadToR2(file, { folder: r2UploadFolder, filename: file.name });
-      setLastUploadedR2Url(result.cdnUrl);
-      setSuccessMsg('ছবিটি সফলভাবে Cloudflare R2-তে আপলোড হয়েছে!');
-      setTimeout(() => setSuccessMsg(''), 3000);
-    } catch (err: any) {
-      console.error('R2 Media upload error:', err);
-      setR2UploadError(err.message || 'Cloudflare R2 আপলোড ব্যর্থ হয়েছে।');
-    } finally {
-      setIsUploadingToR2(false);
-      e.target.value = '';
-    }
-  };
-
-  const copyR2UrlToClipboard = () => {
-    if (!lastUploadedR2Url) return;
-    navigator.clipboard.writeText(lastUploadedR2Url);
-    setCopiedR2Url(true);
-    setTimeout(() => setCopiedR2Url(false), 3000);
-  };
-
-  const copyCorsJsonToClipboard = () => {
-    navigator.clipboard.writeText(RECOMMENDED_R2_CORS_JSON);
-    setCopiedCorsJson(true);
-    setTimeout(() => setCopiedCorsJson(false), 3000);
-  };
-
   const handleSaveAll = (e: React.FormEvent) => {
     e.preventDefault();
     saveSettings(formData);
-    setR2Config({
-      accountId: formData.r2AccountId,
-      bucketName: formData.r2BucketName,
-      publicUrl: formData.r2PublicUrl,
-      s3ApiUrl: formData.r2S3Endpoint,
-      accessKeyId: formData.r2AccessKeyId,
-      secretAccessKey: formData.r2SecretAccessKey
-    });
-    setSuccessMsg('সকল সেটিংস এবং Cloudflare R2 কনফিগারেশন সফলভাবে সেভ হয়েছে!');
+    setSuccessMsg('সকল সেটিংস সফলভাবে সেভ হয়েছে!');
     setTimeout(() => setSuccessMsg(''), 3000);
   };
 
@@ -788,283 +687,6 @@ GRANT ALL ON ALL TABLES IN SCHEMA public TO anon, authenticated, postgres, servi
               <pre className="bg-[#0B0C10] border border-[#2B3042] p-3 rounded-lg text-[10px] font-mono text-cyan-300 max-h-40 overflow-y-auto leading-relaxed select-all">
                 {sqlSetupScript}
               </pre>
-            </div>
-          </div>
-        </div>
-
-        {/* Section 7: Cloudflare R2 Media Storage & CDN Integration */}
-        <div className="bg-[#181B26] border border-[#2B3042] p-5 rounded-2xl space-y-4">
-          <div className="flex items-center justify-between flex-wrap gap-2">
-            <h3 className="font-extrabold text-white text-sm flex items-center gap-2">
-              <Cloud className="w-4 h-4 text-orange-400" />
-              <span>ক্লাউডফ্লেয়ার R2 মিডিয়া স্টোরেজ ও সিডিএন (Cloudflare R2 Media Storage)</span>
-            </h3>
-            <span className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold flex items-center gap-1.5 border ${
-              isR2CredentialsConfigured()
-                ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
-                : 'bg-orange-500/20 text-orange-300 border-orange-500/30'
-            }`}>
-              <span className={`w-2 h-2 rounded-full ${isR2CredentialsConfigured() ? 'bg-emerald-400' : 'bg-orange-400 animate-pulse'}`}></span>
-              <span>{isR2CredentialsConfigured() ? 'R2 ফুল আপলোড সক্রিয় (Ready)' : 'R2 CDN কানেক্টেড (API Token প্রয়োজন)'}</span>
-            </span>
-          </div>
-
-          <p className="text-xs text-[#94A3B8] leading-relaxed">
-            প্রোডাক্টের ছবি, ব্যানার, আইকন ও মিডিয়া ফাইলগুলো সরাসরি <strong>Cloudflare R2 হাই-স্পিড গ্লোবাল CDN</strong> এর মাধ্যমে দ্রুত লোড হবে। ব্রাউজার থেকে সরাসরি R2-তে ছবি আপলোডের জন্য নিচে Cloudflare R2 API Token (Access Key & Secret Key) প্রদান করুন।
-          </p>
-
-          {/* R2 Config Fields */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-            <div>
-              <label className="block text-[#94A3B8] font-bold mb-1">Cloudflare Account ID</label>
-              <input
-                type="text"
-                value={formData.r2AccountId || ''}
-                onChange={(e) => setFormData({ ...formData, r2AccountId: e.target.value })}
-                placeholder="e731735be156543f033f2f9f611cb44c"
-                className="w-full bg-[#11131A] border border-[#33384B] rounded-xl p-3 text-white font-mono text-xs"
-              />
-            </div>
-
-            <div>
-              <label className="block text-[#94A3B8] font-bold mb-1">R2 Bucket Name</label>
-              <input
-                type="text"
-                value={formData.r2BucketName || ''}
-                onChange={(e) => setFormData({ ...formData, r2BucketName: e.target.value })}
-                placeholder="kinomart"
-                className="w-full bg-[#11131A] border border-[#33384B] rounded-xl p-3 text-white font-mono text-xs font-bold"
-              />
-            </div>
-
-            <div>
-              <label className="block text-[#94A3B8] font-bold mb-1">Public Development / CDN URL</label>
-              <input
-                type="text"
-                value={formData.r2PublicUrl || ''}
-                onChange={(e) => setFormData({ ...formData, r2PublicUrl: e.target.value })}
-                placeholder="https://pub-5b578dfe75d2479c8a74e0953fe58b53.r2.dev"
-                className="w-full bg-[#11131A] border border-[#33384B] rounded-xl p-3 text-white font-mono text-xs"
-              />
-              <p className="text-[10px] text-gray-400 mt-1">ছবিগুলো এই ডোমেইন থেকে হাই-স্পিডে ব্রাউজারে প্রদর্শিত হবে</p>
-            </div>
-
-            <div>
-              <label className="block text-[#94A3B8] font-bold mb-1">S3 API Endpoint</label>
-              <input
-                type="text"
-                value={formData.r2S3Endpoint || ''}
-                onChange={(e) => setFormData({ ...formData, r2S3Endpoint: e.target.value })}
-                placeholder="https://e731735be156543f033f2f9f611cb44c.r2.cloudflarestorage.com/kinomart"
-                className="w-full bg-[#11131A] border border-[#33384B] rounded-xl p-3 text-white font-mono text-xs"
-              />
-              <p className="text-[10px] text-gray-400 mt-1">S3 API ব্যাকএন্ড এন্ডপয়েন্ট</p>
-            </div>
-
-            {/* R2 Access Key ID */}
-            <div>
-              <label className="block text-[#94A3B8] font-bold mb-1 flex items-center justify-between">
-                <span>R2 Access Key ID (API Token)</span>
-                <span className="text-[10px] text-amber-400">আপলোডের জন্য প্রয়োজনীয়</span>
-              </label>
-              <input
-                type="text"
-                value={formData.r2AccessKeyId || ''}
-                onChange={(e) => setFormData({ ...formData, r2AccessKeyId: e.target.value })}
-                placeholder="उदा. 4a123bc89... (R2 Token Access Key ID)"
-                className="w-full bg-[#11131A] border border-[#33384B] rounded-xl p-3 text-white font-mono text-xs focus:border-orange-500 transition-colors"
-              />
-            </div>
-
-            {/* R2 Secret Access Key */}
-            <div>
-              <label className="block text-[#94A3B8] font-bold mb-1 flex items-center justify-between">
-                <span>R2 Secret Access Key</span>
-                <button
-                  type="button"
-                  onClick={() => setShowR2Secret(!showR2Secret)}
-                  className="text-[10px] text-orange-400 hover:text-orange-300 flex items-center gap-1 cursor-pointer"
-                >
-                  {showR2Secret ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
-                  <span>{showR2Secret ? 'লুকান' : 'দেখান'}</span>
-                </button>
-              </label>
-              <div className="relative">
-                <input
-                  type={showR2Secret ? 'text' : 'password'}
-                  value={formData.r2SecretAccessKey || ''}
-                  onChange={(e) => setFormData({ ...formData, r2SecretAccessKey: e.target.value })}
-                  placeholder="उदा. 98fe76dc5ba4321... (R2 Secret Key)"
-                  className="w-full bg-[#11131A] border border-[#33384B] rounded-xl p-3 text-white font-mono text-xs focus:border-orange-500 transition-colors"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Quick Setup Instructions & CORS Policy Box */}
-          <div className="bg-[#11131A] border border-orange-500/30 rounded-xl p-4 text-xs space-y-3">
-            <div className="flex items-center justify-between flex-wrap gap-2">
-              <h4 className="font-bold text-orange-300 flex items-center gap-2">
-                <Info className="w-4 h-4 text-orange-400" />
-                <span>Cloudflare R2 থেকে Access Key বের করার ৩টি সহজ ধাপ:</span>
-              </h4>
-              <button
-                type="button"
-                onClick={copyCorsJsonToClipboard}
-                className="bg-orange-500/20 hover:bg-orange-500/30 text-orange-300 border border-orange-500/40 text-[11px] font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all cursor-pointer"
-              >
-                <Copy className="w-3 h-3" />
-                <span>{copiedCorsJson ? 'CORS JSON কপি হয়েছে!' : '📋 CORS Policy JSON কপি করুন'}</span>
-              </button>
-            </div>
-
-            <ol className="list-decimal list-inside space-y-1.5 text-gray-300 text-[11px] leading-relaxed">
-              <li>
-                <strong>Cloudflare Dashboard</strong> এ গিয়ে বামপাশের মেন্যু থেকে <strong>R2 Object Storage</strong> &gt; <strong>Manage R2 API Tokens</strong> এ ক্লিক করুন।
-              </li>
-              <li>
-                <strong>Create API Token</strong> এ ক্লিক করে Permissions এ <strong>Object Read &amp; Write</strong> সিলেক্ট করুন এবং <strong>Create API Token</strong> বাটনে চাপুন।
-              </li>
-              <li>
-                প্রদর্শিত <strong>Access Key ID</strong> এবং <strong>Secret Access Key</strong> কপি করে উপরের বক্সে পেস্ট করে <strong>"💾 সকল সেটিংস সেভ করুন"</strong> বাটনে ক্লিক করুন।
-              </li>
-              <li>
-                <em>(জরুরি)</em> আপনার <strong>kinomart</strong> বাকেটের <strong>Settings &gt; CORS Policy</strong> তে উপরের <strong>CORS JSON</strong> টি পেস্ট করে দিন যাতে ব্রাউজার থেকে সরাসরি ছবি আপলোড করা যায়।
-              </li>
-            </ol>
-          </div>
-
-          {/* R2 Testing & Tool Actions */}
-          <div className="pt-3 border-t border-[#2B3042] space-y-3">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <button
-                type="button"
-                onClick={handleTestR2}
-                disabled={isTestingR2}
-                className="bg-orange-500/20 hover:bg-orange-500/30 text-orange-300 border border-orange-500/40 text-xs font-bold px-4 py-2 rounded-xl flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50"
-              >
-                <RefreshCw className={`w-3.5 h-3.5 ${isTestingR2 ? 'animate-spin' : ''}`} />
-                <span>{isTestingR2 ? 'টেস্ট করা হচ্ছে...' : '🧪 টেস্ট R2 CDN কানেক্টিভিটি (Test R2 CDN)'}</span>
-              </button>
-
-              <a
-                href={formData.r2PublicUrl || DEFAULT_R2_CONFIG.publicUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="text-xs text-orange-400 hover:text-orange-300 font-bold flex items-center gap-1.5 underline"
-              >
-                <ExternalLink className="w-3.5 h-3.5" />
-                <span>পাবলিক সিডিএন ইউআরএল ওপেন করুন ↗</span>
-              </a>
-            </div>
-
-            {/* Test Result Message */}
-            {r2TestResult && (
-              <div
-                className={`p-3 rounded-xl border text-xs flex items-center gap-2 ${
-                  r2TestResult.success
-                    ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
-                    : 'bg-red-500/10 border-red-500/30 text-red-300'
-                }`}
-              >
-                {r2TestResult.success ? (
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                ) : (
-                  <AlertTriangle className="w-4 h-4 text-red-400 shrink-0" />
-                )}
-                <span>{r2TestResult.message}</span>
-              </div>
-            )}
-
-            {/* Interactive Media Upload & Instant CDN URL Generator */}
-            <div className="bg-[#11131A] border border-[#2B3042] rounded-xl p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <h4 className="font-bold text-white text-xs flex items-center gap-2">
-                  <UploadCloud className="w-4 h-4 text-orange-400" />
-                  <span>মিডিয়া আপলোডার ও R2 CDN লিঙ্ক জেনারেটর (R2 CDN Media Generator)</span>
-                </h4>
-                <span className="text-[10px] text-gray-400">অটো অপ্টিমাইজড CDN লিঙ্ক</span>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div>
-                  <label className="block text-[#94A3B8] text-[11px] font-bold mb-1">টার্গেট ফোল্ডার (Target Folder)</label>
-                  <select
-                    value={r2UploadFolder}
-                    onChange={(e) => setR2UploadFolder(e.target.value as any)}
-                    className="w-full bg-[#181B26] border border-[#33384B] rounded-lg p-2 text-xs text-white"
-                  >
-                    <option value="products">products/ (প্রোডাক্ট ইমেজ)</option>
-                    <option value="banners">banners/ (ব্যানার ও স্লাইডার)</option>
-                    <option value="categories">categories/ (ক্যাটাগরি আইকন)</option>
-                    <option value="reviews">reviews/ (রিভিউ ও স্ক্রিনশট)</option>
-                    <option value="general">general/ (অন্যান্য মিডিয়া)</option>
-                  </select>
-                </div>
-
-                <div className="sm:col-span-2 flex items-end">
-                  <label className="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-2 px-3 rounded-lg text-xs flex items-center justify-center gap-2 cursor-pointer transition-colors shadow-md">
-                    <FileImage className="w-4 h-4" />
-                    <span>{isUploadingToR2 ? 'আপলোড হচ্ছে...' : '📸 ছবি বা ফাইল সিলেক্ট করুন'}</span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={handleUploadR2Media}
-                      disabled={isUploadingToR2}
-                    />
-                  </label>
-                </div>
-              </div>
-
-              {/* Upload Error Box */}
-              {r2UploadError && (
-                <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-xs text-red-300 flex items-start gap-2">
-                  <AlertTriangle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
-                  <div className="space-y-1">
-                    <p className="font-bold">{r2UploadError}</p>
-                    <p className="text-[11px] text-red-200/80">
-                      💡 সমাধান: উপরের সেকশনে Cloudflare <strong>R2 Access Key ID</strong> ও <strong>Secret Access Key</strong> দিন এবং Bucket-এর CORS Policy আপডেট করুন।
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {/* Uploaded Link Box */}
-              {lastUploadedR2Url && (
-                <div className="mt-3 p-3 bg-[#181B26] border border-orange-500/30 rounded-xl space-y-2">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-orange-300 font-bold flex items-center gap-1.5">
-                      <Sparkles className="w-3.5 h-3.5 text-orange-400" />
-                      R2 CDN লিঙ্ক প্রস্তুত:
-                    </span>
-                    <button
-                      type="button"
-                      onClick={copyR2UrlToClipboard}
-                      className="bg-orange-500 hover:bg-orange-400 text-black px-2.5 py-1 rounded-md text-[10px] font-black flex items-center gap-1 cursor-pointer transition-all"
-                    >
-                      {copiedR2Url ? <Check className="w-3 h-3 text-black" /> : <Copy className="w-3 h-3" />}
-                      <span>{copiedR2Url ? 'কপি হয়েছে!' : 'লিঙ্ক কপি করুন'}</span>
-                    </button>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <img
-                      src={lastUploadedR2Url}
-                      alt="Uploaded Preview"
-                      className="w-12 h-12 object-cover rounded-lg border border-[#33384B] shrink-0 bg-black/40"
-                    />
-                    <input
-                      type="text"
-                      readOnly
-                      value={lastUploadedR2Url}
-                      className="w-full bg-[#11131A] border border-[#33384B] rounded-lg p-2 text-orange-200 font-mono text-[11px] select-all"
-                    />
-                  </div>
-                  <p className="text-[10px] text-gray-400">
-                    💡 এই লিঙ্কটি কপি করে যেকোনো প্রোডাক্টের ফটো, ব্যানার বা ক্যাটাগরির ইমেজ ফিল্ডে পেস্ট করতে পারেন।
-                  </p>
-                </div>
-              )}
             </div>
           </div>
         </div>
