@@ -559,19 +559,6 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             setProducts(fetchedProducts);
             safeSetStorage('kinomart_products', fetchedProducts);
             setIsDataLoading(false);
-
-            // Preload top product thumbnails in browser cache for instantaneous render
-            if (typeof window !== 'undefined' && fetchedProducts.length > 0) {
-              setTimeout(() => {
-                fetchedProducts.slice(0, 8).forEach(p => {
-                  const url = p.thumbnail || p.gallery?.[0];
-                  if (url) {
-                    const img = new Image();
-                    img.src = url;
-                  }
-                });
-              }, 20);
-            }
           }
         })
         .catch(err => {
@@ -632,15 +619,6 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               if (r.id === 'hero_slides' && Array.isArray(parsed)) {
                 setHeroSlides(parsed as HeroSlide[]);
                 safeSetStorage('kinomart_hero_slides', parsed);
-                // Preload hero slide images immediately
-                if (typeof window !== 'undefined') {
-                  parsed.forEach((s: any) => {
-                    if (s.image) {
-                      const img = new Image();
-                      img.src = s.image;
-                    }
-                  });
-                }
               } else if (r.id === 'promo_banner' && typeof parsed === 'object') {
                 setPromoBanner(parsed as PromoBannerConfig);
                 safeSetStorage('kinomart_promo_banner', parsed);

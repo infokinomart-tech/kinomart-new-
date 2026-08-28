@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { ChevronLeft, ChevronRight, MessageSquareQuote } from 'lucide-react';
 import { motion } from 'motion/react';
-import { getOptimizedImageUrl, getResponsiveSrcSet, getRawStorageUrl } from '../lib/imageUtils';
+import { getOptimizedImageUrl, getResponsiveSrcSet, getRawStorageUrl, markSupabaseTransformFailed } from '../lib/imageUtils';
 
 interface CustomerScreenshotCarouselProps {
   images: string[];
@@ -147,6 +147,9 @@ export const CustomerScreenshotCarousel: React.FC<CustomerScreenshotCarouselProp
                   referrerPolicy="no-referrer"
                   onError={(e) => {
                     const target = e.currentTarget;
+                    if (target.src.includes('/render/image/public/')) {
+                      markSupabaseTransformFailed();
+                    }
                     target.src = getRawStorageUrl(images[0]);
                   }}
                 />
@@ -179,6 +182,9 @@ export const CustomerScreenshotCarousel: React.FC<CustomerScreenshotCarouselProp
                       referrerPolicy="no-referrer"
                       onError={(e) => {
                         const target = e.currentTarget;
+                        if (target.src.includes('/render/image/public/')) {
+                          markSupabaseTransformFailed();
+                        }
                         target.src = getRawStorageUrl(imgUrl);
                       }}
                     />

@@ -317,6 +317,42 @@ export async function processAndUploadImage(
   return compressedDataUrl;
 }
 
+// Track if Supabase image transformation is supported for the project (fails on free tier)
+let supabaseTransformSupported: boolean | null = (() => {
+  try {
+    if (typeof window !== 'undefined') {
+      const saved = sessionStorage.getItem('kinomart_sb_transform');
+      if (saved === 'true') return true;
+      if (saved === 'false') return false;
+    }
+  } catch {
+    // Ignore
+  }
+  return null;
+})();
+
+export function markSupabaseTransformFailed(): void {
+  supabaseTransformSupported = false;
+  try {
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('kinomart_sb_transform', 'false');
+    }
+  } catch {
+    // Ignore
+  }
+}
+
+export function markSupabaseTransformSuccess(): void {
+  supabaseTransformSupported = true;
+  try {
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('kinomart_sb_transform', 'true');
+    }
+  } catch {
+    // Ignore
+  }
+}
+
 export function isDataUrl(url?: string): boolean {
   if (!url) return false;
   return url.startsWith('data:image/');
@@ -361,6 +397,10 @@ export function getOptimizedImageUrl(
   // Supabase Storage Image Transformation
   // Turns /storage/v1/object/public/bucket/path into /storage/v1/render/image/public/bucket/path?width=...&quality=...
   if (url.includes('.supabase.co/storage/v1/')) {
+    // If we already know transformation is not supported on this Supabase project (Free tier), return direct raw URL immediately
+    if (supabaseTransformSupported === false) {
+      return getRawStorageUrl(url);
+    }
     if (url.includes('/storage/v1/object/public/')) {
       const baseUrl = url.replace('/storage/v1/object/public/', '/storage/v1/render/image/public/');
       return `${baseUrl}?width=${width}&quality=${quality}&resize=contain`;
@@ -399,6 +439,11 @@ export function getResponsiveSrcSet(
   quality: number = 80
 ): string {
   if (!url || url.startsWith('data:') || url.startsWith('blob:')) {
+    return '';
+  }
+
+  // If we already know Supabase image transformation is not supported, do not produce failing render srcsets
+  if (url.includes('.supabase.co/storage/v1/') && supabaseTransformSupported === false) {
     return '';
   }
 

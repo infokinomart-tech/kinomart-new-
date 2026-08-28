@@ -33,7 +33,7 @@ import { FlavorSelector } from './FlavorSelector';
 import { CustomerScreenshotCarousel } from './CustomerScreenshotCarousel';
 import { getEffectiveBundles, calculateProductPrice } from '../lib/bundleUtils';
 import { trackViewItem, trackAddToCart } from '../lib/dataLayer';
-import { getOptimizedImageUrl, getResponsiveSrcSet, getRawStorageUrl } from '../lib/imageUtils';
+import { getOptimizedImageUrl, getResponsiveSrcSet, getRawStorageUrl, markSupabaseTransformFailed } from '../lib/imageUtils';
 
 interface ProductDetailsModalProps {
   product: Product;
@@ -446,6 +446,9 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
               }}
               onError={(e) => {
                 const target = e.currentTarget;
+                if (target.src.includes('/render/image/public/')) {
+                  markSupabaseTransformFailed();
+                }
                 target.srcset = '';
                 target.src = getRawStorageUrl(selectedImage);
               }}

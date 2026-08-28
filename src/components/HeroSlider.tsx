@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useStore } from '../context/StoreContext';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { getOptimizedImageUrl, getResponsiveSrcSet, getRawStorageUrl } from '../lib/imageUtils';
+import { getOptimizedImageUrl, getResponsiveSrcSet, getRawStorageUrl, markSupabaseTransformFailed } from '../lib/imageUtils';
 
 export const HeroSlider: React.FC = () => {
   const { heroSlides, settings, isDataLoading, setActiveClientPage, setSelectedCategory } = useStore();
@@ -94,6 +94,9 @@ export const HeroSlider: React.FC = () => {
                 decoding="async"
                 onError={(e) => {
                   const target = e.currentTarget;
+                  if (target.src.includes('/render/image/public/')) {
+                    markSupabaseTransformFailed();
+                  }
                   target.srcset = '';
                   target.src = getRawStorageUrl(slide.image);
                 }}

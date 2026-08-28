@@ -3,7 +3,7 @@ import { Product } from '../types';
 import { useStore } from '../context/StoreContext';
 import { Star, Zap, BellRing } from 'lucide-react';
 import { trackAddToCart, trackSelectItem } from '../lib/dataLayer';
-import { getOptimizedImageUrl, getResponsiveSrcSet, getRawStorageUrl } from '../lib/imageUtils';
+import { getOptimizedImageUrl, getResponsiveSrcSet, getRawStorageUrl, markSupabaseTransformFailed } from '../lib/imageUtils';
 
 interface ProductCardProps {
   product: Product;
@@ -68,6 +68,7 @@ export const ProductCard: React.FC<ProductCardProps> = React.memo(({ product, in
     const target = e.currentTarget;
     // If the optimized render URL failed (e.g. Supabase Free tier without image transformation), revert to original raw URL
     if (target.src.includes('/render/image/public/')) {
+      markSupabaseTransformFailed();
       target.srcset = '';
       target.src = getRawStorageUrl(rawImageUrl);
     } else {
