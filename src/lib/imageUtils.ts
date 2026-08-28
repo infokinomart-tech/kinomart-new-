@@ -394,21 +394,21 @@ export function getOptimizedImageUrl(
   const width = options.width || 600;
   const quality = options.quality || 80;
 
-  // Supabase Storage Image Transformation
-  // Turns /storage/v1/object/public/bucket/path into /storage/v1/render/image/public/bucket/path?width=...&quality=...
+  // Supabase Storage Image Handling
   if (url.includes('.supabase.co/storage/v1/')) {
-    // If we already know transformation is not supported on this Supabase project (Free tier), return direct raw URL immediately
-    if (supabaseTransformSupported === false) {
-      return getRawStorageUrl(url);
+    // If transformation is explicitly confirmed supported, use render transformation endpoint
+    if (supabaseTransformSupported === true) {
+      if (url.includes('/storage/v1/object/public/')) {
+        const baseUrl = url.replace('/storage/v1/object/public/', '/storage/v1/render/image/public/');
+        return `${baseUrl}?width=${width}&quality=${quality}&resize=contain`;
+      }
+      if (url.includes('/storage/v1/render/image/public/')) {
+        const cleanUrl = url.split('?')[0];
+        return `${cleanUrl}?width=${width}&quality=${quality}&resize=contain`;
+      }
     }
-    if (url.includes('/storage/v1/object/public/')) {
-      const baseUrl = url.replace('/storage/v1/object/public/', '/storage/v1/render/image/public/');
-      return `${baseUrl}?width=${width}&quality=${quality}&resize=contain`;
-    }
-    if (url.includes('/storage/v1/render/image/public/')) {
-      const cleanUrl = url.split('?')[0];
-      return `${cleanUrl}?width=${width}&quality=${quality}&resize=contain`;
-    }
+    // Default to direct fast Supabase CDN public object URL (guaranteed 200 OK without 404 roundtrip)
+    return getRawStorageUrl(url);
   }
 
   // If Cloudflare R2 CDN URL, ensure it is cleanly formatted
@@ -442,14 +442,14 @@ export function getResponsiveSrcSet(
     return '';
   }
 
-  // If we already know Supabase image transformation is not supported, do not produce failing render srcsets
-  if (url.includes('.supabase.co/storage/v1/') && supabaseTransformSupported === false) {
+  // For Supabase, only create transform srcset if transformation is explicitly supported
+  if (url.includes('.supabase.co/storage/v1/') && supabaseTransformSupported !== true) {
     return '';
   }
 
-  // If neither Supabase nor Unsplash nor Cloudinary, srcset might not be supported directly
+  // Check if image service supports URL transformation
   const isTransformable =
-    url.includes('.supabase.co/storage/v1/') ||
+    (url.includes('.supabase.co/storage/v1/') && supabaseTransformSupported === true) ||
     url.includes('images.unsplash.com') ||
     url.includes('res.cloudinary.com');
 
