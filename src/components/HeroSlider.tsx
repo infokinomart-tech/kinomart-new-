@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useStore } from '../context/StoreContext';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { getOptimizedImageUrl, getResponsiveSrcSet, getRawStorageUrl } from '../lib/imageUtils';
 
 export const HeroSlider: React.FC = () => {
   const { heroSlides, settings, isDataLoading, setActiveClientPage, setSelectedCategory } = useStore();
@@ -68,25 +69,38 @@ export const HeroSlider: React.FC = () => {
     <div className="relative w-full max-w-7xl mx-auto px-4 mt-3 mb-6">
       <div className="relative h-44 sm:h-72 md:h-96 lg:h-[420px] w-full rounded-2xl sm:rounded-3xl overflow-hidden shadow-md bg-[#FFDC33] group select-none">
         {/* Slide Images */}
-        {activeSlides.map((slide, index) => (
-          <div
-            key={slide.id}
-            onClick={() => handleSlideClick(slide)}
-            className={`absolute inset-0 transition-opacity duration-700 ease-in-out cursor-pointer ${
-              index === currentSlide ? 'opacity-100 z-10' : 'opacity-0 z-0'
-            }`}
-          >
-            <img
-              src={slide.image}
-              alt={slide.title || `Slide ${index + 1}`}
-              className="w-full h-full object-cover"
-              referrerPolicy="no-referrer"
-              loading={index === 0 ? 'eager' : 'lazy'}
-              fetchPriority={index === 0 ? 'high' : 'auto'}
-              decoding="async"
-            />
-          </div>
-        ))}
+        {activeSlides.map((slide, index) => {
+          const isFirst = index === 0;
+          const optimizedSrc = getOptimizedImageUrl(slide.image, { width: 1200, quality: 82 });
+          const srcSet = getResponsiveSrcSet(slide.image, [480, 768, 1200], 80);
+
+          return (
+            <div
+              key={slide.id}
+              onClick={() => handleSlideClick(slide)}
+              className={`absolute inset-0 transition-opacity duration-700 ease-in-out cursor-pointer ${
+                index === currentSlide ? 'opacity-100 z-10' : 'opacity-0 z-0'
+              }`}
+            >
+              <img
+                src={optimizedSrc}
+                srcSet={srcSet || undefined}
+                sizes="(max-width: 640px) 100vw, (max-width: 1024px) 90vw, 1200px"
+                alt={slide.title || `Slide ${index + 1}`}
+                className="w-full h-full object-cover"
+                referrerPolicy="no-referrer"
+                loading={isFirst ? 'eager' : 'lazy'}
+                fetchPriority={isFirst ? 'high' : 'auto'}
+                decoding="async"
+                onError={(e) => {
+                  const target = e.currentTarget;
+                  target.srcset = '';
+                  target.src = getRawStorageUrl(slide.image);
+                }}
+              />
+            </div>
+          );
+        })}
 
         {/* Navigation Arrows (Show only if more than 1 slide) */}
         {activeSlides.length > 1 && (

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useStore } from '../context/StoreContext';
 import { Phone, LogOut, Package, CheckCircle2, Clock, Truck, AlertCircle, ShoppingBag, MapPin, ChevronRight } from 'lucide-react';
+import { getOptimizedImageUrl, getRawStorageUrl } from '../lib/imageUtils';
 
 export const CustomerProfileView: React.FC = () => {
   const { customerUser, logoutCustomer, updateCustomerProfile, orders, setActiveClientPage, setCompletedOrder } = useStore();
@@ -181,9 +182,16 @@ export const CustomerProfileView: React.FC = () => {
                         <div key={idx} className="flex items-center justify-between gap-3 text-xs bg-white p-2.5 rounded-xl border border-[#E8E3D9]">
                           <div className="flex items-center gap-3">
                             <img
-                              src={item.product.thumbnail}
+                              src={getOptimizedImageUrl(item.product.thumbnail, { width: 80, quality: 75 })}
                               alt={item.product.name}
+                              loading="lazy"
+                              decoding="async"
                               className="w-10 h-10 object-cover rounded-lg border border-[#E8E3D9] shrink-0"
+                              referrerPolicy="no-referrer"
+                              onError={(e) => {
+                                const target = e.currentTarget;
+                                target.src = getRawStorageUrl(item.product.thumbnail);
+                              }}
                             />
                             <div>
                               <p className="font-bold text-[#1F241E] line-clamp-1">{item.product.name}</p>

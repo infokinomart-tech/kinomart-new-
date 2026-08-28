@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { ChevronLeft, ChevronRight, MessageSquareQuote } from 'lucide-react';
 import { motion } from 'motion/react';
+import { getOptimizedImageUrl, getResponsiveSrcSet, getRawStorageUrl } from '../lib/imageUtils';
 
 interface CustomerScreenshotCarouselProps {
   images: string[];
@@ -138,10 +139,16 @@ export const CustomerScreenshotCarousel: React.FC<CustomerScreenshotCarouselProp
             >
               <div className="h-[340px] sm:h-[420px] md:h-[480px] w-full bg-[#FAF8F5] relative overflow-hidden flex items-center justify-center p-1.5 sm:p-2">
                 <img
-                  src={images[0]}
+                  src={getOptimizedImageUrl(images[0], { width: 500, quality: 80 })}
                   alt="Customer Review Screenshot"
+                  loading="lazy"
+                  decoding="async"
                   className="w-full h-full object-contain"
                   referrerPolicy="no-referrer"
+                  onError={(e) => {
+                    const target = e.currentTarget;
+                    target.src = getRawStorageUrl(images[0]);
+                  }}
                 />
               </div>
             </div>
@@ -164,10 +171,16 @@ export const CustomerScreenshotCarousel: React.FC<CustomerScreenshotCarouselProp
                   {/* Image Display Card - full image visible without cutting */}
                   <div className="relative h-[280px] sm:h-[380px] md:h-[460px] w-full bg-[#FAF8F5] overflow-hidden flex items-center justify-center p-1 sm:p-2">
                     <img
-                      src={imgUrl}
+                      src={getOptimizedImageUrl(imgUrl, { width: 440, quality: 80 })}
                       alt={`Customer Review Screenshot ${imgIdx + 1}`}
+                      loading="lazy"
+                      decoding="async"
                       className="w-full h-full object-contain"
                       referrerPolicy="no-referrer"
+                      onError={(e) => {
+                        const target = e.currentTarget;
+                        target.src = getRawStorageUrl(imgUrl);
+                      }}
                     />
                   </div>
                 </motion.div>

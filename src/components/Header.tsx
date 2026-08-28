@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useStore } from '../context/StoreContext';
 import { Search, User, Menu, X, ChevronDown, ChevronRight, Phone } from 'lucide-react';
 import { KinoMartLogo } from './KinoMartLogo';
+import { getOptimizedImageUrl, getRawStorageUrl } from '../lib/imageUtils';
 
 export const Header: React.FC = () => {
   const {
@@ -658,9 +659,16 @@ export const Header: React.FC = () => {
                             className="p-2.5 hover:bg-[#F5F2EA] rounded-xl flex items-center gap-3 cursor-pointer transition-colors"
                           >
                             <img
-                              src={p.thumbnail || p.gallery?.[0] || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500'}
+                              src={getOptimizedImageUrl(p.thumbnail || p.gallery?.[0], { width: 100, quality: 75 })}
                               alt={p.name}
-                              className="w-12 h-12 object-cover rounded-lg border border-[#E8E3D9] shrink-0"
+                              loading="lazy"
+                              decoding="async"
+                              className="w-12 h-12 object-cover rounded-lg border border-[#E8E3D9] shrink-0 bg-[#EFECE6]"
+                              referrerPolicy="no-referrer"
+                              onError={(e) => {
+                                const target = e.currentTarget;
+                                target.src = getRawStorageUrl(p.thumbnail || p.gallery?.[0]);
+                              }}
                             />
                             <div className="flex-1 min-w-0">
                               <h4 className="text-xs sm:text-sm font-bold text-[#1F241E] truncate">

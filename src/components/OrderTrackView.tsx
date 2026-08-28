@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useStore } from '../context/StoreContext';
 import { PackageSearch, Search, Clock, CheckCircle2, Truck, XCircle, ChevronRight } from 'lucide-react';
+import { getOptimizedImageUrl, getRawStorageUrl } from '../lib/imageUtils';
 
 export const OrderTrackView: React.FC = () => {
   const { orders, setActiveClientPage } = useStore();
@@ -114,10 +115,16 @@ export const OrderTrackView: React.FC = () => {
                     >
                       <div className="flex items-center gap-2">
                         <img
-                          src={item.product.thumbnail}
+                          src={getOptimizedImageUrl(item.product.thumbnail, { width: 80, quality: 75 })}
                           alt={item.product.name}
+                          loading="lazy"
+                          decoding="async"
                           className="w-10 h-10 rounded-lg object-cover bg-[#FFDC33]"
                           referrerPolicy="no-referrer"
+                          onError={(e) => {
+                            const target = e.currentTarget;
+                            target.src = getRawStorageUrl(item.product.thumbnail);
+                          }}
                         />
                         <span className="font-bold text-[#1F241E] line-clamp-1">
                           {item.product.name} (x{item.quantity})

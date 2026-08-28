@@ -1,6 +1,7 @@
 import React from 'react';
 import { useStore } from '../context/StoreContext';
 import { CheckCircle2, UserCheck, Package, ShoppingBag, ArrowRight } from 'lucide-react';
+import { getOptimizedImageUrl, getRawStorageUrl } from '../lib/imageUtils';
 
 export const OrderSuccessView: React.FC = () => {
   const { completedOrder, setActiveClientPage } = useStore();
@@ -93,10 +94,16 @@ export const OrderSuccessView: React.FC = () => {
             <div key={idx} className="bg-[#FAF8F5] border border-[#E8E3D9] p-3 rounded-2xl flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <img
-                  src={item.product.thumbnail}
+                  src={getOptimizedImageUrl(item.product.thumbnail, { width: 120, quality: 78 })}
                   alt={item.product.name}
+                  loading="lazy"
+                  decoding="async"
                   className="w-12 h-12 rounded-xl object-cover border border-[#E8E3D9] bg-[#FFDC33]"
                   referrerPolicy="no-referrer"
+                  onError={(e) => {
+                    const target = e.currentTarget;
+                    target.src = getRawStorageUrl(item.product.thumbnail);
+                  }}
                 />
                 <div>
                   <h4 className="text-xs sm:text-sm font-extrabold text-[#1F241E]">

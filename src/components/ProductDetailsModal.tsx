@@ -33,6 +33,7 @@ import { FlavorSelector } from './FlavorSelector';
 import { CustomerScreenshotCarousel } from './CustomerScreenshotCarousel';
 import { getEffectiveBundles, calculateProductPrice } from '../lib/bundleUtils';
 import { trackViewItem, trackAddToCart } from '../lib/dataLayer';
+import { getOptimizedImageUrl, getResponsiveSrcSet, getRawStorageUrl } from '../lib/imageUtils';
 
 interface ProductDetailsModalProps {
   product: Product;
@@ -431,12 +432,22 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
             onMouseMove={handleMouseMove}
           >
             <img
-              src={selectedImage}
+              src={getOptimizedImageUrl(selectedImage, { width: 720, quality: 82 })}
+              srcSet={getResponsiveSrcSet(selectedImage, [360, 540, 720, 960], 80) || undefined}
+              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 600px"
               alt={product.name}
+              loading="eager"
+              fetchPriority="high"
+              decoding="async"
               className="w-full h-full object-cover transition-transform duration-200 ease-out"
               style={{
                 transformOrigin: `${zoomPos.x}% ${zoomPos.y}%`,
                 transform: isHovered ? 'scale(2.4)' : 'scale(1)',
+              }}
+              onError={(e) => {
+                const target = e.currentTarget;
+                target.srcset = '';
+                target.src = getRawStorageUrl(selectedImage);
               }}
               referrerPolicy="no-referrer"
             />
@@ -471,10 +482,16 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
                     }`}
                   >
                     <img
-                      src={img}
+                      src={getOptimizedImageUrl(img, { width: 140, quality: 75 })}
                       alt={`Thumbnail ${idx}`}
+                      loading="lazy"
+                      decoding="async"
                       className="w-full h-full object-cover"
                       referrerPolicy="no-referrer"
+                      onError={(e) => {
+                        const target = e.currentTarget;
+                        target.src = getRawStorageUrl(img);
+                      }}
                     />
                   </button>
                 ))}
@@ -992,10 +1009,16 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
                           <div className="shrink-0 relative group">
                             <div className="w-32 sm:w-40 md:w-44 aspect-square rounded-2xl overflow-hidden border-2 border-[#5E6A45]/30 bg-black/5 shadow-md">
                               <img
-                                src={activeRev.image}
+                                src={getOptimizedImageUrl(activeRev.image, { width: 360, quality: 80 })}
                                 alt={activeRev.userName}
+                                loading="lazy"
+                                decoding="async"
                                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                                 referrerPolicy="no-referrer"
+                                onError={(e) => {
+                                  const target = e.currentTarget;
+                                  target.src = getRawStorageUrl(activeRev.image);
+                                }}
                               />
                             </div>
                             <button
@@ -1107,12 +1130,18 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
 
                       {rev.image && (
                         <div className="pt-1">
-                          <div className="w-20 h-20 rounded-xl overflow-hidden border border-[#E8E3D9] relative group">
+                          <div className="w-20 h-20 rounded-xl overflow-hidden border border-[#E8E3D9] relative group bg-[#FAF8F5]">
                             <img
-                              src={rev.image}
+                              src={getOptimizedImageUrl(rev.image, { width: 160, quality: 75 })}
                               alt={rev.userName}
+                              loading="lazy"
+                              decoding="async"
                               className="w-full h-full object-cover"
                               referrerPolicy="no-referrer"
+                              onError={(e) => {
+                                const target = e.currentTarget;
+                                target.src = getRawStorageUrl(rev.image);
+                              }}
                             />
                             <button
                               type="button"
@@ -1241,10 +1270,19 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
                       className="w-full rounded-xl sm:rounded-2xl overflow-hidden border border-[#E8E3D9] bg-[#FAF8F5] shadow-xs"
                     >
                       <img
-                        src={img}
+                        src={getOptimizedImageUrl(img, { width: 720, quality: 80 })}
+                        srcSet={getResponsiveSrcSet(img, [360, 540, 720], 80) || undefined}
+                        sizes="(max-width: 640px) 48vw, (max-width: 1024px) 35vw, 400px"
                         alt={`Product Photo ${idx + 1}`}
+                        loading="lazy"
+                        decoding="async"
                         className="w-full h-auto object-contain block mx-auto"
                         referrerPolicy="no-referrer"
+                        onError={(e) => {
+                          const target = e.currentTarget;
+                          target.srcset = '';
+                          target.src = getRawStorageUrl(img);
+                        }}
                       />
                     </div>
                   ))}

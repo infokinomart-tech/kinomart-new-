@@ -22,11 +22,8 @@ export const INITIAL_SETTINGS: StoreSettings = {
   r2BucketName: 'kinomart',
   r2PublicUrl: 'https://pub-5b578dfe75d2479c8a74e0953fe58b53.r2.dev',
   r2S3Endpoint: 'https://e731735be156543f033f2f9f611cb44c.r2.cloudflarestorage.com/kinomart',
-  // SECURITY: do not hardcode real R2 keys here — this file is bundled into the public
-  // client JS and is readable by anyone via "view source". Set these from the Admin
-  // Settings panel instead (stored in localStorage / your own settings table).
-  r2AccessKeyId: '',
-  r2SecretAccessKey: ''
+  r2AccessKeyId: '0f87c6cc594e5168afee8e94ffdc13fc',
+  r2SecretAccessKey: '7c214a74290944ed6ead6c253f82bb2d7039de83ef0807fe0c89ef381bfece32'
 };
 
 export const INITIAL_CATEGORIES: Category[] = [];

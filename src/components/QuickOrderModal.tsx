@@ -6,6 +6,7 @@ import { BundleSelector } from './BundleSelector';
 import { FlavorSelector } from './FlavorSelector';
 import { getEffectiveBundles, calculateProductPrice } from '../lib/bundleUtils';
 import { trackBeginCheckout, trackPurchase } from '../lib/dataLayer';
+import { getOptimizedImageUrl, getRawStorageUrl } from '../lib/imageUtils';
 
 interface QuickOrderModalProps {
   product: Product;
@@ -221,10 +222,16 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({ product, onClo
           <div className="bg-[#F7F5F0] border border-[#E8E3D9] p-3 rounded-2xl flex items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <img
-                src={product.thumbnail}
+                src={getOptimizedImageUrl(product.thumbnail, { width: 120, quality: 78 })}
                 alt={product.name}
+                loading="eager"
+                decoding="async"
                 className="w-12 h-12 rounded-xl object-cover border border-[#E8E3D9] bg-[#FFDC33]"
                 referrerPolicy="no-referrer"
+                onError={(e) => {
+                  const target = e.currentTarget;
+                  target.src = getRawStorageUrl(product.thumbnail);
+                }}
               />
               <div>
                 <h4 className="text-xs sm:text-sm font-extrabold text-[#1F241E] line-clamp-1 max-w-[200px]">

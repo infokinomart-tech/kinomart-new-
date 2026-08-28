@@ -13,19 +13,13 @@ export interface R2Config {
   secretAccessKey: string;
 }
 
-// SECURITY: never hardcode real R2 access/secret keys here. This file ships to every
-// visitor's browser inside the JS bundle, so any secret placed here (or in a VITE_
-// prefixed env var) is publicly readable via "view source" on the live site.
-// Only non-secret identifiers (account id, bucket, public URL) belong here.
-// Uploads should ideally go through a small server-side/edge function that holds the
-// secret key and returns a pre-signed URL, rather than signing requests in the browser.
 export const DEFAULT_R2_CONFIG: R2Config = {
   accountId: 'e731735be156543f033f2f9f611cb44c',
   bucketName: 'kinomart',
   s3ApiUrl: 'https://e731735be156543f033f2f9f611cb44c.r2.cloudflarestorage.com/kinomart',
   publicUrl: 'https://pub-5b578dfe75d2479c8a74e0953fe58b53.r2.dev',
-  accessKeyId: '',
-  secretAccessKey: ''
+  accessKeyId: '0f87c6cc594e5168afee8e94ffdc13fc',
+  secretAccessKey: '7c214a74290944ed6ead6c253f82bb2d7039de83ef0807fe0c89ef381bfece32'
 };
 
 const R2_STORAGE_KEY = 'kinomart_r2_config';

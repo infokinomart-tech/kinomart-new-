@@ -1,9 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Product } from '../types';
 import { useStore } from '../context/StoreContext';
 import { Star, Zap, BellRing } from 'lucide-react';
 import { trackAddToCart, trackSelectItem } from '../lib/dataLayer';
-import { getOptimizedImageUrl } from '../lib/imageUtils';
+import { getOptimizedImageUrl, getResponsiveSrcSet, getRawStorageUrl } from '../lib/imageUtils';
 
 interface ProductCardProps {
   product: Product;
@@ -13,12 +13,15 @@ interface ProductCardProps {
 
 export const ProductCard: React.FC<ProductCardProps> = React.memo(({ product, index = 0, priority = false }) => {
   const { setSelectedProduct, setQuickOrderProduct, setIsQuickOrderOpen, setActiveClientPage } = useStore();
+  const [isLoaded, setIsLoaded] = useState(false);
 
   const isOutOfStock = product.stock <= 0 || product.status === 'INACTIVE';
-  const isHighPriority = priority || index < 4;
+  // High priority only for the first 2-3 cards above the fold on mobile / first 4 on desktop
+  const isHighPriority = priority || index < 2;
 
   const rawImageUrl = product.thumbnail || product.gallery?.[0] || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500';
-  const optimizedSrc = getOptimizedImageUrl(rawImageUrl, { width: 440, quality: 82 });
+  const optimizedSrc = getOptimizedImageUrl(rawImageUrl, { width: 380, quality: 80 });
+  const responsiveSrcSet = getResponsiveSrcSet(rawImageUrl, [240, 360, 480], 78);
 
   const handleCardClick = () => {
     trackSelectItem(product, 'Product Grid', index + 1);
@@ -65,8 +68,10 @@ export const ProductCard: React.FC<ProductCardProps> = React.memo(({ product, in
     const target = e.currentTarget;
     // If the optimized render URL failed (e.g. Supabase Free tier without image transformation), revert to original raw URL
     if (target.src.includes('/render/image/public/')) {
-      target.src = rawImageUrl;
+      target.srcset = '';
+      target.src = getRawStorageUrl(rawImageUrl);
     } else {
+      target.srcset = '';
       target.src = 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500';
     }
   };
@@ -81,12 +86,19 @@ export const ProductCard: React.FC<ProductCardProps> = React.memo(({ product, in
         <div className="relative w-full aspect-square bg-[#EFECE6] rounded-xl overflow-hidden flex items-center justify-center mb-3 border border-[#E8E3D9]">
           <img
             src={optimizedSrc}
+            srcSet={responsiveSrcSet || undefined}
+            sizes="(max-width: 640px) 46vw, (max-width: 1024px) 30vw, 260px"
+            width={300}
+            height={300}
             alt={product.name || 'প্রোডাক্ট'}
             loading={isHighPriority ? 'eager' : 'lazy'}
             decoding="async"
             fetchPriority={isHighPriority ? 'high' : 'auto'}
+            onLoad={() => setIsLoaded(true)}
             onError={handleImageError}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            className={`w-full h-full object-cover group-hover:scale-105 transition-all duration-500 ${
+              isLoaded ? 'opacity-100' : 'opacity-90'
+            }`}
             referrerPolicy="no-referrer"
           />
 

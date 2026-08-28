@@ -331,11 +331,22 @@ export function isHttpUrl(url?: string): boolean {
 }
 
 /**
- * Optimizes an image URL for display (supports Cloudflare R2 CDN, Unsplash, Supabase Storage, Cloudinary, and Data URLs)
+ * Fallback raw URL extractor in case CDN transformation endpoint returns 404 or fails
+ */
+export function getRawStorageUrl(url?: string): string {
+  if (!url) return 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500';
+  if (url.includes('/storage/v1/render/image/public/')) {
+    return url.replace('/storage/v1/render/image/public/', '/storage/v1/object/public/').split('?')[0];
+  }
+  return url.split('?')[0];
+}
+
+/**
+ * Optimizes an image URL for display (supports Supabase Storage Image Transformation, Cloudflare R2 CDN, Unsplash, Cloudinary, and Data URLs)
  */
 export function getOptimizedImageUrl(
   url?: string,
-  options: { width?: number; quality?: number } = {}
+  options: { width?: number; height?: number; quality?: number; format?: 'webp' | 'avif' | 'origin' } = {}
 ): string {
   if (!url) return 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500';
   
@@ -344,13 +355,26 @@ export function getOptimizedImageUrl(
     return url;
   }
 
+  const width = options.width || 600;
+  const quality = options.quality || 80;
+
+  // Supabase Storage Image Transformation
+  // Turns /storage/v1/object/public/bucket/path into /storage/v1/render/image/public/bucket/path?width=...&quality=...
+  if (url.includes('.supabase.co/storage/v1/')) {
+    if (url.includes('/storage/v1/object/public/')) {
+      const baseUrl = url.replace('/storage/v1/object/public/', '/storage/v1/render/image/public/');
+      return `${baseUrl}?width=${width}&quality=${quality}&resize=contain`;
+    }
+    if (url.includes('/storage/v1/render/image/public/')) {
+      const cleanUrl = url.split('?')[0];
+      return `${cleanUrl}?width=${width}&quality=${quality}&resize=contain`;
+    }
+  }
+
   // If Cloudflare R2 CDN URL, ensure it is cleanly formatted
   if (isR2Url(url)) {
     return url;
   }
-
-  const width = options.width || 600;
-  const quality = options.quality || 80;
 
   // If Unsplash URL, append or replace width & quality parameters
   if (url.includes('images.unsplash.com')) {
@@ -365,5 +389,33 @@ export function getOptimizedImageUrl(
 
   return url;
 }
+
+/**
+ * Generates a responsive srcset attribute for modern browsers
+ */
+export function getResponsiveSrcSet(
+  url?: string,
+  widths: number[] = [280, 440, 640, 800],
+  quality: number = 80
+): string {
+  if (!url || url.startsWith('data:') || url.startsWith('blob:')) {
+    return '';
+  }
+
+  // If neither Supabase nor Unsplash nor Cloudinary, srcset might not be supported directly
+  const isTransformable =
+    url.includes('.supabase.co/storage/v1/') ||
+    url.includes('images.unsplash.com') ||
+    url.includes('res.cloudinary.com');
+
+  if (!isTransformable) {
+    return '';
+  }
+
+  return widths
+    .map(w => `${getOptimizedImageUrl(url, { width: w, quality })} ${w}w`)
+    .join(', ');
+}
+
 
 
