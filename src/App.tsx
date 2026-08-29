@@ -73,9 +73,15 @@ const MainAppContent: React.FC = () => {
           if (found) {
             setSelectedProduct(found);
             setActiveClientPage('product-detail');
-          } else if (products.length > 0 && activeClientPage === 'product-detail') {
+          } else if (products.length > 0) {
+            // Data has now loaded and there's genuinely no matching product —
+            // safe to fall back home. (No longer gated on activeClientPage
+            // already being 'product-detail', since on a fresh deep-link load
+            // it never was set to that in the first place.)
             setActiveClientPage('home');
           }
+          // else: products haven't loaded yet — wait for the next effect run
+          // (triggered by the `products` dependency below) instead of giving up.
         } else if (path === '/products') {
           setActiveClientPage('products');
         } else if (path === '/about') {
@@ -97,7 +103,14 @@ const MainAppContent: React.FC = () => {
     if (isInitialRouteRef.current) {
       isInitialRouteRef.current = false;
       handleUrlChange();
-    } else if (activeClientPage === 'product-detail' && !selectedProduct && window.location.pathname.startsWith('/product/')) {
+    } else if (
+      window.location.pathname.startsWith('/product/') &&
+      (!selectedProduct || activeClientPage !== 'product-detail')
+    ) {
+      // Retry resolving the deep-linked product whenever `products` updates
+      // (e.g. once the async fetch from the database finishes), regardless of
+      // what activeClientPage currently is — otherwise a product that wasn't
+      // found on the very first (pre-data) render is never looked up again.
       handleUrlChange();
     }
 
