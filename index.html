@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>KinoMart - সেরা গ্যাজেট ও প্রিমিয়াম ইলেকট্রনিক্স</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="dns-prefetch" href="https://images.unsplash.com">
+    <link rel="preconnect" href="https://images.unsplash.com" crossorigin>
+    <link rel="dns-prefetch" href="https://pub-5b578dfe75d2479c8a74e0953fe58b53.r2.dev">
+    <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Google Tag Manager / GA4 Data Layer Initialization -->
+    <script>
+      window.dataLayer = window.dataLayer || [];
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script>
+      // Prevent pinch zoom gestures on iOS Safari
+      document.addEventListener('gesturestart', function (e) {
+        e.preventDefault();
+      });
+      document.addEventListener('gesturechange', function (e) {
+        e.preventDefault();
+      });
+      document.addEventListener('gestureend', function (e) {
+        e.preventDefault();
+      });
+      // Prevent multi-touch pinch zoom
+      document.addEventListener('touchstart', function (e) {
+        if (e.touches.length > 1) {
+          e.preventDefault();
+        }
+      }, { passive: false });
+    </script>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+
