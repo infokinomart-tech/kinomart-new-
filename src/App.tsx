@@ -112,6 +112,22 @@ const MainAppContent: React.FC = () => {
 
   // Push state to browser address bar when active view changes
   React.useEffect(() => {
+    // Guard against a race condition: on a fresh page load of a deep link like
+    // /product/some-slug, product data may not have finished loading yet, so
+    // activeClientPage is still its default 'home' value. Without this guard,
+    // this effect would immediately overwrite the address bar to '/' before the
+    // product is found, permanently losing the deep link once data does arrive
+    // (the URL no longer starts with /product/, so the resolver effect above
+    // never re-checks it). Skip syncing the URL until products have loaded and
+    // had a chance to resolve the deep link one way or the other.
+    if (
+      activeClientPage !== 'product-detail' &&
+      window.location.pathname.startsWith('/product/') &&
+      products.length === 0
+    ) {
+      return;
+    }
+
     let targetPath = '/';
     if (viewMode === 'admin') {
       targetPath = '/admin';
