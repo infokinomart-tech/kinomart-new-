@@ -58,6 +58,16 @@ const MainAppContent: React.FC = () => {
   } = useStore();
 
   const isInitialRouteRef = React.useRef(true);
+  // Tracks whether we're still waiting on product data to resolve a fresh
+  // deep-link URL (e.g. /product/xyz opened directly, before `products` has
+  // loaded). This must NOT be re-triggered by ordinary in-app navigation —
+  // only by `products` actually finishing its load — otherwise clicking any
+  // nav link while viewing a product snaps the user right back to it (the
+  // pathname hasn't been rewritten yet by the sync effect below, so a retry
+  // based on pathname alone would just re-find the same product).
+  const deepLinkPendingRef = React.useRef(
+    typeof window !== 'undefined' && window.location.pathname.startsWith('/product/')
+  );
 
   React.useEffect(() => {
     const handleUrlChange = () => {
@@ -73,15 +83,15 @@ const MainAppContent: React.FC = () => {
           if (found) {
             setSelectedProduct(found);
             setActiveClientPage('product-detail');
+            deepLinkPendingRef.current = false;
           } else if (products.length > 0) {
             // Data has now loaded and there's genuinely no matching product —
-            // safe to fall back home. (No longer gated on activeClientPage
-            // already being 'product-detail', since on a fresh deep-link load
-            // it never was set to that in the first place.)
+            // safe to fall back home.
             setActiveClientPage('home');
+            deepLinkPendingRef.current = false;
           }
-          // else: products haven't loaded yet — wait for the next effect run
-          // (triggered by the `products` dependency below) instead of giving up.
+          // else: products haven't loaded yet — leave deepLinkPendingRef true
+          // so the next `products` update retries this resolution.
         } else if (path === '/products') {
           setActiveClientPage('products');
         } else if (path === '/about') {
@@ -103,14 +113,9 @@ const MainAppContent: React.FC = () => {
     if (isInitialRouteRef.current) {
       isInitialRouteRef.current = false;
       handleUrlChange();
-    } else if (
-      window.location.pathname.startsWith('/product/') &&
-      (!selectedProduct || activeClientPage !== 'product-detail')
-    ) {
-      // Retry resolving the deep-linked product whenever `products` updates
-      // (e.g. once the async fetch from the database finishes), regardless of
-      // what activeClientPage currently is — otherwise a product that wasn't
-      // found on the very first (pre-data) render is never looked up again.
+    } else if (deepLinkPendingRef.current) {
+      // Only retries while a fresh deep link is still genuinely unresolved —
+      // never fires just because the user navigated elsewhere in-app.
       handleUrlChange();
     }
 

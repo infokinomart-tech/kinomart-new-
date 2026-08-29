@@ -1,4 +1,5 @@
 import { Product, Order, OrderItem } from '../types';
+import { sendServerEvent, generateEventId } from './serverTracking';
 
 // Ensure dataLayer and fbq exist on window
 declare global {
@@ -11,9 +12,18 @@ declare global {
 }
 
 /**
- * Deduplication store for purchase transactions to prevent duplicate firing
+ * Dedup store for purchase transactions to prevent duplicate firing
  */
 const trackedTransactions = new Set<string>();
+
+/**
+ * Captured tracking IDs, set once when injectGA4/injectMetaPixel run (called
+ * from StoreContext with the admin-configured settings). Reused by the
+ * trackX() functions below so they can also fire the server-side mirror
+ * event without every call site needing to pass IDs through explicitly.
+ */
+let capturedGA4Id: string | undefined;
+let capturedMetaPixelId: string | undefined;
 
 /**
  * Initialize window.dataLayer if not present
@@ -112,6 +122,7 @@ export const injectGTM = (gtmId: string): void => {
 export const injectGA4 = (gaMeasurementId: string): void => {
   if (typeof window === 'undefined' || !gaMeasurementId || !gaMeasurementId.trim().startsWith('G-')) return;
   const cleanId = gaMeasurementId.trim();
+  capturedGA4Id = cleanId;
   if (document.getElementById(`ga4-script-${cleanId}`)) return;
 
   try {
@@ -139,6 +150,7 @@ export const injectGA4 = (gaMeasurementId: string): void => {
 export const injectMetaPixel = (pixelId: string): void => {
   if (typeof window === 'undefined' || !pixelId || pixelId.trim().length < 5) return;
   const cleanId = pixelId.trim();
+  capturedMetaPixelId = cleanId;
   if (document.getElementById(`meta-pixel-${cleanId}`)) return;
 
   try {
@@ -189,6 +201,13 @@ export const trackPageView = (
     if (typeof window !== 'undefined' && window.fbq) {
       window.fbq('track', 'PageView');
     }
+
+    sendServerEvent({
+      event: 'page_view',
+      measurementId: capturedGA4Id,
+      pixelId: capturedMetaPixelId,
+      ecommerce: { page_location: pageLocation, page_title: pageTitle },
+    });
   } catch (err) {
     console.warn('[DataLayer Warning] trackPageView error:', err);
   }
@@ -210,6 +229,13 @@ export const trackViewItemList = (
         item_list_name: itemListName,
         items: items,
       },
+    });
+
+    sendServerEvent({
+      event: 'view_item_list',
+      measurementId: capturedGA4Id,
+      // Meta has no view_item_list equivalent — GA4 only.
+      ecommerce: { item_list_name: itemListName, items },
     });
   } catch (err) {
     console.warn('[DataLayer Warning] trackViewItemList error:', err);
@@ -234,6 +260,12 @@ export const trackSelectItem = (
         items: [item],
       },
     });
+
+    sendServerEvent({
+      event: 'select_item',
+      measurementId: capturedGA4Id,
+      ecommerce: { item_list_name: itemListName, items: [item] },
+    });
   } catch (err) {
     console.warn('[DataLayer Warning] trackSelectItem error:', err);
   }
@@ -251,6 +283,7 @@ export const trackViewItem = (
     if (!product) return;
     const item = formatGA4Item(product, quantity, selectedColor);
     const value = item.price * quantity;
+    const eventId = generateEventId();
 
     pushToDataLayer({
       event: 'view_item',
@@ -269,8 +302,23 @@ export const trackViewItem = (
         content_type: 'product',
         value: value,
         currency: 'BDT'
-      });
+      }, { eventID: eventId });
     }
+
+    sendServerEvent({
+      event: 'view_item',
+      measurementId: capturedGA4Id,
+      pixelId: capturedMetaPixelId,
+      eventId,
+      ecommerce: { currency: 'BDT', value, items: [item] },
+      meta: {
+        content_ids: [String(product.id)],
+        content_name: product.name,
+        content_category: product.category,
+        value,
+        currency: 'BDT',
+      },
+    });
   } catch (err) {
     console.warn('[DataLayer Warning] trackViewItem error:', err);
   }
@@ -288,6 +336,7 @@ export const trackAddToCart = (
     if (!product) return;
     const item = formatGA4Item(product, quantity, selectedColor);
     const value = item.price * quantity;
+    const eventId = generateEventId();
 
     pushToDataLayer({
       event: 'add_to_cart',
@@ -306,8 +355,24 @@ export const trackAddToCart = (
         content_type: 'product',
         value: value,
         currency: 'BDT'
-      });
+      }, { eventID: eventId });
     }
+
+    sendServerEvent({
+      event: 'add_to_cart',
+      measurementId: capturedGA4Id,
+      pixelId: capturedMetaPixelId,
+      eventId,
+      ecommerce: { currency: 'BDT', value, items: [item] },
+      meta: {
+        content_ids: [String(product.id)],
+        content_name: product.name,
+        content_category: product.category,
+        num_items: quantity,
+        value,
+        currency: 'BDT',
+      },
+    });
   } catch (err) {
     console.warn('[DataLayer Warning] trackAddToCart error:', err);
   }
@@ -332,6 +397,12 @@ export const trackRemoveFromCart = (
         items: [item],
       },
     });
+
+    sendServerEvent({
+      event: 'remove_from_cart',
+      measurementId: capturedGA4Id,
+      ecommerce: { currency: 'BDT', value: item.price * quantity, items: [item] },
+    });
   } catch (err) {
     console.warn('[DataLayer Warning] trackRemoveFromCart error:', err);
   }
@@ -349,6 +420,7 @@ export const trackBeginCheckout = (
     const formattedItems = (items || []).map((i) =>
       formatGA4Item(i.product, i.quantity, i.selectedColor)
     );
+    const eventId = generateEventId();
 
     pushToDataLayer({
       event: 'begin_checkout',
@@ -367,8 +439,23 @@ export const trackBeginCheckout = (
         num_items: (items || []).reduce((sum, i) => sum + i.quantity, 0),
         value: value,
         currency: 'BDT'
-      });
+      }, { eventID: eventId });
     }
+
+    sendServerEvent({
+      event: 'begin_checkout',
+      measurementId: capturedGA4Id,
+      pixelId: capturedMetaPixelId,
+      eventId,
+      ecommerce: { currency: 'BDT', value, coupon: couponCode, items: formattedItems },
+      meta: {
+        content_ids: (items || []).map(i => String(i.product.id)),
+        contents: formattedItems.map(f => ({ id: f.item_id, quantity: f.quantity, item_price: f.price })),
+        num_items: (items || []).reduce((sum, i) => sum + i.quantity, 0),
+        value,
+        currency: 'BDT',
+      },
+    });
   } catch (err) {
     console.warn('[DataLayer Warning] trackBeginCheckout error:', err);
   }
@@ -392,6 +479,7 @@ export const trackPurchase = (order: Order): void => {
     }
 
     trackedTransactions.add(transactionId);
+    const eventId = generateEventId();
 
     const formattedItems = (order.items || []).map((orderItem: OrderItem) =>
       formatGA4Item(
@@ -421,8 +509,34 @@ export const trackPurchase = (order: Order): void => {
         num_items: (order.items || []).reduce((sum, i) => sum + (i.quantity || 1), 0),
         value: order.totalPrice,
         currency: 'BDT'
-      });
+      }, { eventID: eventId });
     }
+
+    sendServerEvent({
+      event: 'purchase',
+      measurementId: capturedGA4Id,
+      pixelId: capturedMetaPixelId,
+      eventId,
+      ecommerce: {
+        transaction_id: transactionId,
+        value: order.totalPrice,
+        tax: 0,
+        shipping: order.deliveryFee || 0,
+        currency: 'BDT',
+        coupon: order.couponCode,
+        items: formattedItems,
+      },
+      meta: {
+        content_ids: (order.items || []).map(i => String(i.product?.id || '')),
+        contents: formattedItems.map(f => ({ id: f.item_id, quantity: f.quantity, item_price: f.price })),
+        num_items: (order.items || []).reduce((sum, i) => sum + (i.quantity || 1), 0),
+        value: order.totalPrice,
+        currency: 'BDT',
+      },
+      // Improves Meta's match quality for the Purchase conversion — hashed
+      // server-side in api/track.ts, never sent in plaintext to Meta.
+      userData: order.customerPhone ? { ph: order.customerPhone } : undefined,
+    });
   } catch (err) {
     console.warn('[DataLayer Warning] trackPurchase error:', err);
   }
