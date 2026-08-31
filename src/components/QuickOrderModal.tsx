@@ -5,7 +5,7 @@ import { Truck, X, Plus, Minus, Check, Tag, ShieldCheck, Copy, Zap } from 'lucid
 import { BundleSelector } from './BundleSelector';
 import { FlavorSelector } from './FlavorSelector';
 import { getEffectiveBundles, calculateProductPrice } from '../lib/bundleUtils';
-import { trackBeginCheckout, trackPurchase } from '../lib/dataLayer';
+import { trackBeginCheckout } from '../lib/dataLayer';
 import { getOptimizedImageUrl, getRawStorageUrl } from '../lib/imageUtils';
 
 interface QuickOrderModalProps {
@@ -183,10 +183,7 @@ export const QuickOrderModal: React.FC<QuickOrderModalProps> = ({ product, onClo
         totalPrice
       });
 
-      // Fire purchase event
-      if (createdOrder) {
-        trackPurchase(createdOrder);
-      }
+      // Track purchase will happen on OrderSuccessView mount
     } catch (err) {
       console.error(err);
       setErrorMsg('অর্ডার সম্পন্ন করতে সমস্যা হয়েছে। আবার চেষ্টা করুন।');

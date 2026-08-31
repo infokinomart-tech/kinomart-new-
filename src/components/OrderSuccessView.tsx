@@ -1,10 +1,17 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useStore } from '../context/StoreContext';
 import { CheckCircle2, UserCheck, Package, ShoppingBag, ArrowRight } from 'lucide-react';
 import { getOptimizedImageUrl, getRawStorageUrl } from '../lib/imageUtils';
+import { trackPurchase } from '../lib/dataLayer';
 
 export const OrderSuccessView: React.FC = () => {
   const { completedOrder, setActiveClientPage } = useStore();
+
+  useEffect(() => {
+    if (completedOrder) {
+      trackPurchase(completedOrder);
+    }
+  }, [completedOrder]);
 
   if (!completedOrder) {
     return (

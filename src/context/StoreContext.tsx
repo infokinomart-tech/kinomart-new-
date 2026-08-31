@@ -17,7 +17,7 @@ import {
   HeroSlide,
   PromoBannerConfig
 } from '../types';
-import { trackPurchase, injectGTM, injectGA4, injectMetaPixel } from '../lib/dataLayer';
+import { injectGTM, injectGA4, injectMetaPixel } from '../lib/dataLayer';
 
 interface StoreContextType {
   // Navigation & View
