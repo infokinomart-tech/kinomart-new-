@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Product } from '../types';
 import { useStore } from '../context/StoreContext';
 import { Star, Zap, BellRing } from 'lucide-react';
-import { trackAddToCart, trackSelectItem } from '../lib/dataLayer';
+import { trackAddToCart } from '../lib/dataLayer';
 import { getOptimizedImageUrl, getResponsiveSrcSet, getRawStorageUrl, markSupabaseTransformFailed } from '../lib/imageUtils';
 
 interface ProductCardProps {
@@ -24,7 +24,7 @@ export const ProductCard: React.FC<ProductCardProps> = React.memo(({ product, in
   const responsiveSrcSet = getResponsiveSrcSet(rawImageUrl, [180, 280, 380, 500, 640], 80);
 
   const handleCardClick = () => {
-    trackSelectItem(product, 'Product Grid', index + 1);
+
     setSelectedProduct(product);
     setActiveClientPage('product-detail');
     window.scrollTo({ top: 0, behavior: 'smooth' });

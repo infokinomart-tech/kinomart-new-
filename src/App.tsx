@@ -7,7 +7,7 @@ import { PromoBanner } from './components/PromoBanner';
 import { BenefitsGrid } from './components/BenefitsGrid';
 import { FloatingContacts } from './components/FloatingContacts';
 import { Footer } from './components/Footer';
-import { trackPageView, trackViewItemList } from './lib/dataLayer';
+
 import { getProductSlug, findProductBySlugOrId } from './lib/slugUtils';
 import { Filter, ShoppingBag, Phone, Mail, MapPin, Sparkles, Flame, ArrowRight } from 'lucide-react';
 
@@ -172,13 +172,7 @@ const MainAppContent: React.FC = () => {
       window.history.pushState({}, '', targetPath);
     }
 
-    // Trigger GA4 page_view event
-    trackPageView(document.title, window.location.href, targetPath);
 
-    // Trigger GA4 view_item_list when on home or products list
-    if ((activeClientPage === 'home' || activeClientPage === 'products') && products.length > 0) {
-      trackViewItemList(products, activeClientPage === 'home' ? 'Homepage Popular Gadgets' : 'All Products Grid');
-    }
   }, [viewMode, activeClientPage, selectedProduct, products]);
 
   // Scroll to top of window whenever product is selected, view mode changes, or page changes

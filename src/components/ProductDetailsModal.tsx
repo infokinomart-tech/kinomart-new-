@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Product, Review } from '../types';
 import { useStore } from '../context/StoreContext';
@@ -82,6 +82,8 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
   const activeBundleId = priceResult.activeBundleId;
   const totalPrice = displayPrice;
 
+  const trackedViewItemRef = useRef<string | null>(null);
+
   // Sync state whenever product changes
   useEffect(() => {
     setSelectedImage(product.thumbnail || product.gallery?.[0] || '');
@@ -99,8 +101,11 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
       setSelectedFlavors({});
     }
 
-    // Track view_item event
-    trackViewItem(product, def?.quantity || 1, product.colors && product.colors.length > 0 ? product.colors[0] : undefined);
+    // Track view_item event exactly once per product
+    if (trackedViewItemRef.current !== product.id) {
+      trackViewItem(product, def?.quantity || 1, product.colors && product.colors.length > 0 ? product.colors[0] : undefined);
+      trackedViewItemRef.current = String(product.id);
+    }
 
     // Ensure page scrolls to top on product selection
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' });

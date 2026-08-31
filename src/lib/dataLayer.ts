@@ -1,29 +1,10 @@
 import { Product, Order, OrderItem } from '../types';
-import { sendServerEvent, generateEventId } from './serverTracking';
 
-// Ensure dataLayer and fbq exist on window
 declare global {
   interface Window {
     dataLayer?: Record<string, any>[];
-    fbq?: any;
-    _fbq?: any;
-    gtag?: any;
   }
 }
-
-/**
- * Dedup store for purchase transactions to prevent duplicate firing
- */
-const trackedTransactions = new Set<string>();
-
-/**
- * Captured tracking IDs, set once when injectGA4/injectMetaPixel run (called
- * from StoreContext with the admin-configured settings). Reused by the
- * trackX() functions below so they can also fire the server-side mirror
- * event without every call site needing to pass IDs through explicitly.
- */
-let capturedGA4Id: string | undefined;
-let capturedMetaPixelId: string | undefined;
 
 /**
  * Initialize window.dataLayer if not present
@@ -76,12 +57,12 @@ export const formatGA4Item = (
       quantity: quantity,
     };
   }
-  const price = product.discountPrice || product.price || 0;
+  const price = Number(product.discountPrice || product.price || 0);
   return {
     item_id: String(product.id || ''),
     item_name: product.name || '',
     price: price,
-    quantity: quantity,
+    quantity: Number(quantity),
     item_category: product.category || 'গ্যাজেট',
     item_category2: product.subCategory || undefined,
     item_variant: selectedColor || (product.colors && product.colors[0]) || undefined,
@@ -89,190 +70,13 @@ export const formatGA4Item = (
   };
 };
 
-/**
- * Dynamic GTM (Google Tag Manager) Script Injector
- */
-export const injectGTM = (gtmId: string): void => {
-  if (typeof window === 'undefined' || !gtmId || !gtmId.trim().startsWith('GTM-')) return;
-  const cleanId = gtmId.trim();
-  if (document.getElementById(`gtm-script-${cleanId}`)) return;
-
-  try {
-    initDataLayer();
-    const script = document.createElement('script');
-    script.id = `gtm-script-${cleanId}`;
-    script.async = true;
-    script.src = `https://www.googletagmanager.com/gtm.js?id=${cleanId}`;
-    document.head.appendChild(script);
-
-    // Initial gtm.start event
-    pushToDataLayer({
-      'gtm.start': new Date().getTime(),
-      event: 'gtm.js'
-    });
-    console.log(`[GTM] Injected container: ${cleanId}`);
-  } catch (e) {
-    console.warn('[GTM] Failed to inject script:', e);
-  }
-};
+// Kept empty to avoid breaking any remaining imports that were not cleaned up yet.
+export const injectGTM = (gtmId: string): void => {};
+export const injectGA4 = (gaMeasurementId: string): void => {};
+export const injectMetaPixel = (pixelId: string): void => {};
 
 /**
- * Dynamic GA4 (Google Analytics 4) Measurement Script Injector
- */
-export const injectGA4 = (gaMeasurementId: string): void => {
-  if (typeof window === 'undefined' || !gaMeasurementId || !gaMeasurementId.trim().startsWith('G-')) return;
-  const cleanId = gaMeasurementId.trim();
-  capturedGA4Id = cleanId;
-  if (document.getElementById(`ga4-script-${cleanId}`)) return;
-
-  try {
-    initDataLayer();
-    const script = document.createElement('script');
-    script.id = `ga4-script-${cleanId}`;
-    script.async = true;
-    script.src = `https://www.googletagmanager.com/gtag/js?id=${cleanId}`;
-    document.head.appendChild(script);
-
-    window.gtag = window.gtag || function () {
-      initDataLayer().push(arguments);
-    };
-    window.gtag('js', new Date());
-    window.gtag('config', cleanId);
-    console.log(`[GA4] Injected measurement ID: ${cleanId}`);
-  } catch (e) {
-    console.warn('[GA4] Failed to inject script:', e);
-  }
-};
-
-/**
- * Dynamic Meta Pixel (Facebook Pixel) Script Injector
- */
-export const injectMetaPixel = (pixelId: string): void => {
-  if (typeof window === 'undefined' || !pixelId || pixelId.trim().length < 5) return;
-  const cleanId = pixelId.trim();
-  capturedMetaPixelId = cleanId;
-  if (document.getElementById(`meta-pixel-${cleanId}`)) return;
-
-  try {
-    /* eslint-disable */
-    if (!window.fbq) {
-      const fbq: any = function () {
-        fbq.callMethod ? fbq.callMethod.apply(fbq, arguments) : fbq.queue.push(arguments);
-      };
-      if (!window._fbq) window._fbq = fbq;
-      fbq.push = fbq;
-      fbq.loaded = true;
-      fbq.version = '2.0';
-      fbq.queue = [];
-      window.fbq = fbq;
-
-      const script = document.createElement('script');
-      script.id = `meta-pixel-${cleanId}`;
-      script.async = true;
-      script.src = 'https://connect.facebook.net/en_US/fbevents.js';
-      document.head.appendChild(script);
-    }
-    /* eslint-enable */
-
-    window.fbq('init', cleanId);
-    window.fbq('track', 'PageView');
-    console.log(`[Meta Pixel] Initialized Pixel ID: ${cleanId}`);
-  } catch (e) {
-    console.warn('[Meta Pixel] Failed to inject script:', e);
-  }
-};
-
-/**
- * 1. page_view Event
- */
-export const trackPageView = (
-  pageTitle?: string,
-  pageLocation?: string,
-  pagePath?: string
-): void => {
-  try {
-    pushToDataLayer({
-      event: 'page_view',
-      page_title: pageTitle || (typeof document !== 'undefined' ? document.title : ''),
-      page_location: pageLocation || (typeof window !== 'undefined' ? window.location.href : ''),
-      page_path: pagePath || (typeof window !== 'undefined' ? window.location.pathname : ''),
-    });
-
-    if (typeof window !== 'undefined' && window.fbq) {
-      window.fbq('track', 'PageView');
-    }
-
-    sendServerEvent({
-      event: 'page_view',
-      measurementId: capturedGA4Id,
-      pixelId: capturedMetaPixelId,
-      ecommerce: { page_location: pageLocation, page_title: pageTitle },
-    });
-  } catch (err) {
-    console.warn('[DataLayer Warning] trackPageView error:', err);
-  }
-};
-
-/**
- * 2. view_item_list Event (When a list of products is viewed)
- */
-export const trackViewItemList = (
-  products: Product[],
-  itemListName: string = 'Product Grid'
-): void => {
-  try {
-    if (!products || products.length === 0) return;
-    const items = products.slice(0, 20).map((p, idx) => formatGA4Item(p, 1, undefined, idx + 1));
-    pushToDataLayer({
-      event: 'view_item_list',
-      ecommerce: {
-        item_list_name: itemListName,
-        items: items,
-      },
-    });
-
-    sendServerEvent({
-      event: 'view_item_list',
-      measurementId: capturedGA4Id,
-      // Meta has no view_item_list equivalent — GA4 only.
-      ecommerce: { item_list_name: itemListName, items },
-    });
-  } catch (err) {
-    console.warn('[DataLayer Warning] trackViewItemList error:', err);
-  }
-};
-
-/**
- * 3. select_item Event (When user clicks on a product card)
- */
-export const trackSelectItem = (
-  product: Product,
-  itemListName: string = 'Product Grid',
-  index?: number
-): void => {
-  try {
-    if (!product) return;
-    const item = formatGA4Item(product, 1, undefined, index);
-    pushToDataLayer({
-      event: 'select_item',
-      ecommerce: {
-        item_list_name: itemListName,
-        items: [item],
-      },
-    });
-
-    sendServerEvent({
-      event: 'select_item',
-      measurementId: capturedGA4Id,
-      ecommerce: { item_list_name: itemListName, items: [item] },
-    });
-  } catch (err) {
-    console.warn('[DataLayer Warning] trackSelectItem error:', err);
-  }
-};
-
-/**
- * 4. view_item Event (When product details page opens)
+ * view_item Event (When product details page opens)
  */
 export const trackViewItem = (
   product: Product,
@@ -283,8 +87,8 @@ export const trackViewItem = (
     if (!product) return;
     const item = formatGA4Item(product, quantity, selectedColor);
     const value = item.price * quantity;
-    const eventId = generateEventId();
 
+    pushToDataLayer({ ecommerce: null });
     pushToDataLayer({
       event: 'view_item',
       ecommerce: {
@@ -293,39 +97,13 @@ export const trackViewItem = (
         items: [item],
       },
     });
-
-    if (typeof window !== 'undefined' && window.fbq) {
-      window.fbq('track', 'ViewContent', {
-        content_name: product.name,
-        content_category: product.category,
-        content_ids: [String(product.id)],
-        content_type: 'product',
-        value: value,
-        currency: 'BDT'
-      }, { eventID: eventId });
-    }
-
-    sendServerEvent({
-      event: 'view_item',
-      measurementId: capturedGA4Id,
-      pixelId: capturedMetaPixelId,
-      eventId,
-      ecommerce: { currency: 'BDT', value, items: [item] },
-      meta: {
-        content_ids: [String(product.id)],
-        content_name: product.name,
-        content_category: product.category,
-        value,
-        currency: 'BDT',
-      },
-    });
   } catch (err) {
     console.warn('[DataLayer Warning] trackViewItem error:', err);
   }
 };
 
 /**
- * 5. add_to_cart Event
+ * add_to_cart Event
  */
 export const trackAddToCart = (
   product: Product,
@@ -336,41 +114,14 @@ export const trackAddToCart = (
     if (!product) return;
     const item = formatGA4Item(product, quantity, selectedColor);
     const value = item.price * quantity;
-    const eventId = generateEventId();
 
+    pushToDataLayer({ ecommerce: null });
     pushToDataLayer({
       event: 'add_to_cart',
       ecommerce: {
         currency: 'BDT',
         value: value,
         items: [item],
-      },
-    });
-
-    if (typeof window !== 'undefined' && window.fbq) {
-      window.fbq('track', 'AddToCart', {
-        content_name: product.name,
-        content_category: product.category,
-        content_ids: [String(product.id)],
-        content_type: 'product',
-        value: value,
-        currency: 'BDT'
-      }, { eventID: eventId });
-    }
-
-    sendServerEvent({
-      event: 'add_to_cart',
-      measurementId: capturedGA4Id,
-      pixelId: capturedMetaPixelId,
-      eventId,
-      ecommerce: { currency: 'BDT', value, items: [item] },
-      meta: {
-        content_ids: [String(product.id)],
-        content_name: product.name,
-        content_category: product.category,
-        num_items: quantity,
-        value,
-        currency: 'BDT',
       },
     });
   } catch (err) {
@@ -379,37 +130,7 @@ export const trackAddToCart = (
 };
 
 /**
- * 6. remove_from_cart Event
- */
-export const trackRemoveFromCart = (
-  product: Product,
-  quantity: number = 1,
-  selectedColor?: string
-): void => {
-  try {
-    if (!product) return;
-    const item = formatGA4Item(product, quantity, selectedColor);
-    pushToDataLayer({
-      event: 'remove_from_cart',
-      ecommerce: {
-        currency: 'BDT',
-        value: item.price * quantity,
-        items: [item],
-      },
-    });
-
-    sendServerEvent({
-      event: 'remove_from_cart',
-      measurementId: capturedGA4Id,
-      ecommerce: { currency: 'BDT', value: item.price * quantity, items: [item] },
-    });
-  } catch (err) {
-    console.warn('[DataLayer Warning] trackRemoveFromCart error:', err);
-  }
-};
-
-/**
- * 7. begin_checkout Event
+ * begin_checkout Event
  */
 export const trackBeginCheckout = (
   items: { product: Product; quantity: number; selectedColor?: string }[],
@@ -420,40 +141,15 @@ export const trackBeginCheckout = (
     const formattedItems = (items || []).map((i) =>
       formatGA4Item(i.product, i.quantity, i.selectedColor)
     );
-    const eventId = generateEventId();
 
+    pushToDataLayer({ ecommerce: null });
     pushToDataLayer({
       event: 'begin_checkout',
       ecommerce: {
         currency: 'BDT',
-        value: value,
+        value: Number(value),
         coupon: couponCode || undefined,
         items: formattedItems,
-      },
-    });
-
-    if (typeof window !== 'undefined' && window.fbq) {
-      window.fbq('track', 'InitiateCheckout', {
-        content_ids: (items || []).map(i => String(i.product.id)),
-        contents: formattedItems.map(f => ({ id: f.item_id, quantity: f.quantity, item_price: f.price })),
-        num_items: (items || []).reduce((sum, i) => sum + i.quantity, 0),
-        value: value,
-        currency: 'BDT'
-      }, { eventID: eventId });
-    }
-
-    sendServerEvent({
-      event: 'begin_checkout',
-      measurementId: capturedGA4Id,
-      pixelId: capturedMetaPixelId,
-      eventId,
-      ecommerce: { currency: 'BDT', value, coupon: couponCode, items: formattedItems },
-      meta: {
-        content_ids: (items || []).map(i => String(i.product.id)),
-        contents: formattedItems.map(f => ({ id: f.item_id, quantity: f.quantity, item_price: f.price })),
-        num_items: (items || []).reduce((sum, i) => sum + i.quantity, 0),
-        value,
-        currency: 'BDT',
       },
     });
   } catch (err) {
@@ -462,24 +158,34 @@ export const trackBeginCheckout = (
 };
 
 /**
- * 8. purchase Event
- * Deduplicated by transaction_id to ensure it fires only once per order.
+ * purchase Event
+ * Deduplicated by transaction_id using localStorage to ensure it fires only once per order.
  */
 export const trackPurchase = (order: Order): void => {
   try {
     if (!order) return;
-    const transactionId = order.orderNumber || order.id;
-
+    const transactionId = String(order.orderNumber || order.id);
     if (!transactionId) return;
 
-    // Prevent duplicate purchase events
-    if (trackedTransactions.has(transactionId)) {
-      console.log(`[DataLayer] Purchase event for order ${transactionId} already tracked. Skipping duplicate.`);
-      return;
+    if (typeof window !== 'undefined') {
+      const storedTransactionsStr = localStorage.getItem('tracked_transactions');
+      let storedTransactions: string[] = [];
+      if (storedTransactionsStr) {
+        try {
+          storedTransactions = JSON.parse(storedTransactionsStr);
+        } catch (e) {}
+      }
+      
+      if (storedTransactions.includes(transactionId)) {
+        console.log(`[DataLayer] Purchase event for order ${transactionId} already tracked. Skipping duplicate.`);
+        return;
+      }
+      
+      storedTransactions.push(transactionId);
+      // Keep only last 100 to prevent localstorage bloat
+      if (storedTransactions.length > 100) storedTransactions.shift();
+      localStorage.setItem('tracked_transactions', JSON.stringify(storedTransactions));
     }
-
-    trackedTransactions.add(transactionId);
-    const eventId = generateEventId();
 
     const formattedItems = (order.items || []).map((orderItem: OrderItem) =>
       formatGA4Item(
@@ -489,54 +195,35 @@ export const trackPurchase = (order: Order): void => {
       )
     );
 
-    pushToDataLayer({
+    const userData: Record<string, any> = {};
+    if (order.customerEmail) userData.email = order.customerEmail;
+    if (order.customerPhone) userData.phone = order.customerPhone;
+    if (order.customerName || order.customerAddress) {
+      userData.address = {};
+      if (order.customerName) userData.address.first_name = order.customerName;
+      if (order.customerAddress) userData.address.street = order.customerAddress;
+    }
+
+    pushToDataLayer({ ecommerce: null });
+    
+    const payload: Record<string, any> = {
       event: 'purchase',
       ecommerce: {
         transaction_id: transactionId,
-        value: order.totalPrice,
+        value: Number(order.totalPrice),
         tax: 0,
-        shipping: order.deliveryFee || 0,
+        shipping: Number(order.deliveryFee || 0),
         currency: 'BDT',
         coupon: order.couponCode || undefined,
         items: formattedItems,
-      },
-    });
-
-    if (typeof window !== 'undefined' && window.fbq) {
-      window.fbq('track', 'Purchase', {
-        content_ids: (order.items || []).map(i => String(i.product?.id || '')),
-        contents: formattedItems.map(f => ({ id: f.item_id, quantity: f.quantity, item_price: f.price })),
-        num_items: (order.items || []).reduce((sum, i) => sum + (i.quantity || 1), 0),
-        value: order.totalPrice,
-        currency: 'BDT'
-      }, { eventID: eventId });
+      }
+    };
+    
+    if (Object.keys(userData).length > 0) {
+      payload.user_data = userData;
     }
 
-    sendServerEvent({
-      event: 'purchase',
-      measurementId: capturedGA4Id,
-      pixelId: capturedMetaPixelId,
-      eventId,
-      ecommerce: {
-        transaction_id: transactionId,
-        value: order.totalPrice,
-        tax: 0,
-        shipping: order.deliveryFee || 0,
-        currency: 'BDT',
-        coupon: order.couponCode,
-        items: formattedItems,
-      },
-      meta: {
-        content_ids: (order.items || []).map(i => String(i.product?.id || '')),
-        contents: formattedItems.map(f => ({ id: f.item_id, quantity: f.quantity, item_price: f.price })),
-        num_items: (order.items || []).reduce((sum, i) => sum + (i.quantity || 1), 0),
-        value: order.totalPrice,
-        currency: 'BDT',
-      },
-      // Improves Meta's match quality for the Purchase conversion — hashed
-      // server-side in api/track.ts, never sent in plaintext to Meta.
-      userData: order.customerPhone ? { ph: order.customerPhone } : undefined,
-    });
+    pushToDataLayer(payload);
   } catch (err) {
     console.warn('[DataLayer Warning] trackPurchase error:', err);
   }
